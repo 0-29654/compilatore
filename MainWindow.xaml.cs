@@ -85,7 +85,7 @@ public partial class MainWindow : Window
         ConfigureCppHighlighting();
         LoadSettings();
         if (string.IsNullOrWhiteSpace(BundledCompilerPath) || !File.Exists(BundledCompilerPath))
-            OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma dalla nuova Release 1.4.4.";
+            OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma dalla Release 1.4.6 completa.";
         LoadExerciseStates();
         ActivateExercise(GetTaskType(), GetExerciseNumber());
 

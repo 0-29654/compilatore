@@ -1,5 +1,5 @@
 #define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.4.5"
+#define MyAppVersion "1.4.6"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -39,12 +39,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescription: "Collegamenti:"; Flags: checkedonce
 
 [Files]
-; Applicazione WPF pubblicata
+; Il workflow copia prima applicazione e toolchain GCC dentro publish.
+; Inno Setup installa quindi un unico albero completo, evitando percorsi separati mancanti.
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-; Toolchain GCC UCRT64 completo. Questa riga è intenzionalmente esplicita:
-; se compiler_payload non esiste, Inno Setup interrompe la build e non genera un setup incompleto.
-Source: "compiler_payload\ucrt64\*"; DestDir: "{app}\compiler\ucrt64"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"

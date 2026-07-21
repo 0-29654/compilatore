@@ -1,0 +1,10 @@
+CV+ Compilatore Alunno 1.4.6
+
+Correzione principale:
+- GCC UCRT64 viene copiato direttamente in publish\compiler\ucrt64 prima di avviare Inno Setup.
+- setup_student.iss include un solo albero: publish\*.
+- eliminato il percorso separato compiler_payload, causa dell'errore "No files found matching".
+- build bloccata se mancano g++.exe, cc1plus.exe, include o lib.
+- test reale di compilazione con -std=c++17 prima della creazione dell'installer.
+- manifest del compilatore allegato alla Release.
+- installer per utente corrente, senza privilegi amministrativi.
