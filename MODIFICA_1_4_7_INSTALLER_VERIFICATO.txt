@@ -1,0 +1,6 @@
+Versione 1.4.7
+- GCC esportato da MSYS2 con tar --dereference, evitando junction del runner.
+- Inno Setup include esplicitamente publish\compiler\ucrt64.
+- GitHub Actions installa realmente il setup in una cartella temporanea e verifica g++.exe.
+- Viene eseguita una compilazione C++17 usando il GCC estratto dal setup.
+- La Release non viene creata se il setup non contiene davvero il compilatore.

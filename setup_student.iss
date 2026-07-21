@@ -1,5 +1,5 @@
 #define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.4.6"
+#define MyAppVersion "1.4.7"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -41,7 +41,8 @@ Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescr
 [Files]
 ; Il workflow copia prima applicazione e toolchain GCC dentro publish.
 ; Inno Setup installa quindi un unico albero completo, evitando percorsi separati mancanti.
-Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "publish\*"; DestDir: "{app}"; Excludes: "compiler\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "publish\compiler\ucrt64\*"; DestDir: "{app}\compiler\ucrt64"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
@@ -68,12 +69,6 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if CurStep = ssPostInstall then
-  begin
-    if not CompilerIncluded() then
-    begin
-      MsgBox('Installazione incompleta: il compilatore GCC C++17 non è stato copiato. Il setup verrà chiuso.', mbCriticalError, MB_OK);
-      WizardForm.Close;
-    end;
-  end;
+  if (CurStep = ssPostInstall) and (not CompilerIncluded()) then
+    RaiseException('Installazione incompleta: il compilatore GCC C++17 non è stato copiato.');
 end;
