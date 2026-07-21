@@ -1,0 +1,37 @@
+PROTOCOLLO PREPARATO PER LA MODALITÀ ESERCITAZIONE / VERIFICA
+
+Il client interroga periodicamente uno di questi endpoint del programma docente:
+
+GET /session-status?sessionCode=CODICE
+GET /mode?sessionCode=CODICE
+
+Risposta JSON prevista:
+
+{
+  "mode": "esercitazione"
+}
+
+oppure:
+
+{
+  "mode": "verifica",
+  "taskType": "A"
+}
+
+Valori ammessi per mode:
+- esercitazione (predefinito)
+- verifica
+
+Quando riceve "verifica", il client:
+- passa a schermo intero;
+- resta in primo piano;
+- blocca la chiusura normale e Alt+F4;
+- disabilita CMD e scelta del compilatore;
+- cambia il pulsante in "Invio compito";
+- alla consegna invia il solo esercizio attivo e tutti i tempi raccolti;
+- dopo un invio riuscito cancella dal PC i codici e i tempi della verifica e si chiude.
+
+Uscita di emergenza docente:
+Ctrl+Shift+F12 e inserimento del codice sessione.
+
+NOTA: il client realizza una modalità kiosk applicativa. Windows può comunque riservare combinazioni di sistema come Ctrl+Alt+Canc, che non possono essere disabilitate in modo affidabile da una normale applicazione WPF.

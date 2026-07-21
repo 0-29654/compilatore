@@ -7,11 +7,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>CppStudentClient</AssemblyName>
     <RootNamespace>CppStudentClient</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Product>CV+ Compilatore Alunno</Product>
-    <Company>Alessandro Barazzol</Company>
-    <Copyright>© Alessandro Barazzol</Copyright>
+    <Company>Alessandro Barazzuol</Company>
+    <Copyright>© Alessandro Barazzuol</Copyright>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="AvalonEdit" Version="6.3.1" />

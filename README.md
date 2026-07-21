@@ -8,4 +8,4 @@ Il workflow GitHub Actions crea `CppStudentClient_Setup.exe` e lo pubblica nella
 ## Installazione
 L'installer è moderno, per utente corrente e non richiede privilegi amministrativi.
 
-© Alessandro Barazzol
+© Alessandro Barazzuol

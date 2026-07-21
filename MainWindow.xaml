@@ -2,37 +2,47 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
-        Title="CV+ Compilatore Alunno" Width="1180" Height="820" MinWidth="980" MinHeight="680"
-        WindowStartupLocation="CenterScreen" Background="#07111F" Icon="Assets/app.ico">
+        Title="CV+ Compilatore Alunno" Width="1280" Height="860" MinWidth="1080" MinHeight="720"
+        WindowStartupLocation="CenterScreen" Background="#07111F" Icon="Assets/app.ico"
+        PreviewKeyDown="Window_PreviewKeyDown" Deactivated="Window_Deactivated" Closing="Window_Closing">
     <Window.Resources>
         <SolidColorBrush x:Key="PanelBrush" Color="#101D31"/>
-        <SolidColorBrush x:Key="PanelAltBrush" Color="#15253C"/>
         <SolidColorBrush x:Key="AccentBrush" Color="#18A9F5"/>
-        <SolidColorBrush x:Key="Accent2Brush" Color="#6C63FF"/>
         <SolidColorBrush x:Key="TextBrush" Color="#F5F8FC"/>
         <SolidColorBrush x:Key="MutedBrush" Color="#A8B5C7"/>
+
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="#0A1526"/>
             <Setter Property="Foreground" Value="#F5F8FC"/>
             <Setter Property="BorderBrush" Value="#2A3A52"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Padding" Value="9,7"/>
             <Setter Property="FontSize" Value="13"/>
-            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="CaretBrush" Value="#FFFFFF"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#0A1526"/>
+            <Setter Property="Foreground" Value="#F5F8FC"/>
+            <Setter Property="BorderBrush" Value="#2A3A52"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
         <Style x:Key="LabelStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin" Value="1,0,0,5"/>
         </Style>
+
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Background" Value="#24344D"/>
             <Setter Property="BorderBrush" Value="#354966"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="Padding" Value="15,9"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -46,8 +56,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Opacity" Value="0.86"/></Trigger>
-                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Root" Property="RenderTransform"><Setter.Value><ScaleTransform ScaleX="0.98" ScaleY="0.98"/></Setter.Value></Setter></Trigger>
-                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Root" Property="Opacity" Value="0.45"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Root" Property="Opacity" Value="0.42"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -57,31 +66,33 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="92"/>
+            <RowDefinition Height="96"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="165"/>
-            <RowDefinition Height="64"/>
+            <RowDefinition Height="66"/>
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Background="#0B1729" BorderBrush="#20324C" BorderThickness="0,0,0,1">
             <Grid Margin="22,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <Border Width="54" Height="54" CornerRadius="14" Background="#132D46" VerticalAlignment="Center">
-                    <Grid>
-                        <TextBlock Text="C++" Foreground="#58C9FF" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Grid>
+                <Border Width="58" Height="58" CornerRadius="15" Background="#0E5DA8" VerticalAlignment="Center">
+                    <TextBlock Text="C++" Foreground="#AEE8FF" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,0,0">
-                    <TextBlock Text="CV+ Compilatore Alunno" Foreground="White" FontSize="24" FontWeight="Bold"/>
-                    <TextBlock Text="Scrivi, compila e invia il tuo esercizio al docente" Foreground="{StaticResource MutedBrush}" FontSize="13" Margin="0,4,0,0"/>
+                    <TextBlock Text="CV+ Compilatore Alunno" Foreground="White" FontSize="25" FontWeight="Bold"/>
+                    <TextBlock Text="Scrivi, compila in C++17 e invia il tuo esercizio al docente" Foreground="{StaticResource MutedBrush}" FontSize="13" Margin="0,4,0,0"/>
+                    <TextBlock Text="© Alessandro Barazzuol" Foreground="#71CFFF" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0"/>
                 </StackPanel>
-                <Border Grid.Column="2" Background="#102D25" BorderBrush="#1F6D55" BorderThickness="1" CornerRadius="14" Padding="12,7" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="8" Height="8" Fill="#34D399" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                        <TextBlock Text="Rete laboratorio" Foreground="#B9F7DC" FontWeight="SemiBold"/>
-                    </StackPanel>
-                </Border>
+                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <Border x:Name="ModeBadge" Background="#102D25" BorderBrush="#1F6D55" BorderThickness="1" CornerRadius="14" Padding="12,7">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="ModeDot" Width="8" Height="8" Fill="#34D399" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                            <TextBlock x:Name="ModeText" Text="ESERCITAZIONE" Foreground="#B9F7DC" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock x:Name="ExerciseTimeText" Text="Tempo esercizio: 00:00:00" Foreground="#91A4BD" FontSize="11" HorizontalAlignment="Right" Margin="0,7,2,0"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -90,56 +101,71 @@
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="0.7*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="0.65*"/>
-                    <ColumnDefinition Width="0.75*"/><ColumnDefinition Width="1.15*"/><ColumnDefinition Width="0.85*"/>
+                    <ColumnDefinition Width="0.72*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="0.62*"/>
+                    <ColumnDefinition Width="0.78*"/><ColumnDefinition Width="0.72*"/><ColumnDefinition Width="1.10*"/>
+                    <ColumnDefinition Width="0.78*"/><ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Margin="4"><TextBlock Text="NUMERO REGISTRO ALUNNO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="StudentIdBox"/></StackPanel>
+
+                <StackPanel Grid.Column="0" Margin="4"><TextBlock Text="N° REGISTRO ALU." Style="{StaticResource LabelStyle}"/><TextBox x:Name="StudentIdBox"/></StackPanel>
                 <StackPanel Grid.Column="1" Margin="4"><TextBlock Text="NOME E COGNOME" Style="{StaticResource LabelStyle}"/><TextBox x:Name="StudentNameBox"/></StackPanel>
                 <StackPanel Grid.Column="2" Margin="4"><TextBlock Text="CLASSE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ClassBox"/></StackPanel>
-                <StackPanel Grid.Column="3" Margin="4"><TextBlock Text="NUMERO ESERCIZIO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ExerciseBox"/></StackPanel>
-                <StackPanel Grid.Column="4" Margin="4"><TextBlock Text="IP DOCENTE : PORTA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ServerBox" Text="192.168.1.50:5050"/></StackPanel>
-                <StackPanel Grid.Column="5" Margin="4"><TextBlock Text="CODICE SESSIONE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="SessionBox"/></StackPanel>
+                <StackPanel Grid.Column="3" Margin="4"><TextBlock Text="TIPOLOGIA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="TaskTypeBox" Text="A" LostFocus="TaskIdentity_LostFocus"/></StackPanel>
+                <StackPanel Grid.Column="4" Margin="4"><TextBlock Text="N° ESERCIZIO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ExerciseBox" Text="1" LostFocus="TaskIdentity_LostFocus"/></StackPanel>
+                <StackPanel Grid.Column="5" Margin="4"><TextBlock Text="IP DOCENTE : PORTA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ServerBox" Text="192.168.1.50:5050"/></StackPanel>
+                <StackPanel Grid.Column="6" Margin="4"><TextBlock Text="CODICE SESSIONE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="SessionBox"/></StackPanel>
+                <StackPanel Grid.Column="7" Margin="4">
+                    <TextBlock Text="CAMBIA ESERCIZIO" Style="{StaticResource LabelStyle}"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="◀" Width="42" Click="PreviousExercise_Click" Style="{StaticResource ModernButton}" Padding="8,7"/>
+                        <Button Content="▶" Width="42" Click="NextExercise_Click" Style="{StaticResource ModernButton}" Padding="8,7" Margin="0" Background="#0E78C7" BorderBrush="#2AAEFF"/>
+                    </StackPanel>
+                </StackPanel>
 
-                <Grid Grid.Row="1" Grid.ColumnSpan="6" Margin="4,11,4,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Grid Grid.Row="1" Grid.ColumnSpan="8" Margin="4,11,4,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <TextBlock Text="COMPILATORE" Style="{StaticResource LabelStyle}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBox x:Name="CompilerPathBox" Grid.Column="1" IsReadOnly="True" Margin="0,0,10,0"/>
-                    <Button Grid.Column="2" Content="Scegli g++.exe" Click="ChooseCompiler_Click" Style="{StaticResource ModernButton}"/>
-                    <Button Grid.Column="3" Content="Test server" Click="TestServer_Click" Style="{StaticResource ModernButton}" Background="#5B4FE8" BorderBrush="#746BFF" Margin="0"/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,8,0">
+                        <TextBlock Text="STANDARD" Style="{StaticResource LabelStyle}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                        <ComboBox x:Name="StandardBox" Width="105" SelectedIndex="0" IsEnabled="False">
+                            <ComboBoxItem Content="C++17"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <Button x:Name="ChooseCompilerButton" Grid.Column="3" Content="Scegli g++.exe" Click="ChooseCompiler_Click" Style="{StaticResource ModernButton}"/>
+                    <Button Grid.Column="4" Content="Test server" Click="TestServer_Click" Style="{StaticResource ModernButton}" Background="#5B4FE8" BorderBrush="#746BFF" Margin="0"/>
                 </Grid>
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" Margin="16,0,16,0" CornerRadius="14" Background="#091321" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
+        <Border Grid.Row="2" Margin="16,0,16,0" CornerRadius="14" Background="#050B14" BorderBrush="#2B4567" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Background="#132139" BorderBrush="#243650" BorderThickness="0,0,0,1">
-                    <Grid Margin="12,0"><TextBlock Text="main.cpp" Foreground="#DDE7F4" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text="EDITOR C++" Foreground="#71829A" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
+                <Border Background="#102540" BorderBrush="#2B4567" BorderThickness="0,0,0,1">
+                    <Grid Margin="12,0"><TextBlock Text="main.cpp" Foreground="#F1F7FF" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text="EDITOR C++17" Foreground="#70C9FF" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
                 </Border>
-                <avalonEdit:TextEditor x:Name="Editor" Grid.Row="1" ShowLineNumbers="True" FontFamily="Consolas" FontSize="15"
-                                       Background="#07111F" Foreground="#EAF2FA" LineNumbersForeground="#53647B" Padding="8"/>
+                <avalonEdit:TextEditor x:Name="Editor" Grid.Row="1" ShowLineNumbers="True" FontFamily="Cascadia Mono, Consolas" FontSize="16"
+                                       Background="#050B14" Foreground="#F7FBFF" LineNumbersForeground="#7690B1" Padding="10"
+                                       TextChanged="Editor_TextChanged"/>
             </Grid>
         </Border>
 
         <Border Grid.Row="3" Margin="16,10,16,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Background="#132139"><TextBlock Text="OUTPUT COMPILAZIONE" Foreground="#A8B5C7" FontWeight="SemiBold" FontSize="12" Margin="13,0" VerticalAlignment="Center"/></Border>
+                <Border Background="#132139"><TextBlock Text="OUTPUT COMPILAZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" Margin="13,0" VerticalAlignment="Center"/></Border>
                 <TextBox x:Name="OutputBox" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
-                         TextWrapping="Wrap" BorderThickness="0" Background="#091321" FontFamily="Consolas" Padding="12"/>
+                         TextWrapping="Wrap" BorderThickness="0" Background="#07101C" Foreground="#E7F4FF" FontFamily="Cascadia Mono, Consolas" Padding="12"/>
             </Grid>
         </Border>
 
         <Border Grid.Row="4" Background="#0B1729" BorderBrush="#20324C" BorderThickness="0,1,0,0" Margin="0,10,0,0">
             <Grid Margin="16,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="Compila" Click="Compile_Click" Style="{StaticResource ModernButton}"/>
-                    <Button Content="Compila e apri CMD" Click="Run_Click" Style="{StaticResource ModernButton}" Background="#1B6F55" BorderBrush="#268B6B"/>
-                    <Button Content="Invia al docente" Click="Send_Click" Style="{StaticResource ModernButton}" Background="#078ED3" BorderBrush="#18A9F5"/>
-                    <TextBlock x:Name="StatusText" Foreground="#BFD0E4" VerticalAlignment="Center" Margin="8,0,0,0" FontWeight="SemiBold"/>
-                </StackPanel>
-                <TextBlock Grid.Column="2" Text="© Alessandro Barazzol" Foreground="#71829A" VerticalAlignment="Center" FontSize="12"/>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Button Content="Compila C++17" Click="Compile_Click" Style="{StaticResource ModernButton}" Background="#116DA8" BorderBrush="#2CA9F4" VerticalAlignment="Center"/>
+                <Button x:Name="RunButton" Grid.Column="1" Content="Compila e apri CMD" Click="Run_Click" Style="{StaticResource ModernButton}" Background="#059669" BorderBrush="#19C790" VerticalAlignment="Center"/>
+                <Button x:Name="SendButton" Grid.Column="2" Content="Invia al docente" Click="Send_Click" Style="{StaticResource ModernButton}" Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
+                <TextBlock x:Name="StatusText" Grid.Column="3" Text="Pronto" Foreground="#A8B5C7" VerticalAlignment="Center" Margin="10,0"/>
+                <TextBlock Grid.Column="4" Text="© Alessandro Barazzuol" Foreground="#6E86A5" VerticalAlignment="Center" FontSize="11"/>
             </Grid>
         </Border>
     </Grid>

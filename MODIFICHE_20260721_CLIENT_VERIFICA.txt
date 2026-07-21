@@ -1,0 +1,16 @@
+PATCH CLIENT 1.2.0
+
+- Nuova colorazione C++ ad alto contrasto su sfondo scuro.
+- Etichetta "N° REGISTRO ALU.".
+- Copyright © Alessandro Barazzuol nell'intestazione e nel piè di pagina.
+- Compilazione esclusiva nello standard C++17 (-std=c++17).
+- Campo TIPOLOGIA prima del N° ESERCIZIO.
+- Frecce per passare a esercizi 1, 2, 3... mantenendo tipologia, codice e tempo di ogni esercizio.
+- Conferma completa prima della consegna.
+- Protocollo predisposto per modalità server ESERCITAZIONE / VERIFICA.
+- In verifica: schermo intero, chiusura normale bloccata, CMD disabilitato, pulsante "Invio compito".
+- In verifica viene inviato l'esercizio attivo insieme ai tempi di tutti gli esercizi.
+- Dopo consegna riuscita in verifica, codici e tempi locali vengono cancellati e il client si chiude.
+- Uscita docente di emergenza: Ctrl+Shift+F12 + codice sessione.
+
+Nota: per attivare automaticamente la modalità verifica, il server docente dovrà essere aggiornato con l'endpoint descritto in PROTOCOLLO_SERVER_MODALITA.txt.
