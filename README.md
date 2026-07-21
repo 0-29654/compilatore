@@ -1,20 +1,11 @@
-# C++ Compiti Alunno
+# CV+ Compilatore Alunno
 
-Programma leggero da installare sui PC del laboratorio.
-
-Funzioni principali:
-
-- editor C++;
-- scelta o rilevamento di `g++.exe`;
-- compilazione locale;
-- apertura dell'output in CMD;
-- test del server docente;
-- invio del codice al programma C++ Visual Base Docente tramite rete locale.
+Applicazione WPF leggera per i PC del laboratorio: editor C++, compilazione locale, esecuzione in CMD e invio degli esercizi al server del docente.
 
 ## Release automatica
+Il workflow GitHub Actions crea `CppStudentClient_Setup.exe` e lo pubblica nella sezione Releases.
 
-Il workflow `.github/workflows/build-release.yml` crea automaticamente:
+## Installazione
+L'installer è moderno, per utente corrente e non richiede privilegi amministrativi.
 
-`CppStudentClient_Setup.exe`
-
-nella sezione **Releases** della repository.
+© Alessandro Barazzol
