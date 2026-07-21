@@ -82,7 +82,7 @@
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,0,0">
                     <TextBlock Text="CV+ Compilatore Alunno" Foreground="White" FontSize="25" FontWeight="Bold"/>
                     <TextBlock Text="Scrivi, compila in C++17 e invia il tuo esercizio al docente" Foreground="{StaticResource MutedBrush}" FontSize="13" Margin="0,4,0,0"/>
-                    <TextBlock Text="© Alessandro Barazzuol" Foreground="#71CFFF" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                    <TextBlock Text="© Alessandro Barazzuol" Foreground="#8FE8FF" FontSize="16" FontWeight="Bold" Margin="0,6,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
                     <Border x:Name="ModeBadge" Background="#102D25" BorderBrush="#1F6D55" BorderThickness="1" CornerRadius="14" Padding="12,7">
@@ -122,7 +122,7 @@
                 </StackPanel>
 
                 <Grid Grid.Row="1" Grid.ColumnSpan="8" Margin="4,11,4,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <TextBlock Text="COMPILATORE" Style="{StaticResource LabelStyle}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBox x:Name="CompilerPathBox" Grid.Column="1" IsReadOnly="True" Margin="0,0,10,0"/>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,8,0">
@@ -132,7 +132,8 @@
                         </ComboBox>
                     </StackPanel>
                     <Button x:Name="ChooseCompilerButton" Grid.Column="3" Content="Scegli g++.exe" Click="ChooseCompiler_Click" Style="{StaticResource ModernButton}"/>
-                    <Button Grid.Column="4" Content="Test server" Click="TestServer_Click" Style="{StaticResource ModernButton}" Background="#5B4FE8" BorderBrush="#746BFF" Margin="0"/>
+                    <Button Grid.Column="4" Content="Installa compilatore C++17" Click="InstallCompiler_Click" Style="{StaticResource ModernButton}" Background="#8B5CF6" BorderBrush="#A78BFA"/>
+                    <Button Grid.Column="5" Content="Test server" Click="TestServer_Click" Style="{StaticResource ModernButton}" Background="#5B4FE8" BorderBrush="#746BFF" Margin="0"/>
                 </Grid>
             </Grid>
         </Border>
@@ -141,11 +142,11 @@
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Border Background="#102540" BorderBrush="#2B4567" BorderThickness="0,0,0,1">
-                    <Grid Margin="12,0"><TextBlock Text="main.cpp" Foreground="#F1F7FF" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text="EDITOR C++17" Foreground="#70C9FF" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
+                    <Grid Margin="12,0"><TextBlock Text="main.cpp" Foreground="#F1F7FF" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text="SHIFT+CLICK: editor a tutto schermo • C++17" Foreground="#FFD166" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
                 </Border>
                 <avalonEdit:TextEditor x:Name="Editor" Grid.Row="1" ShowLineNumbers="True" FontFamily="Cascadia Mono, Consolas" FontSize="16"
                                        Background="#050B14" Foreground="#F7FBFF" LineNumbersForeground="#7690B1" Padding="10"
-                                       TextChanged="Editor_TextChanged"/>
+                                       TextChanged="Editor_TextChanged" PreviewMouseLeftButtonDown="Editor_PreviewMouseLeftButtonDown"/>
             </Grid>
         </Border>
 
@@ -165,7 +166,9 @@
                 <Button x:Name="RunButton" Grid.Column="1" Content="Compila e apri CMD" Click="Run_Click" Style="{StaticResource ModernButton}" Background="#059669" BorderBrush="#19C790" VerticalAlignment="Center"/>
                 <Button x:Name="SendButton" Grid.Column="2" Content="Invia al docente" Click="Send_Click" Style="{StaticResource ModernButton}" Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
                 <TextBlock x:Name="StatusText" Grid.Column="3" Text="Pronto" Foreground="#A8B5C7" VerticalAlignment="Center" Margin="10,0"/>
-                <TextBlock Grid.Column="4" Text="© Alessandro Barazzuol" Foreground="#6E86A5" VerticalAlignment="Center" FontSize="11"/>
+                <Border Grid.Column="4" Background="#102C46" BorderBrush="#1E719C" BorderThickness="1" CornerRadius="8" Padding="12,7">
+                    <TextBlock Text="© Alessandro Barazzuol" Foreground="#8FE8FF" VerticalAlignment="Center" FontSize="15" FontWeight="Bold"/>
+                </Border>
             </Grid>
         </Border>
     </Grid>

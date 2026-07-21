@@ -1,3 +1,4 @@
+using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using Microsoft.Win32;
@@ -39,6 +40,7 @@ public partial class MainWindow : Window
     private bool _verificationMode;
     private bool _allowClose;
     private bool _serverModeCheckRunning;
+    private IHighlightingDefinition? _cppHighlighting;
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
 
@@ -67,9 +69,9 @@ public partial class MainWindow : Window
   <Color name="Char" foreground="#FFD27A" />
   <Color name="Number" foreground="#FFB35C" />
   <Color name="Preprocessor" foreground="#FFE45E" fontWeight="bold" />
-  <Color name="Keyword" foreground="#5DDBFF" fontWeight="bold" />
-  <Color name="Type" foreground="#A8C7FF" fontWeight="bold" />
-  <Color name="Literal" foreground="#FF83D6" fontWeight="bold" />
+  <Color name="Keyword" foreground="#FF7AB2" fontWeight="bold" />
+  <Color name="Type" foreground="#FFD166" fontWeight="bold" />
+  <Color name="Literal" foreground="#FF9F68" fontWeight="bold" />
   <RuleSet>
     <Span color="Comment" begin="//" />
     <Span color="Comment" multiline="true" begin="/\*" end="\*/" />
@@ -90,12 +92,119 @@ public partial class MainWindow : Window
         try
         {
             using var reader = XmlReader.Create(new StringReader(xshd));
-            Editor.SyntaxHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
+            _cppHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
+            Editor.SyntaxHighlighting = _cppHighlighting;
         }
         catch
         {
-            try { Editor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("C++"); } catch { }
+            try { _cppHighlighting = HighlightingManager.Instance.GetDefinition("C++"); Editor.SyntaxHighlighting = _cppHighlighting; } catch { }
         }
+    }
+
+
+    private void Editor_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) == 0) return;
+        e.Handled = true;
+        OpenFullscreenEditor();
+    }
+
+    private void OpenFullscreenEditor()
+    {
+        SaveCurrentExercise();
+
+        var popupEditor = new TextEditor
+        {
+            Text = Editor.Text,
+            ShowLineNumbers = true,
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 21,
+            Background = new SolidColorBrush(Color.FromRgb(5, 11, 20)),
+            Foreground = Brushes.White,
+            LineNumbersForeground = new SolidColorBrush(Color.FromRgb(170, 190, 215)),
+            Padding = new Thickness(18),
+            SyntaxHighlighting = _cppHighlighting,
+            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto
+        };
+
+        var closeButton = new System.Windows.Controls.Button
+        {
+            Content = "Applica e torna al compilatore",
+            MinWidth = 230,
+            Padding = new Thickness(18, 10, 18, 10),
+            Margin = new Thickness(12),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Background = new SolidColorBrush(Color.FromRgb(14, 143, 232)),
+            Foreground = Brushes.White,
+            FontWeight = FontWeights.Bold
+        };
+
+        var title = new System.Windows.Controls.TextBlock
+        {
+            Text = $"main.cpp — Tipologia {GetTaskType()} — Esercizio {GetExerciseNumber()} — C++17",
+            Foreground = Brushes.White,
+            FontSize = 18,
+            FontWeight = FontWeights.Bold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(18, 0, 0, 0)
+        };
+
+        var header = new System.Windows.Controls.Grid { Background = new SolidColorBrush(Color.FromRgb(11, 23, 41)) };
+        header.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition());
+        header.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
+        header.Children.Add(title);
+        System.Windows.Controls.Grid.SetColumn(closeButton, 1);
+        header.Children.Add(closeButton);
+
+        var layout = new System.Windows.Controls.Grid();
+        layout.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = new GridLength(64) });
+        layout.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+        layout.Children.Add(header);
+        System.Windows.Controls.Grid.SetRow(popupEditor, 1);
+        layout.Children.Add(popupEditor);
+
+        var popup = new Window
+        {
+            Title = "CV+ Editor C++17 a tutto schermo",
+            Content = layout,
+            Background = new SolidColorBrush(Color.FromRgb(5, 11, 20)),
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            WindowState = WindowState.Maximized,
+            Topmost = _verificationMode,
+            ShowInTaskbar = !_verificationMode,
+            WindowStyle = _verificationMode ? WindowStyle.None : WindowStyle.SingleBorderWindow,
+            ResizeMode = _verificationMode ? ResizeMode.NoResize : ResizeMode.CanResize
+        };
+
+        bool applied = false;
+        void ApplyAndClose()
+        {
+            applied = true;
+            Editor.Text = popupEditor.Text;
+            SaveCurrentExercise();
+            popup.Close();
+            Activate();
+        }
+
+        closeButton.Click += (_, _) => ApplyAndClose();
+        popup.PreviewKeyDown += (_, args) =>
+        {
+            if (args.Key == Key.Escape && !_verificationMode)
+            {
+                args.Handled = true;
+                ApplyAndClose();
+            }
+        };
+        popup.Closing += (_, _) =>
+        {
+            if (!applied)
+            {
+                Editor.Text = popupEditor.Text;
+                SaveCurrentExercise();
+            }
+        };
+        popup.ShowDialog();
     }
 
     private async void Compile_Click(object sender, RoutedEventArgs e) => await CompileAsync();
@@ -121,7 +230,10 @@ public partial class MainWindow : Window
             string gpp = FindGpp();
             if (string.IsNullOrWhiteSpace(gpp))
             {
-                OutputBox.Text = "Compilatore C++ non trovato. Seleziona un g++.exe moderno che supporti C++17.";
+                OutputBox.Text = "Nessun compilatore compatibile con C++17 è stato trovato.\n\n" +
+                    "Il g++.exe incluso nelle vecchie versioni di Dev-C++ è troppo datato. " +
+                    "Premi 'Installa compilatore C++17', installa MSYS2 UCRT64 e poi seleziona " +
+                    @"C:\msys64\ucrt64\bin\g++.exe";
                 return false;
             }
 
@@ -180,9 +292,20 @@ public partial class MainWindow : Window
         };
         if (dialog.ShowDialog() == true)
         {
+            if (!SupportsCpp17(dialog.FileName))
+            {
+                MessageBox.Show(
+                    "Il compilatore selezionato non supporta realmente lo standard C++17.\n\n" +
+                    "Il vecchio g++.exe di Dev-C++ può trovarsi in una cartella chiamata MinGW64, ma resta una versione datata. " +
+                    "Installa MSYS2 UCRT64 e seleziona C:\\msys64\\ucrt64\\bin\\g++.exe.",
+                    "Compilatore non compatibile", MessageBoxButton.OK, MessageBoxImage.Warning);
+                OutputBox.Text = "Compilatore rifiutato perché non compatibile con -std=c++17:\n" + dialog.FileName;
+                return;
+            }
+
             CompilerPathBox.Text = dialog.FileName;
             SaveSettings();
-            OutputBox.Text = "Compilatore C++17 selezionato:\n" + dialog.FileName;
+            OutputBox.Text = "Compilatore C++17 verificato e selezionato:\n" + dialog.FileName;
         }
     }
 
@@ -490,25 +613,93 @@ public partial class MainWindow : Window
 
     private string FindGpp()
     {
+        var candidates = new List<string>();
         string selected = CompilerPathBox.Text.Trim().Trim('"');
-        if (File.Exists(selected)) return selected;
-        string[] candidates =
+        if (File.Exists(selected)) candidates.Add(selected);
+
+        candidates.AddRange(new[]
         {
             @"C:\msys64\ucrt64\bin\g++.exe", @"C:\msys64\mingw64\bin\g++.exe", @"C:\msys64\clang64\bin\g++.exe",
             @"C:\mingw64\bin\g++.exe", @"C:\MinGW\bin\g++.exe", @"C:\Program Files\CodeBlocks\MinGW\bin\g++.exe",
             @"C:\Program Files (x86)\CodeBlocks\MinGW\bin\g++.exe", @"C:\Program Files (x86)\Dev-Cpp\MinGW64\bin\g++.exe",
             @"C:\Program Files\Dev-Cpp\MinGW64\bin\g++.exe"
-        };
-        foreach (string candidate in candidates) if (File.Exists(candidate)) return candidate;
+        });
+
         try
         {
-            using var process = Process.Start(new ProcessStartInfo("where.exe", "g++.exe") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true });
-            string first = process?.StandardOutput.ReadLine()?.Trim() ?? "";
-            process?.WaitForExit(3000);
-            if (File.Exists(first)) return first;
+            using var process = Process.Start(new ProcessStartInfo("where.exe", "g++.exe")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            });
+            if (process != null)
+            {
+                while (!process.StandardOutput.EndOfStream)
+                {
+                    string? path = process.StandardOutput.ReadLine()?.Trim();
+                    if (!string.IsNullOrWhiteSpace(path)) candidates.Add(path);
+                }
+                process.WaitForExit(3000);
+            }
         }
         catch { }
+
+        foreach (string candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (File.Exists(candidate) && SupportsCpp17(candidate)) return candidate;
+        }
         return "";
+    }
+
+    private static bool SupportsCpp17(string compilerPath)
+    {
+        try
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "CppStudentClient", "compiler-test");
+            Directory.CreateDirectory(dir);
+            string source = Path.Combine(dir, "cpp17_test.cpp");
+            string output = Path.Combine(dir, "cpp17_test.exe");
+            File.WriteAllText(source, "#include <optional>\nint main(){ std::optional<int> x=17; return *x==17?0:1; }", new UTF8Encoding(false));
+
+            using var process = Process.Start(new ProcessStartInfo(compilerPath, $"-std=c++17 -fsyntax-only \"{source}\"")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = dir
+            });
+            if (process == null) return false;
+            if (!process.WaitForExit(8000))
+            {
+                try { process.Kill(true); } catch { }
+                return false;
+            }
+            return process.ExitCode == 0;
+        }
+        catch { return false; }
+    }
+
+    private void InstallCompiler_Click(object sender, RoutedEventArgs e)
+    {
+        if (_verificationMode)
+        {
+            MessageBox.Show("Durante una verifica non è possibile modificare il compilatore.", "Modalità verifica", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        MessageBox.Show(
+            "Il g++.exe di Dev-C++ mostrato nello screenshot è una versione molto vecchia: il nome MinGW64 non garantisce il supporto a C++17.\n\n" +
+            "Soluzione consigliata:\n1. Installa MSYS2 dal sito ufficiale.\n2. Apri 'MSYS2 UCRT64'.\n3. Esegui:\n   pacman -Syu\n4. Riapri MSYS2 UCRT64 ed esegui:\n   pacman -S --needed mingw-w64-ucrt-x86_64-gcc\n5. Nel programma seleziona:\n   C:\\msys64\\ucrt64\\bin\\g++.exe",
+            "Installare un compilatore C++17 moderno", MessageBoxButton.OK, MessageBoxImage.Information);
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("https://www.msys2.org/") { UseShellExecute = true });
+        }
+        catch { }
     }
 
     private string DataFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CppStudentClient");

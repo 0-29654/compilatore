@@ -1,0 +1,10 @@
+PATCH CLIENT STUDENTI
+
+- Nuova colorazione C++ ad alto contrasto senza blu scuro su nero.
+- Shift+Click sull editor apre una finestra massimizzata e modificabile, anche in verifica.
+- Sincronizzazione automatica del codice dal popup all editor principale.
+- Copyright Alessandro Barazzuol ingrandito.
+- Verifica reale della compatibilita C++17 del g++.exe selezionato.
+- I vecchi compilatori Dev-C++ vengono rifiutati anche se la cartella si chiama MinGW64.
+- Ricerca prioritaria di MSYS2 UCRT64.
+- Pulsante con istruzioni per installare MSYS2 e GCC moderno.
