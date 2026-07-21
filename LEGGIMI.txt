@@ -1,0 +1,20 @@
+CORREZIONE REALE 1.6.1
+
+Ho controllato direttamente la repository pubblica 0-29654/compilatore.
+Il workflow attualmente pubblicato esegue solo dotnet publish e Inno Setup: non installa e non copia alcun compilatore.
+Per questo il setup rimane circa 40-50 MB e il programma non trova g++.exe.
+
+Sostituire nella radice della repository:
+1. .github/workflows/build-release.yml
+2. setup_student.iss
+
+Dopo commit e push, il nuovo workflow:
+- installa GCC UCRT64 nel runner tramite l'azione ufficiale msys2/setup-msys2;
+- copia fisicamente tutto ucrt64 in publish/compiler/ucrt64;
+- prova una compilazione C++17;
+- crea l'installer;
+- installa l'installer sul runner;
+- prova di nuovo a compilare usando il g++.exe estratto dal setup;
+- crea la Release solo se tutti i test riescono.
+
+Non installare MSYS2 sul PC dello studente.
