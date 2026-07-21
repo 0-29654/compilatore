@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>CppStudentClient</AssemblyName>
     <RootNamespace>CppStudentClient</RootNamespace>
-    <Version>1.4.6</Version>
+    <Version>1.4.0</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Product>CV+ Compilatore Alunno</Product>
     <Company>Alessandro Barazzuol</Company>
@@ -16,6 +16,5 @@
   <ItemGroup>
     <PackageReference Include="AvalonEdit" Version="6.3.1" />
     <Resource Include="Assets\app.ico" />
-    <EmbeddedResource Include="Assets\CppHighContrast.xshd" />
   </ItemGroup>
 </Project>

@@ -43,49 +43,17 @@ public partial class MainWindow : Window
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
 
-    private string? _resolvedCompilerPath;
-
-    private string BundledCompilerPath => _resolvedCompilerPath ??= ResolveBundledCompilerPath();
-    private string BundledCompilerBin => string.IsNullOrWhiteSpace(BundledCompilerPath)
-        ? Path.Combine(AppContext.BaseDirectory, "compiler", "ucrt64", "bin")
-        : Path.GetDirectoryName(BundledCompilerPath)!;
-
-    private static string ResolveBundledCompilerPath()
-    {
-        string baseDir = AppContext.BaseDirectory;
-        string[] candidates =
-        {
-            Path.Combine(baseDir, "compiler", "ucrt64", "bin", "g++.exe"),
-            Path.Combine(baseDir, "compiler", "bin", "g++.exe"),
-            Path.Combine(baseDir, "ucrt64", "bin", "g++.exe"),
-            Path.Combine(baseDir, "bin", "g++.exe")
-        };
-
-        foreach (string candidate in candidates)
-            if (File.Exists(candidate)) return candidate;
-
-        string compilerRoot = Path.Combine(baseDir, "compiler");
-        if (Directory.Exists(compilerRoot))
-        {
-            try
-            {
-                string? found = Directory.EnumerateFiles(compilerRoot, "g++.exe", SearchOption.AllDirectories)
-                    .FirstOrDefault(path => path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
-                if (!string.IsNullOrWhiteSpace(found)) return found;
-            }
-            catch { }
-        }
-
-        return string.Empty;
-    }
+    private string BundledCompilerRoot => Path.Combine(AppContext.BaseDirectory, "compiler", "ucrt64");
+    private string BundledCompilerBin => Path.Combine(BundledCompilerRoot, "bin");
+    private string BundledCompilerPath => Path.Combine(BundledCompilerBin, "g++.exe");
 
     public MainWindow()
     {
         InitializeComponent();
         ConfigureCppHighlighting();
         LoadSettings();
-        if (string.IsNullOrWhiteSpace(BundledCompilerPath) || !File.Exists(BundledCompilerPath))
-            OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma dalla Release 1.4.6 completa.";
+        if (!File.Exists(BundledCompilerPath))
+            OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
         LoadExerciseStates();
         ActivateExercise(GetTaskType(), GetExerciseNumber());
 
@@ -94,30 +62,49 @@ public partial class MainWindow : Window
         _modeTimer.Tick += async (_, _) => await RefreshServerModeAsync(false);
         _modeTimer.Start();
 
-        Loaded += async (_, _) =>
-        {
-            WindowState = WindowState.Maximized;
-            await RefreshServerModeAsync(false);
-        };
+        Loaded += async (_, _) => await RefreshServerModeAsync(false);
     }
 
     private void ConfigureCppHighlighting()
     {
-        // La definizione XSHD è una risorsa separata: evita errori di compilazione
-        // dovuti a stringhe XML multilinea e mantiene colori ad alto contrasto.
+        // Tavolozza ad alto contrasto: nessuna parola chiave usa il blu scuro.
+        const string xshd = """
+<?xml version="1.0"?>
+<SyntaxDefinition name="C++ High Contrast" extensions=".cpp;.h;.hpp" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#78F0A4" />
+  <Color name="String" foreground="#A7F3D0" />
+  <Color name="Char" foreground="#FDE68A" />
+  <Color name="Number" foreground="#FDBA74" />
+  <Color name="Preprocessor" foreground="#FFF06A" />
+  <Color name="Keyword" foreground="#FF83C6" />
+  <Color name="Type" foreground="#67E8F9" />
+  <Color name="Literal" foreground="#FCA5A5" />
+  <RuleSet ignoreCase="false">
+    <Span color="Comment" begin="//" end="\n" />
+    <Span color="Comment" begin="/\*" end="\*/" />
+    <Span color="String" begin="&quot;" end="&quot;" />
+    <Span color="Char" begin="'" end="'" />
+    <Span color="Preprocessor" begin="#" end="\n" />
+    <Keywords color="Keyword">
+      <Word>alignas</Word><Word>alignof</Word><Word>asm</Word><Word>auto</Word><Word>break</Word><Word>case</Word><Word>catch</Word><Word>class</Word><Word>const</Word><Word>constexpr</Word><Word>continue</Word><Word>default</Word><Word>delete</Word><Word>do</Word><Word>else</Word><Word>enum</Word><Word>explicit</Word><Word>export</Word><Word>extern</Word><Word>for</Word><Word>friend</Word><Word>goto</Word><Word>if</Word><Word>inline</Word><Word>namespace</Word><Word>new</Word><Word>noexcept</Word><Word>operator</Word><Word>private</Word><Word>protected</Word><Word>public</Word><Word>register</Word><Word>return</Word><Word>sizeof</Word><Word>static</Word><Word>struct</Word><Word>switch</Word><Word>template</Word><Word>this</Word><Word>throw</Word><Word>try</Word><Word>typedef</Word><Word>typename</Word><Word>union</Word><Word>using</Word><Word>virtual</Word><Word>volatile</Word><Word>while</Word>
+    </Keywords>
+    <Keywords color="Type">
+      <Word>bool</Word><Word>char</Word><Word>char16_t</Word><Word>char32_t</Word><Word>double</Word><Word>float</Word><Word>int</Word><Word>long</Word><Word>short</Word><Word>signed</Word><Word>unsigned</Word><Word>void</Word><Word>wchar_t</Word><Word>string</Word><Word>vector</Word><Word>list</Word><Word>map</Word><Word>set</Word><Word>queue</Word><Word>stack</Word>
+    </Keywords>
+    <Keywords color="Literal"><Word>true</Word><Word>false</Word><Word>nullptr</Word><Word>NULL</Word></Keywords>
+    <Rule color="Number">\b(0[xX][0-9a-fA-F]+|[0-9]+(\.[0-9]+)?)\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>
+""";
         try
         {
-            var assembly = typeof(MainWindow).Assembly;
-            using Stream? stream = assembly.GetManifestResourceStream("CppStudentClient.Assets.CppHighContrast.xshd");
-            if (stream is null)
-                throw new InvalidOperationException("Risorsa CppHighContrast.xshd non trovata.");
-
-            using var reader = XmlReader.Create(stream, new XmlReaderSettings { IgnoreComments = true });
+            using var reader = XmlReader.Create(new StringReader(xshd), new XmlReaderSettings { IgnoreComments = true });
             _cppHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
             Editor.SyntaxHighlighting = _cppHighlighting;
         }
         catch (Exception ex)
         {
+            // Non ricadere sulla tavolozza C++ predefinita (blu poco leggibile).
             _cppHighlighting = null;
             Editor.SyntaxHighlighting = null;
             OutputBox.Text = "Colorazione C++ ad alto contrasto non caricata: " + ex.Message;
@@ -252,12 +239,11 @@ public partial class MainWindow : Window
     {
         try
         {
-            _resolvedCompilerPath = null;
             string gpp = BundledCompilerPath;
-            if (string.IsNullOrWhiteSpace(gpp) || !File.Exists(gpp))
+            if (!File.Exists(gpp))
             {
                 OutputBox.Text = "Installazione incompleta: il compilatore C++17 incorporato non è stato trovato.\n\n" +
-                    "Reinstalla CV+ Compilatore Alunno dalla Release 1.4.4 o successiva.";
+                    "Reinstalla CV+ Compilatore Alunno dalla Release ufficiale.";
                 return false;
             }
             string dir = Path.Combine(Path.GetTempPath(), "CppStudentClient");

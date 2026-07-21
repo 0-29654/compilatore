@@ -1,0 +1,12 @@
+VERSIONE COMPLETA 1.5.1
+
+Questa non è una patch parziale: contiene l'intero progetto.
+
+Correzione principale:
+- il workflow copia fisicamente /ucrt64 dentro publish/compiler/ucrt64;
+- Inno Setup usa una sola sorgente publish\*;
+- non esiste più compiler_ready.marker;
+- la build installa il setup in una cartella temporanea e prova realmente g++ -std=c++17;
+- la Release non viene pubblicata se GCC non è davvero incluso.
+
+Caricare TUTTO il contenuto di questo ZIP nella radice della repository, compresa la cartella nascosta .github.
