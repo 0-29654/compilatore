@@ -93,10 +93,10 @@
                     <ColumnDefinition Width="0.7*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="0.65*"/>
                     <ColumnDefinition Width="0.75*"/><ColumnDefinition Width="1.15*"/><ColumnDefinition Width="0.85*"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Margin="4"><TextBlock Text="ID ALUNNO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="StudentIdBox"/></StackPanel>
+                <StackPanel Grid.Column="0" Margin="4"><TextBlock Text="NUMERO REGISTRO ALUNNO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="StudentIdBox"/></StackPanel>
                 <StackPanel Grid.Column="1" Margin="4"><TextBlock Text="NOME E COGNOME" Style="{StaticResource LabelStyle}"/><TextBox x:Name="StudentNameBox"/></StackPanel>
                 <StackPanel Grid.Column="2" Margin="4"><TextBlock Text="CLASSE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ClassBox"/></StackPanel>
-                <StackPanel Grid.Column="3" Margin="4"><TextBlock Text="ID ESERCIZIO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ExerciseBox"/></StackPanel>
+                <StackPanel Grid.Column="3" Margin="4"><TextBlock Text="NUMERO ESERCIZIO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ExerciseBox"/></StackPanel>
                 <StackPanel Grid.Column="4" Margin="4"><TextBlock Text="IP DOCENTE : PORTA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ServerBox" Text="192.168.1.50:5050"/></StackPanel>
                 <StackPanel Grid.Column="5" Margin="4"><TextBlock Text="CODICE SESSIONE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="SessionBox"/></StackPanel>
 

@@ -164,7 +164,43 @@ public partial class MainWindow : Window
             string.IsNullOrWhiteSpace(StudentNameBox.Text) ||
             string.IsNullOrWhiteSpace(ExerciseBox.Text))
         {
-            MessageBox.Show("Compila ID, nome e ID esercizio.");
+            MessageBox.Show("Compila numero di registro, nome e cognome e numero dell'esercizio.",
+                "Dati mancanti", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!int.TryParse(StudentIdBox.Text.Trim(), out int registerNumber) || registerNumber <= 0)
+        {
+            MessageBox.Show("Il numero di registro dell'alunno deve essere un numero intero maggiore di zero.",
+                "Numero di registro non valido", MessageBoxButton.OK, MessageBoxImage.Warning);
+            StudentIdBox.Focus();
+            StudentIdBox.SelectAll();
+            return;
+        }
+
+        if (!int.TryParse(ExerciseBox.Text.Trim(), out int exerciseNumber) || exerciseNumber <= 0)
+        {
+            MessageBox.Show("Il numero dell'esercizio deve essere un numero intero maggiore di zero.",
+                "Numero esercizio non valido", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ExerciseBox.Focus();
+            ExerciseBox.SelectAll();
+            return;
+        }
+
+        MessageBoxResult confirmation = MessageBox.Show(
+            $"Confermi l'invio del compito?\n\n" +
+            $"Numero registro alunno: {registerNumber}\n" +
+            $"Nome e cognome: {StudentNameBox.Text.Trim()}\n" +
+            $"Classe: {ClassBox.Text.Trim()}\n" +
+            $"Numero esercizio: {exerciseNumber}",
+            "Conferma consegna",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
+
+        if (confirmation != MessageBoxResult.Yes)
+        {
+            StatusText.Text = "Invio annullato";
             return;
         }
 
@@ -174,10 +210,10 @@ public partial class MainWindow : Window
             string address = NormalizeServerAddress(ServerBox.Text) + "/submit";
             var payload = new
             {
-                studentId = StudentIdBox.Text.Trim(),
+                studentId = registerNumber.ToString(),
                 studentName = StudentNameBox.Text.Trim(),
                 className = ClassBox.Text.Trim(),
-                exerciseId = ExerciseBox.Text.Trim(),
+                exerciseId = exerciseNumber.ToString(),
                 sessionCode = SessionBox.Text.Trim(),
                 code = Editor.Text,
                 compileOutput = _compileOutput,
