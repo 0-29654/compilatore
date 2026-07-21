@@ -1,5 +1,5 @@
 #define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.3.0"
+#define MyAppVersion "1.4.0"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -53,7 +53,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: now
 procedure InitializeWizard;
 begin
   WizardForm.WelcomeLabel1.Caption := 'Benvenuto in CV+ Compilatore Alunno';
-  WizardForm.WelcomeLabel2.Caption := 'Installa l''editor C++ leggero per compilare gli esercizi e inviarli al docente nella rete del laboratorio.' + #13#10 + #13#10 + '© Alessandro Barazzuol';
+  WizardForm.WelcomeLabel2.Caption := 'Installa CV+ con compilatore C++17 già incluso. Non servono MSYS2, Dev-C++, configurazioni o diritti di amministratore.' + #13#10 + #13#10 + '© Alessandro Barazzuol';
   WizardForm.FinishedHeadingLabel.Caption := 'Installazione completata';
-  WizardForm.FinishedLabel.Caption := 'CV+ Compilatore Alunno è pronto. Puoi avviarlo e configurare IP, porta e codice sessione comunicati dal docente.';
+  WizardForm.FinishedLabel.Caption := 'CV+ Compilatore Alunno è pronto. Il compilatore C++17 è già incluso: configura soltanto IP, porta e codice sessione comunicati dal docente.';
 end;

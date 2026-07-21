@@ -1,7 +1,6 @@
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
-using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -44,12 +43,17 @@ public partial class MainWindow : Window
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
 
+    private string BundledCompilerRoot => Path.Combine(AppContext.BaseDirectory, "compiler", "ucrt64");
+    private string BundledCompilerBin => Path.Combine(BundledCompilerRoot, "bin");
+    private string BundledCompilerPath => Path.Combine(BundledCompilerBin, "g++.exe");
+
     public MainWindow()
     {
         InitializeComponent();
         ConfigureCppHighlighting();
         LoadSettings();
-        SelectBestCpp17CompilerOnStartup();
+        if (!File.Exists(BundledCompilerPath))
+            OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
         LoadExerciseStates();
         ActivateExercise(GetTaskType(), GetExerciseNumber());
 
@@ -224,7 +228,9 @@ public partial class MainWindow : Window
         }
         if (!await CompileAsync()) return;
         string bat = Path.Combine(Path.GetTempPath(), "cppstudent_run_" + Guid.NewGuid().ToString("N") + ".bat");
-        File.WriteAllText(bat, $"@echo off\r\n\"{_exePath}\"\r\necho.\r\necho Programma terminato.\r\npause\r\n", Encoding.Default);
+        File.WriteAllText(bat,
+            $"@echo off\r\nset \"PATH={BundledCompilerBin};%PATH%\"\r\n\"{_exePath}\"\r\necho.\r\necho Programma terminato.\r\npause\r\n",
+            Encoding.Default);
         Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{bat}\"") { UseShellExecute = true });
         _programOutput = "Esecuzione aperta nella finestra CMD.";
     }
@@ -233,18 +239,13 @@ public partial class MainWindow : Window
     {
         try
         {
-            string gpp = FindGpp();
-            if (string.IsNullOrWhiteSpace(gpp))
+            string gpp = BundledCompilerPath;
+            if (!File.Exists(gpp))
             {
-                OutputBox.Text = "Nessun compilatore compatibile con C++17 è stato trovato.\n\n" +
-                    "Il g++.exe incluso nelle vecchie versioni di Dev-C++ è troppo datato. " +
-                    "Premi 'Installa compilatore C++17', installa MSYS2 UCRT64 e poi seleziona " +
-                    @"C:\msys64\ucrt64\bin\g++.exe";
+                OutputBox.Text = "Installazione incompleta: il compilatore C++17 incorporato non è stato trovato.\n\n" +
+                    "Reinstalla CV+ Compilatore Alunno dalla Release ufficiale.";
                 return false;
             }
-
-            CompilerPathBox.Text = gpp;
-            SaveSettings();
             string dir = Path.Combine(Path.GetTempPath(), "CppStudentClient");
             Directory.CreateDirectory(dir);
             string stem = "compito_" + Guid.NewGuid().ToString("N");
@@ -261,6 +262,7 @@ public partial class MainWindow : Window
                 CreateNoWindow = true,
                 WorkingDirectory = dir
             };
+            ConfigureCompilerEnvironment(psi);
 
             using var process = Process.Start(psi) ?? throw new InvalidOperationException("Impossibile avviare il compilatore selezionato.");
             string stdout = await process.StandardOutput.ReadToEndAsync();
@@ -275,43 +277,15 @@ public partial class MainWindow : Window
             }
 
             if (_compileOutput.Contains("unrecognized command line option", StringComparison.OrdinalIgnoreCase))
-                _compileOutput += "\n\nIl compilatore scelto è troppo vecchio e non supporta C++17. Seleziona un g++.exe recente (MSYS2 UCRT64 consigliato).";
+                _compileOutput += "\n\nIl compilatore C++17 incorporato non è disponibile correttamente. Reinstalla il programma.";
 
-            OutputBox.Text = $"Compilazione C++17 non riuscita (codice {process.ExitCode}).\nCompilatore: {gpp}\n\n{_compileOutput}";
+            OutputBox.Text = $"Compilazione C++17 non riuscita (codice {process.ExitCode}).\n\n{_compileOutput}";
             return false;
         }
         catch (Exception ex)
         {
             OutputBox.Text = "Errore durante la compilazione C++17:\n" + ex.Message;
             return false;
-        }
-    }
-
-    private void ChooseCompiler_Click(object sender, RoutedEventArgs e)
-    {
-        if (_verificationMode) return;
-        var dialog = new OpenFileDialog
-        {
-            Title = "Seleziona un compilatore g++.exe compatibile con C++17",
-            Filter = "Compilatore C++ (g++.exe)|g++.exe|Eseguibili (*.exe)|*.exe",
-            CheckFileExists = true
-        };
-        if (dialog.ShowDialog() == true)
-        {
-            if (!SupportsCpp17(dialog.FileName))
-            {
-                MessageBox.Show(
-                    "Il compilatore selezionato non supporta realmente lo standard C++17.\n\n" +
-                    "Il vecchio g++.exe di Dev-C++ può trovarsi in una cartella chiamata MinGW64, ma resta una versione datata. " +
-                    "Installa MSYS2 UCRT64 e seleziona C:\\msys64\\ucrt64\\bin\\g++.exe.",
-                    "Compilatore non compatibile", MessageBoxButton.OK, MessageBoxImage.Warning);
-                OutputBox.Text = "Compilatore rifiutato perché non compatibile con -std=c++17:\n" + dialog.FileName;
-                return;
-            }
-
-            CompilerPathBox.Text = dialog.FileName;
-            SaveSettings();
-            OutputBox.Text = "Compilatore C++17 verificato e selezionato:\n" + dialog.FileName;
         }
     }
 
@@ -401,7 +375,6 @@ public partial class MainWindow : Window
         ModeBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(199, 110, 34));
         SendButton.Content = "Invio compito";
         RunButton.IsEnabled = false;
-        ChooseCompilerButton.IsEnabled = false;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         WindowState = WindowState.Maximized;
@@ -419,7 +392,6 @@ public partial class MainWindow : Window
         ModeBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(31, 109, 85));
         SendButton.Content = "Invia al docente";
         RunButton.IsEnabled = true;
-        ChooseCompilerButton.IsEnabled = true;
         Topmost = false;
         WindowStyle = WindowStyle.SingleBorderWindow;
         ResizeMode = ResizeMode.CanResize;
@@ -617,133 +589,10 @@ public partial class MainWindow : Window
         "Non riesco a raggiungere il PC docente.\n\n" + ex.Message +
         "\n\nControlla che:\n• il server sia avviato nella scheda Compiti alunni;\n• IP, porta e codice sessione siano identici;\n• i due PC siano nella stessa rete;\n• il firewall consenta il server;\n• con una macchina virtuale sia usata la rete Bridge.";
 
-    private string FindGpp()
+    private void ConfigureCompilerEnvironment(ProcessStartInfo psi)
     {
-        // Prima i compilatori moderni. Il percorso salvato di Dev-C++ non deve più avere priorità.
-        var candidates = new List<string>
-        {
-            @"C:\msys64\ucrt64\bin\g++.exe",
-            @"C:\msys64\clang64\bin\g++.exe",
-            @"C:\msys64\mingw64\bin\g++.exe",
-            @"C:\mingw64\bin\g++.exe",
-            @"C:\MinGW\bin\g++.exe",
-            @"C:\Program Files\CodeBlocks\MinGW\bin\g++.exe",
-            @"C:\Program Files (x86)\CodeBlocks\MinGW\bin\g++.exe"
-        };
-
-        string selected = CompilerPathBox.Text.Trim().Trim('"');
-        if (File.Exists(selected) && !IsLegacyDevCppCompiler(selected))
-            candidates.Add(selected);
-
-        try
-        {
-            using var process = Process.Start(new ProcessStartInfo("where.exe", "g++.exe")
-            {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            });
-            if (process != null)
-            {
-                while (!process.StandardOutput.EndOfStream)
-                {
-                    string? path = process.StandardOutput.ReadLine()?.Trim();
-                    if (!string.IsNullOrWhiteSpace(path) && !IsLegacyDevCppCompiler(path))
-                        candidates.Add(path);
-                }
-                process.WaitForExit(3000);
-            }
-        }
-        catch { }
-
-        foreach (string candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            if (File.Exists(candidate) && SupportsCpp17(candidate))
-                return candidate;
-        }
-        return "";
-    }
-
-    private void SelectBestCpp17CompilerOnStartup()
-    {
-        string saved = CompilerPathBox.Text.Trim().Trim('"');
-        bool savedWorks = File.Exists(saved) && !IsLegacyDevCppCompiler(saved) && SupportsCpp17(saved);
-        if (savedWorks)
-        {
-            CompilerPathBox.Text = saved;
-            return;
-        }
-
-        string best = FindGpp();
-        if (!string.IsNullOrWhiteSpace(best))
-        {
-            CompilerPathBox.Text = best;
-            SaveSettings();
-            OutputBox.Text = "Compilatore C++17 rilevato automaticamente:\n" + best;
-        }
-        else if (IsLegacyDevCppCompiler(saved))
-        {
-            CompilerPathBox.Text = "";
-            SaveSettings();
-            OutputBox.Text = "Il vecchio compilatore Dev-C++ è stato rimosso dalle impostazioni perché non supporta C++17. Seleziona C:\\msys64\\ucrt64\\bin\\g++.exe.";
-        }
-    }
-
-    private static bool IsLegacyDevCppCompiler(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path)) return false;
-        string normalized = path.Replace('/', '\\');
-        return normalized.Contains("\\Dev-Cpp\\", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool SupportsCpp17(string compilerPath)
-    {
-        try
-        {
-            string dir = Path.Combine(Path.GetTempPath(), "CppStudentClient", "compiler-test");
-            Directory.CreateDirectory(dir);
-            string source = Path.Combine(dir, "cpp17_test.cpp");
-            string output = Path.Combine(dir, "cpp17_test.exe");
-            File.WriteAllText(source, "#include <optional>\nint main(){ std::optional<int> x=17; return *x==17?0:1; }", new UTF8Encoding(false));
-
-            using var process = Process.Start(new ProcessStartInfo(compilerPath, $"-std=c++17 -fsyntax-only \"{source}\"")
-            {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                WorkingDirectory = dir
-            });
-            if (process == null) return false;
-            if (!process.WaitForExit(8000))
-            {
-                try { process.Kill(true); } catch { }
-                return false;
-            }
-            return process.ExitCode == 0;
-        }
-        catch { return false; }
-    }
-
-    private void InstallCompiler_Click(object sender, RoutedEventArgs e)
-    {
-        if (_verificationMode)
-        {
-            MessageBox.Show("Durante una verifica non è possibile modificare il compilatore.", "Modalità verifica", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        MessageBox.Show(
-            "Il g++.exe di Dev-C++ mostrato nello screenshot è una versione molto vecchia: il nome MinGW64 non garantisce il supporto a C++17.\n\n" +
-            "Soluzione consigliata:\n1. Installa MSYS2 dal sito ufficiale.\n2. Apri 'MSYS2 UCRT64'.\n3. Esegui:\n   pacman -Syu\n4. Riapri MSYS2 UCRT64 ed esegui:\n   pacman -S --needed mingw-w64-ucrt-x86_64-gcc\n5. Nel programma seleziona:\n   C:\\msys64\\ucrt64\\bin\\g++.exe",
-            "Installare un compilatore C++17 moderno", MessageBoxButton.OK, MessageBoxImage.Information);
-
-        try
-        {
-            Process.Start(new ProcessStartInfo("https://www.msys2.org/") { UseShellExecute = true });
-        }
-        catch { }
+        string currentPath = psi.Environment.TryGetValue("PATH", out string? value) ? value ?? "" : Environment.GetEnvironmentVariable("PATH") ?? "";
+        psi.Environment["PATH"] = BundledCompilerBin + Path.PathSeparator + currentPath;
     }
 
     private string DataFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CppStudentClient");
@@ -759,7 +608,7 @@ public partial class MainWindow : Window
             {
                 studentId = StudentIdBox.Text, studentName = StudentNameBox.Text, className = ClassBox.Text,
                 taskType = TaskTypeBox.Text, exerciseId = ExerciseBox.Text, server = ServerBox.Text,
-                sessionCode = SessionBox.Text, compilerPath = CompilerPathBox.Text
+                sessionCode = SessionBox.Text
             }), Encoding.UTF8);
         }
         catch { }
@@ -779,8 +628,6 @@ public partial class MainWindow : Window
             ExerciseBox.Text = Get(root, "exerciseId", "1");
             ServerBox.Text = Get(root, "server", ServerBox.Text);
             SessionBox.Text = Get(root, "sessionCode", "");
-            string savedCompiler = Get(root, "compilerPath", "");
-            CompilerPathBox.Text = IsLegacyDevCppCompiler(savedCompiler) ? "" : savedCompiler;
         }
         catch { }
     }
@@ -821,7 +668,7 @@ public partial class MainWindow : Window
                 File.WriteAllText(SettingsPath, JsonSerializer.Serialize(new
                 {
                     studentId = Get(root, "studentId", ""), studentName = Get(root, "studentName", ""), className = Get(root, "className", ""),
-                    taskType = "A", exerciseId = "1", server = Get(root, "server", ""), sessionCode = "", compilerPath = Get(root, "compilerPath", "")
+                    taskType = "A", exerciseId = "1", server = Get(root, "server", ""), sessionCode = ""
                 }), Encoding.UTF8);
             }
         }

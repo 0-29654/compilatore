@@ -122,18 +122,18 @@
                 </StackPanel>
 
                 <Grid Grid.Row="1" Grid.ColumnSpan="8" Margin="4,11,4,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <TextBlock Text="COMPILATORE" Style="{StaticResource LabelStyle}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBox x:Name="CompilerPathBox" Grid.Column="1" IsReadOnly="True" Margin="0,0,10,0"/>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,8,0">
-                        <TextBlock Text="STANDARD" Style="{StaticResource LabelStyle}" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                        <ComboBox x:Name="StandardBox" Width="105" SelectedIndex="0" IsEnabled="False">
-                            <ComboBoxItem Content="C++17"/>
-                        </ComboBox>
-                    </StackPanel>
-                    <Button x:Name="ChooseCompilerButton" Grid.Column="3" Content="Scegli g++.exe" Click="ChooseCompiler_Click" Style="{StaticResource ModernButton}"/>
-                    <Button Grid.Column="4" Content="Installa compilatore C++17" Click="InstallCompiler_Click" Style="{StaticResource ModernButton}" Background="#8B5CF6" BorderBrush="#A78BFA"/>
-                    <Button Grid.Column="5" Content="Test server" Click="TestServer_Click" Style="{StaticResource ModernButton}" Background="#5B4FE8" BorderBrush="#746BFF" Margin="0"/>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="STANDARD" Style="{StaticResource LabelStyle}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <Border Grid.Column="1" Background="#0F3550" BorderBrush="#2AAEFF" BorderThickness="1" CornerRadius="8" Padding="15,8" Margin="0,0,12,0">
+                        <TextBlock Text="C++17" Foreground="#B7F3FF" FontWeight="ExtraBold" FontSize="14"/>
+                    </Border>
+                    <TextBlock Grid.Column="2" Text="Compilatore C++17 incluso automaticamente nell'installazione" Foreground="#A8B5C7" VerticalAlignment="Center" FontSize="12"/>
+                    <Button Grid.Column="3" Content="Test server" Click="TestServer_Click" Style="{StaticResource ModernButton}" Background="#5B4FE8" BorderBrush="#746BFF" Margin="0"/>
                 </Grid>
             </Grid>
         </Border>

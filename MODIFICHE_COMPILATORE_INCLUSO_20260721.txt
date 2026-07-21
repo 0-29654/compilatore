@@ -1,0 +1,9 @@
+CV+ Compilatore Alunno - compilatore C++17 incorporato
+
+- Rimosso il campo Compilatore.
+- Rimossi i pulsanti Scegli g++.exe e Installa compilatore C++17.
+- Il workflow GitHub installa GCC UCRT64 e lo incorpora nell'installer.
+- Installazione per utente corrente, senza privilegi amministrativi.
+- Il client usa sempre compiler\ucrt64\bin\g++.exe con -std=c++17.
+- Lo studente non deve installare MSYS2, configurare PATH o scegliere file.
+- Se il compilatore incorporato manca, il programma chiede di reinstallare il setup ufficiale.
