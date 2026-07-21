@@ -1,0 +1,52 @@
+name: Build Compilatore Alunni Release
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Restore and publish
+        shell: pwsh
+        run: |
+          dotnet restore .\CppStudentClient.csproj
+          dotnet publish .\CppStudentClient.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o .\publish
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe non trovato" }
+          & $iscc .\setup_student.iss
+          if (-not (Test-Path .\installer\CppStudentClient_Setup.exe)) {
+            throw "Installer alunni non creato"
+          }
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+          $sha = "${{ github.sha }}".Substring(0,7)
+          $tag = "compilatore-alunni-$stamp-$sha"
+          gh release create $tag .\installer\CppStudentClient_Setup.exe --title "C++ Compiti Alunno $tag" --notes "Release automatica del compilatore per i PC degli alunni.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"

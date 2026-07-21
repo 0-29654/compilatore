@@ -1,0 +1,1 @@
+using System.Windows; namespace CppStudentClient; public partial class App : Application { }

@@ -1,0 +1,6 @@
+Caricare il contenuto di questo ZIP direttamente nella radice della repository GitHub "compilatore".
+Non inserire i file dentro una sottocartella aggiuntiva.
+Percorsi importanti:
+.github/workflows/build-release.yml
+CppStudentClient.csproj
+setup_student.iss
