@@ -1,0 +1,6 @@
+Correzione 1.4.2
+- workflow copia esplicitamente l’intero UCRT64 dentro publish/compiler/ucrt64
+- build bloccata se il toolchain è assente o sotto 100 MB
+- installer bloccato se sotto 70 MB
+- Inno Setup include esplicitamente la cartella compiler
+- ricerca robusta di g++.exe anche in percorsi annidati

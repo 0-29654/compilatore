@@ -43,9 +43,30 @@ public partial class MainWindow : Window
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
 
-    private string BundledCompilerRoot => Path.Combine(AppContext.BaseDirectory, "compiler", "ucrt64");
-    private string BundledCompilerBin => Path.Combine(BundledCompilerRoot, "bin");
-    private string BundledCompilerPath => Path.Combine(BundledCompilerBin, "g++.exe");
+    private string BundledCompilerPath => FindBundledCompilerPath();
+    private string BundledCompilerBin => Path.GetDirectoryName(BundledCompilerPath) ?? Path.Combine(AppContext.BaseDirectory, "compiler", "ucrt64", "bin");
+
+    private static string FindBundledCompilerPath()
+    {
+        string baseDir = AppContext.BaseDirectory;
+        string[] candidates =
+        {
+            Path.Combine(baseDir, "compiler", "ucrt64", "bin", "g++.exe"),
+            Path.Combine(baseDir, "compiler", "bin", "g++.exe"),
+            Path.Combine(baseDir, "compiler", "ucrt64", "ucrt64", "bin", "g++.exe")
+        };
+        foreach (string candidate in candidates)
+            if (File.Exists(candidate)) return candidate;
+
+        string compilerRoot = Path.Combine(baseDir, "compiler");
+        if (Directory.Exists(compilerRoot))
+        {
+            string? discovered = Directory.EnumerateFiles(compilerRoot, "g++.exe", SearchOption.AllDirectories)
+                .FirstOrDefault(path => path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(discovered)) return discovered;
+        }
+        return candidates[0];
+    }
 
     public MainWindow()
     {
@@ -53,7 +74,12 @@ public partial class MainWindow : Window
         ConfigureCppHighlighting();
         LoadSettings();
         if (!File.Exists(BundledCompilerPath))
-            OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
+            OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente.
+
+Cartella programma: " + AppContext.BaseDirectory + "
+Percorso cercato: " + BundledCompilerPath + "
+
+Reinstalla usando l’ultima Release C++17.";
         LoadExerciseStates();
         ActivateExercise(GetTaskType(), GetExerciseNumber());
 
@@ -243,7 +269,9 @@ public partial class MainWindow : Window
             if (!File.Exists(gpp))
             {
                 OutputBox.Text = "Installazione incompleta: il compilatore C++17 incorporato non è stato trovato.\n\n" +
-                    "Reinstalla CV+ Compilatore Alunno dalla Release ufficiale.";
+                    "Cartella programma: " + AppContext.BaseDirectory + "\n" +
+                    "Percorso cercato: " + gpp + "\n\n" +
+                    "Reinstalla CV+ Compilatore Alunno usando l’ultima Release C++17.";
                 return false;
             }
             string dir = Path.Combine(Path.GetTempPath(), "CppStudentClient");
