@@ -1,0 +1,7 @@
+Correzioni applicate:
+- MSYS2 UCRT64 ha priorità assoluta sul vecchio Dev-C++.
+- Il percorso Dev-C++ salvato viene eliminato automaticamente.
+- Ricerca e verifica reale di C++17 all’avvio.
+- Tavolozza editor ad alto contrasto senza parole chiave blu scuro.
+- Stessi colori nel popup Shift+Click.
+- Copyright ingrandito.

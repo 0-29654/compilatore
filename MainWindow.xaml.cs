@@ -49,6 +49,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         ConfigureCppHighlighting();
         LoadSettings();
+        SelectBestCpp17CompilerOnStartup();
         LoadExerciseStates();
         ActivateExercise(GetTaskType(), GetExerciseNumber());
 
@@ -62,42 +63,47 @@ public partial class MainWindow : Window
 
     private void ConfigureCppHighlighting()
     {
+        // Tavolozza ad alto contrasto: nessuna parola chiave usa il blu scuro.
         const string xshd = """
-<SyntaxDefinition name="C++ Bright" extensions=".cpp;.h;.hpp" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
-  <Color name="Comment" foreground="#79E49A" fontStyle="italic" />
-  <Color name="String" foreground="#7CFFB2" />
-  <Color name="Char" foreground="#FFD27A" />
-  <Color name="Number" foreground="#FFB35C" />
-  <Color name="Preprocessor" foreground="#FFE45E" fontWeight="bold" />
-  <Color name="Keyword" foreground="#FF7AB2" fontWeight="bold" />
-  <Color name="Type" foreground="#FFD166" fontWeight="bold" />
-  <Color name="Literal" foreground="#FF9F68" fontWeight="bold" />
-  <RuleSet>
-    <Span color="Comment" begin="//" />
-    <Span color="Comment" multiline="true" begin="/\*" end="\*/" />
-    <Span color="String" begin="&quot;" end="&quot;" escapeCharacter="\" />
-    <Span color="Char" begin="'" end="'" escapeCharacter="\" />
+<?xml version="1.0"?>
+<SyntaxDefinition name="C++ High Contrast" extensions=".cpp;.h;.hpp" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#78F0A4" />
+  <Color name="String" foreground="#A7F3D0" />
+  <Color name="Char" foreground="#FDE68A" />
+  <Color name="Number" foreground="#FDBA74" />
+  <Color name="Preprocessor" foreground="#FFF06A" />
+  <Color name="Keyword" foreground="#FF83C6" />
+  <Color name="Type" foreground="#67E8F9" />
+  <Color name="Literal" foreground="#FCA5A5" />
+  <RuleSet ignoreCase="false">
+    <Span color="Comment" begin="//" end="\n" />
+    <Span color="Comment" begin="/\*" end="\*/" />
+    <Span color="String" begin="&quot;" end="&quot;" />
+    <Span color="Char" begin="'" end="'" />
     <Span color="Preprocessor" begin="#" end="\n" />
     <Keywords color="Keyword">
       <Word>alignas</Word><Word>alignof</Word><Word>asm</Word><Word>auto</Word><Word>break</Word><Word>case</Word><Word>catch</Word><Word>class</Word><Word>const</Word><Word>constexpr</Word><Word>continue</Word><Word>default</Word><Word>delete</Word><Word>do</Word><Word>else</Word><Word>enum</Word><Word>explicit</Word><Word>export</Word><Word>extern</Word><Word>for</Word><Word>friend</Word><Word>goto</Word><Word>if</Word><Word>inline</Word><Word>namespace</Word><Word>new</Word><Word>noexcept</Word><Word>operator</Word><Word>private</Word><Word>protected</Word><Word>public</Word><Word>register</Word><Word>return</Word><Word>sizeof</Word><Word>static</Word><Word>struct</Word><Word>switch</Word><Word>template</Word><Word>this</Word><Word>throw</Word><Word>try</Word><Word>typedef</Word><Word>typename</Word><Word>union</Word><Word>using</Word><Word>virtual</Word><Word>volatile</Word><Word>while</Word>
     </Keywords>
     <Keywords color="Type">
-      <Word>bool</Word><Word>char</Word><Word>double</Word><Word>float</Word><Word>int</Word><Word>long</Word><Word>short</Word><Word>signed</Word><Word>unsigned</Word><Word>void</Word><Word>wchar_t</Word><Word>string</Word><Word>vector</Word><Word>list</Word><Word>map</Word><Word>set</Word><Word>queue</Word><Word>stack</Word>
+      <Word>bool</Word><Word>char</Word><Word>char16_t</Word><Word>char32_t</Word><Word>double</Word><Word>float</Word><Word>int</Word><Word>long</Word><Word>short</Word><Word>signed</Word><Word>unsigned</Word><Word>void</Word><Word>wchar_t</Word><Word>string</Word><Word>vector</Word><Word>list</Word><Word>map</Word><Word>set</Word><Word>queue</Word><Word>stack</Word>
     </Keywords>
     <Keywords color="Literal"><Word>true</Word><Word>false</Word><Word>nullptr</Word><Word>NULL</Word></Keywords>
-    <Rule color="Number">\b(0[xX][0-9a-fA-F]+|\d+(\.\d+)?)\b</Rule>
+    <Rule color="Number">\b(0[xX][0-9a-fA-F]+|[0-9]+(\.[0-9]+)?)\b</Rule>
   </RuleSet>
 </SyntaxDefinition>
 """;
         try
         {
-            using var reader = XmlReader.Create(new StringReader(xshd));
+            using var reader = XmlReader.Create(new StringReader(xshd), new XmlReaderSettings { IgnoreComments = true });
             _cppHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
             Editor.SyntaxHighlighting = _cppHighlighting;
         }
-        catch
+        catch (Exception ex)
         {
-            try { _cppHighlighting = HighlightingManager.Instance.GetDefinition("C++"); Editor.SyntaxHighlighting = _cppHighlighting; } catch { }
+            // Non ricadere sulla tavolozza C++ predefinita (blu poco leggibile).
+            _cppHighlighting = null;
+            Editor.SyntaxHighlighting = null;
+            OutputBox.Text = "Colorazione C++ ad alto contrasto non caricata: " + ex.Message;
         }
     }
 
@@ -613,17 +619,21 @@ public partial class MainWindow : Window
 
     private string FindGpp()
     {
-        var candidates = new List<string>();
-        string selected = CompilerPathBox.Text.Trim().Trim('"');
-        if (File.Exists(selected)) candidates.Add(selected);
-
-        candidates.AddRange(new[]
+        // Prima i compilatori moderni. Il percorso salvato di Dev-C++ non deve più avere priorità.
+        var candidates = new List<string>
         {
-            @"C:\msys64\ucrt64\bin\g++.exe", @"C:\msys64\mingw64\bin\g++.exe", @"C:\msys64\clang64\bin\g++.exe",
-            @"C:\mingw64\bin\g++.exe", @"C:\MinGW\bin\g++.exe", @"C:\Program Files\CodeBlocks\MinGW\bin\g++.exe",
-            @"C:\Program Files (x86)\CodeBlocks\MinGW\bin\g++.exe", @"C:\Program Files (x86)\Dev-Cpp\MinGW64\bin\g++.exe",
-            @"C:\Program Files\Dev-Cpp\MinGW64\bin\g++.exe"
-        });
+            @"C:\msys64\ucrt64\bin\g++.exe",
+            @"C:\msys64\clang64\bin\g++.exe",
+            @"C:\msys64\mingw64\bin\g++.exe",
+            @"C:\mingw64\bin\g++.exe",
+            @"C:\MinGW\bin\g++.exe",
+            @"C:\Program Files\CodeBlocks\MinGW\bin\g++.exe",
+            @"C:\Program Files (x86)\CodeBlocks\MinGW\bin\g++.exe"
+        };
+
+        string selected = CompilerPathBox.Text.Trim().Trim('"');
+        if (File.Exists(selected) && !IsLegacyDevCppCompiler(selected))
+            candidates.Add(selected);
 
         try
         {
@@ -639,7 +649,8 @@ public partial class MainWindow : Window
                 while (!process.StandardOutput.EndOfStream)
                 {
                     string? path = process.StandardOutput.ReadLine()?.Trim();
-                    if (!string.IsNullOrWhiteSpace(path)) candidates.Add(path);
+                    if (!string.IsNullOrWhiteSpace(path) && !IsLegacyDevCppCompiler(path))
+                        candidates.Add(path);
                 }
                 process.WaitForExit(3000);
             }
@@ -648,9 +659,42 @@ public partial class MainWindow : Window
 
         foreach (string candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            if (File.Exists(candidate) && SupportsCpp17(candidate)) return candidate;
+            if (File.Exists(candidate) && SupportsCpp17(candidate))
+                return candidate;
         }
         return "";
+    }
+
+    private void SelectBestCpp17CompilerOnStartup()
+    {
+        string saved = CompilerPathBox.Text.Trim().Trim('"');
+        bool savedWorks = File.Exists(saved) && !IsLegacyDevCppCompiler(saved) && SupportsCpp17(saved);
+        if (savedWorks)
+        {
+            CompilerPathBox.Text = saved;
+            return;
+        }
+
+        string best = FindGpp();
+        if (!string.IsNullOrWhiteSpace(best))
+        {
+            CompilerPathBox.Text = best;
+            SaveSettings();
+            OutputBox.Text = "Compilatore C++17 rilevato automaticamente:\n" + best;
+        }
+        else if (IsLegacyDevCppCompiler(saved))
+        {
+            CompilerPathBox.Text = "";
+            SaveSettings();
+            OutputBox.Text = "Il vecchio compilatore Dev-C++ è stato rimosso dalle impostazioni perché non supporta C++17. Seleziona C:\\msys64\\ucrt64\\bin\\g++.exe.";
+        }
+    }
+
+    private static bool IsLegacyDevCppCompiler(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        string normalized = path.Replace('/', '\\');
+        return normalized.Contains("\\Dev-Cpp\\", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool SupportsCpp17(string compilerPath)
@@ -735,7 +779,8 @@ public partial class MainWindow : Window
             ExerciseBox.Text = Get(root, "exerciseId", "1");
             ServerBox.Text = Get(root, "server", ServerBox.Text);
             SessionBox.Text = Get(root, "sessionCode", "");
-            CompilerPathBox.Text = Get(root, "compilerPath", "");
+            string savedCompiler = Get(root, "compilerPath", "");
+            CompilerPathBox.Text = IsLegacyDevCppCompiler(savedCompiler) ? "" : savedCompiler;
         }
         catch { }
     }
