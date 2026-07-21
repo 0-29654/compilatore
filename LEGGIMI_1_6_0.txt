@@ -1,0 +1,11 @@
+CV+ Compilatore Alunno 1.6.0
+
+Correzione definitiva del compilatore incorporato:
+- non usa più una cartella MSYS2 del runner;
+- scarica un archivio standalone WinLibs dalla release ufficiale GitHub;
+- estrae file fisici in publish\compiler\ucrt64;
+- prova una compilazione C++17 prima del setup;
+- crea il setup usando l'intera cartella publish;
+- installa il setup nel runner e prova nuovamente g++.exe estratto.
+
+Sul PC alunno non deve essere installato MSYS2.
