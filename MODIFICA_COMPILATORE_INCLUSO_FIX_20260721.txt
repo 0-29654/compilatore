@@ -1,0 +1,16 @@
+CORREZIONE COMPILATORE C++17 INCORPORATO
+
+La GitHub Action ora:
+1. prepara MSYS2 UCRT64 nel runner GitHub;
+2. installa GCC/G++ moderno;
+3. pubblica il client WPF;
+4. copia l'intero toolchain /ucrt64 dentro publish/compiler/ucrt64;
+5. verifica g++.exe, cc1plus.exe, header, librerie e DLL;
+6. esegue una compilazione reale di prova con -std=c++17;
+7. crea l'installer solo se il compilatore è realmente presente;
+8. blocca la Release se il setup risulta troppo piccolo e quindi privo del toolchain.
+
+Percorso usato dal programma installato:
+  {app}\compiler\ucrt64\bin\g++.exe
+
+L'installazione resta per il solo utente corrente e non richiede amministratore.
