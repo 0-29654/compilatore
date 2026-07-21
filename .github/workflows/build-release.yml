@@ -11,6 +11,7 @@ permissions:
 jobs:
   build-release:
     runs-on: windows-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,33 +21,92 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup -y --no-progress
+      - name: Setup MSYS2 UCRT64 con GCC C++17
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            tar
 
-      - name: Restore and publish
+      - name: Materializza il compilatore GCC in un archivio reale
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          test -f /ucrt64/bin/g++.exe
+          test -d /ucrt64/include/c++
+          tar -C / -cf "$GITHUB_WORKSPACE/ucrt64-toolchain.tar" ucrt64
+          ls -lh "$GITHUB_WORKSPACE/ucrt64-toolchain.tar"
+
+      - name: Pubblica CV+ e incorpora GCC
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          Remove-Item .\publish -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force .\publish\compiler | Out-Null
+
           dotnet restore .\CppStudentClient.csproj
           dotnet publish .\CppStudentClient.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o .\publish
 
-      - name: Build installer
+          tar -xf .\ucrt64-toolchain.tar -C .\publish\compiler
+
+          $gpp = Resolve-Path .\publish\compiler\ucrt64\bin\g++.exe
+          $cc1 = Get-ChildItem .\publish\compiler\ucrt64 -Recurse -Filter cc1plus.exe | Select-Object -First 1
+          if (-not (Test-Path $gpp)) { throw 'g++.exe non copiato in publish' }
+          if (-not $cc1) { throw 'cc1plus.exe non copiato in publish' }
+          if (-not (Test-Path .\publish\compiler\ucrt64\include\c++)) { throw 'Header C++ non copiati' }
+          if (-not (Test-Path .\publish\compiler\ucrt64\lib)) { throw 'Librerie GCC non copiate' }
+
+          $env:PATH = "$(Split-Path $gpp);$env:PATH"
+          '@\n#include <iostream>\nint main(){ std::cout << "C++17 OK"; return 0; }\n'@ | Set-Content .\test17.cpp -Encoding ascii
+          & $gpp -std=c++17 .\test17.cpp -o .\test17.exe
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path .\test17.exe)) { throw 'Test C++17 fallito prima del setup' }
+
+          $size = (Get-ChildItem .\publish\compiler\ucrt64 -Recurse -File | Measure-Object Length -Sum).Sum
+          if ($size -lt 100MB) { throw "Toolchain GCC incompleto: $([math]::Round($size/1MB,1)) MB" }
+          "Toolchain bytes: $size" | Set-Content .\publish\compiler_manifest.txt
+          Get-ChildItem .\publish\compiler\ucrt64 -Recurse -File | ForEach-Object FullName | Set-Content .\publish\compiler_file_list.txt
+
+      - name: Installa Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Crea installer
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
-          if (-not (Test-Path $iscc)) { throw "ISCC.exe non trovato" }
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe non trovato' }
           & $iscc .\setup_student.iss
-          if (-not (Test-Path .\installer\CppStudentClient_Setup.exe)) {
-            throw "Installer alunni non creato"
-          }
+          if ($LASTEXITCODE -ne 0) { throw 'Compilazione Inno Setup fallita' }
+          $setup = '.\installer\CppStudentClient_Setup.exe'
+          if (-not (Test-Path $setup)) { throw 'Installer non creato' }
+          $setupSize = (Get-Item $setup).Length
+          if ($setupSize -lt 70MB) { throw "Installer troppo piccolo: $([math]::Round($setupSize/1MB,1)) MB. GCC non incluso." }
 
-      - name: Create GitHub Release
+      - name: Verifica realmente l'installer prodotto
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $verify = Join-Path $env:RUNNER_TEMP 'cvplus_verify'
+          Remove-Item $verify -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force $verify | Out-Null
+          Start-Process .\installer\CppStudentClient_Setup.exe -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=$verify" -Wait
+          $gpp = Join-Path $verify 'compiler\ucrt64\bin\g++.exe'
+          if (-not (Test-Path $gpp)) { throw "g++.exe assente dopo installazione: $gpp" }
+          $env:PATH = "$(Split-Path $gpp);$env:PATH"
+          '@\n#include <iostream>\nint main(){ std::cout << "INSTALLER C++17 OK"; return 0; }\n'@ | Set-Content (Join-Path $verify 'verify.cpp') -Encoding ascii
+          & $gpp -std=c++17 (Join-Path $verify 'verify.cpp') -o (Join-Path $verify 'verify.exe')
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $verify 'verify.exe'))) { throw 'Test C++17 dopo installazione fallito' }
+
+      - name: Crea GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-          $sha = "${{ github.sha }}".Substring(0,7)
-          $tag = "compilatore-alunni-$stamp-$sha"
-          gh release create $tag .\installer\CppStudentClient_Setup.exe --title "C++ Compiti Alunno $tag" --notes "Release automatica del compilatore per i PC degli alunni.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+          $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+          $sha = '${{ github.sha }}'.Substring(0,7)
+          $tag = "compilatore-alunni-1.6.2-$stamp-$sha"
+          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno 1.6.2 - GCC C++17 incluso" --notes "Installer verificato: GCC UCRT64 incorporato e testato dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"

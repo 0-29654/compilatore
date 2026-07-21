@@ -1,5 +1,5 @@
 #define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.6.1"
+#define MyAppVersion "1.6.2"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -39,8 +39,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescription: "Collegamenti:"; Flags: checkedonce
 
 [Files]
-; Il workflow inserisce fisicamente GCC in publish\compiler\ucrt64 prima di avviare Inno Setup.
-; Questa singola regola include sia l'applicazione sia l'intero toolchain.
+; La cartella publish contiene sia l'app sia publish\compiler\ucrt64 con GCC reale.
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -54,8 +53,5 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: now
 procedure InitializeWizard;
 begin
   WizardForm.WelcomeLabel1.Caption := 'Benvenuto in CV+ Compilatore Alunno';
-  WizardForm.WelcomeLabel2.Caption :=
-    'Il compilatore GCC C++17 è incluso e viene verificato automaticamente durante la build.' + #13#10 +
-    'Non servono MSYS2, Dev-C++ o configurazioni manuali sul PC dello studente.' + #13#10 + #13#10 +
-    '© Alessandro Barazzuol';
+  WizardForm.WelcomeLabel2.Caption := 'Il compilatore GCC C++17 è incluso e viene verificato automaticamente durante la build.' + #13#10 + #13#10 + '© Alessandro Barazzuol';
 end;
