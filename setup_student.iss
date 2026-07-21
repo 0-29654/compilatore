@@ -1,73 +1,66 @@
 #define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.4.9"
+#define MyAppVersion "1.5.0"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
 [Setup]
-AppId={{A6C18F0D-6CA6-4D34-9A45-4D3DA754D8C1}}
+AppId={{7AE8F6E5-2DD3-4DF5-96F9-671869FBA148}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-VersionInfoCompany={#MyAppPublisher}
-VersionInfoDescription=Editor e compilatore C++17 per l'invio degli esercizi al docente
-VersionInfoCopyright=Copyright (C) Alessandro Barazzuol
 DefaultDirName={localappdata}\Programs\CVPlusCompilatoreAlunno
 DefaultGroupName={#MyAppName}
-PrivilegesRequired=lowest
 OutputDir=installer
 OutputBaseFilename=CppStudentClient_Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
-WizardSizePercent=110
-SetupIconFile=Assets\app.ico
-WizardImageFile=Assets\wizard.bmp
-WizardSmallImageFile=Assets\wizard_small.bmp
+PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-CloseApplications=yes
-CloseApplicationsFilter={#MyAppExeName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
-DisableProgramGroupPage=yes
+SetupLogging=yes
 
 [Languages]
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescription: "Collegamenti:"; Flags: checkedonce
+Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescription: "Collegamenti:"; Flags: unchecked
 
 [Files]
-; Il workflow inserisce PRIMA applicazione e GCC UCRT64 nella stessa cartella publish.
-; Questa unica riga include tutto, compreso publish\compiler\ucrt64.
-Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Applicazione: esclude il toolchain, che viene incluso esplicitamente sotto.
+Source: "publish\*"; DestDir: "{app}"; Excludes: "compiler\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Toolchain GCC UCRT64: cartelle dichiarate separatamente per garantire l'inclusione reale.
+Source: "publish\compiler\ucrt64\compiler_ready.marker"; DestDir: "{app}\compiler\ucrt64"; Flags: ignoreversion
+Source: "publish\compiler\ucrt64\bin\*"; DestDir: "{app}\compiler\ucrt64\bin"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "publish\compiler\ucrt64\include\*"; DestDir: "{app}\compiler\ucrt64\include"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "publish\compiler\ucrt64\lib\*"; DestDir: "{app}\compiler\ucrt64\lib"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "publish\compiler\ucrt64\libexec\*"; DestDir: "{app}\compiler\ucrt64\libexec"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "publish\compiler\ucrt64\share\*"; DestDir: "{app}\compiler\ucrt64\share"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
-Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-procedure InitializeWizard;
-begin
-  WizardForm.WelcomeLabel1.Caption := 'Benvenuto in CV+ Compilatore Alunno';
-  WizardForm.WelcomeLabel2.Caption := 'Il setup installerà automaticamente anche GCC UCRT64 per C++17 nel profilo dell''utente. Non servono MSYS2, Dev-C++, configurazioni o diritti di amministratore.' + #13#10 + #13#10 + '© Alessandro Barazzuol';
-  WizardForm.FinishedHeadingLabel.Caption := 'Installazione completata';
-  WizardForm.FinishedLabel.Caption := 'CV+ e il compilatore C++17 sono stati installati. Lo studente non deve scegliere alcun g++.exe.';
-end;
-
-function CompilerIncluded(): Boolean;
-begin
-  Result := FileExists(ExpandConstant('{app}\compiler\ucrt64\bin\g++.exe')) and
-            DirExists(ExpandConstant('{app}\compiler\ucrt64\include')) and
-            DirExists(ExpandConstant('{app}\compiler\ucrt64\lib'));
-end;
-
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  GppPath: string;
+  MarkerPath: string;
 begin
-  if (CurStep = ssPostInstall) and (not CompilerIncluded()) then
-    RaiseException('Installazione incompleta: GCC C++17 non è stato copiato.');
+  if CurStep = ssPostInstall then
+  begin
+    GppPath := ExpandConstant('{app}\compiler\ucrt64\bin\g++.exe');
+    MarkerPath := ExpandConstant('{app}\compiler\ucrt64\compiler_ready.marker');
+
+    if (not FileExists(GppPath)) or (not FileExists(MarkerPath)) then
+    begin
+      MsgBox('Installazione incompleta: GCC C++17 non è stato copiato. Il setup verrà annullato.', mbError, MB_OK);
+      RaiseException('GCC C++17 assente dopo installazione');
+    end;
+  end;
 end;
