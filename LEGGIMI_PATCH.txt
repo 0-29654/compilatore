@@ -1,0 +1,10 @@
+PATCH 1.4.8 - RISOLVE L'ERRORE "No files found publish\compiler\ucrt64\*"
+
+Sostituire nella radice della repository:
+1) .github/workflows/build-release.yml
+2) setup_student.iss
+
+Punto chiave: Inno Setup NON cerca più una seconda sorgente compiler\ucrt64\*.
+Installa esclusivamente publish\*, dentro cui il workflow inserisce prima tutto GCC UCRT64.
+La build si interrompe prima di Inno se g++.exe, cc1plus, header o librerie mancano.
+Dopo la creazione, GitHub installa il setup in una cartella temporanea e compila davvero un file C++17.
