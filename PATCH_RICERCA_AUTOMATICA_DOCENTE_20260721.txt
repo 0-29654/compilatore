@@ -1,0 +1,21 @@
+PATCH CLIENT ALUNNO - RICERCA AUTOMATICA SERVER DOCENTE
+
+Modifiche applicate in MainWindow.xaml.cs:
+1. All'avvio viene provato prima il server salvato.
+2. Se non risponde, vengono scanditi gli indirizzi IPv4 della rete locale sulla porta configurata (predefinita 5050).
+3. Il programma riconosce il server tramite GET /ping e compila automaticamente IP docente:porta.
+4. Prova a recuperare il codice sessione da GET /discovery, GET /session-info oppure GET /ping.
+   Il JSON del server può esporre uno dei campi: sessionCode, code, session, codiceSessione.
+5. Ogni invio /submit include anche:
+   - clientIp
+   - studentIp
+   - ipAddress
+   - normalizedStudentName
+   - submissionKey = NOME_NORMALIZZATO|IP
+
+NOTA SERVER DOCENTE
+Per il riempimento automatico del codice sessione il server deve restituirlo in uno degli endpoint sopra.
+Per associare più file allo stesso alunno e allo stesso PC, il server docente deve usare submissionKey,
+oppure la coppia normalizedStudentName + clientIp, come chiave di raggruppamento.
+
+La ricerca automatica non blocca l'inserimento manuale: se il server non viene trovato, le caselle restano modificabili.
