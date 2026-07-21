@@ -1,0 +1,3 @@
+Versione 1.5.2
+Correzione definitiva della copia GCC: il workflow crea un archivio TAR fisico da /ucrt64 e lo estrae in publish/compiler/ucrt64. In questo modo non vengono copiati junction o collegamenti virtuali del runner.
+Il setup viene pubblicato soltanto dopo installazione di prova e compilazione C++17 con il g++.exe estratto dall'installer.
