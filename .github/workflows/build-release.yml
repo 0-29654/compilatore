@@ -22,51 +22,66 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Setup MSYS2 UCRT64 con GCC C++17
+        id: msys2
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
           update: true
           install: >-
             mingw-w64-ucrt-x86_64-gcc
-            tar
 
-      - name: Materializza il compilatore GCC in un archivio reale
-        shell: msys2 {0}
-        run: |
-          set -euo pipefail
-          test -f /ucrt64/bin/g++.exe
-          test -d /ucrt64/include/c++
-          tar -C / -cf "$GITHUB_WORKSPACE/ucrt64-toolchain.tar" ucrt64
-          ls -lh "$GITHUB_WORKSPACE/ucrt64-toolchain.tar"
-
-      - name: Pubblica CV+ e incorpora GCC
+      - name: Pubblica CV+ e copia fisicamente GCC
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+
           Remove-Item .\publish -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Force .\publish\compiler | Out-Null
+          New-Item -ItemType Directory -Force .\publish\compiler\ucrt64 | Out-Null
 
           dotnet restore .\CppStudentClient.csproj
           dotnet publish .\CppStudentClient.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o .\publish
 
-          tar -xf .\ucrt64-toolchain.tar -C .\publish\compiler
+          $msysRoot = '${{ steps.msys2.outputs.msys2-location }}'
+          if ([string]::IsNullOrWhiteSpace($msysRoot)) { throw 'setup-msys2 non ha restituito msys2-location' }
 
-          $gpp = Resolve-Path .\publish\compiler\ucrt64\bin\g++.exe
-          $cc1 = Get-ChildItem .\publish\compiler\ucrt64 -Recurse -Filter cc1plus.exe | Select-Object -First 1
-          if (-not (Test-Path $gpp)) { throw 'g++.exe non copiato in publish' }
-          if (-not $cc1) { throw 'cc1plus.exe non copiato in publish' }
-          if (-not (Test-Path .\publish\compiler\ucrt64\include\c++)) { throw 'Header C++ non copiati' }
-          if (-not (Test-Path .\publish\compiler\ucrt64\lib)) { throw 'Librerie GCC non copiate' }
+          $source = Join-Path $msysRoot 'ucrt64'
+          $dest = (Resolve-Path .\publish\compiler\ucrt64).Path
+          if (-not (Test-Path (Join-Path $source 'bin\g++.exe'))) {
+            throw "g++.exe non trovato nel runner: $source\bin\g++.exe"
+          }
+
+          Write-Host "Copia fisica GCC da: $source"
+          Write-Host "Copia fisica GCC a : $dest"
+          & robocopy $source $dest /E /COPY:DAT /DCOPY:DAT /R:2 /W:1 /NFL /NDL /NP
+          $rc = $LASTEXITCODE
+          if ($rc -gt 7) { throw "Robocopy GCC fallito con codice $rc" }
+
+          $gpp = Join-Path $dest 'bin\g++.exe'
+          $cc1 = Get-ChildItem $dest -Recurse -Filter cc1plus.exe -File | Select-Object -First 1
+          if (-not (Test-Path $gpp)) { throw "g++.exe non copiato: $gpp" }
+          if (-not $cc1) { throw 'cc1plus.exe non copiato' }
+          if (-not (Test-Path (Join-Path $dest 'include\c++'))) { throw 'Header C++ non copiati' }
+          if (-not (Test-Path (Join-Path $dest 'lib'))) { throw 'Librerie GCC non copiate' }
 
           $env:PATH = "$(Split-Path $gpp);$env:PATH"
-          '@\n#include <iostream>\nint main(){ std::cout << "C++17 OK"; return 0; }\n'@ | Set-Content .\test17.cpp -Encoding ascii
+          @(
+            '#include <iostream>',
+            'int main(){ std::cout << "C++17 OK"; return 0; }'
+          ) | Set-Content .\test17.cpp -Encoding ascii
           & $gpp -std=c++17 .\test17.cpp -o .\test17.exe
-          if ($LASTEXITCODE -ne 0 -or -not (Test-Path .\test17.exe)) { throw 'Test C++17 fallito prima del setup' }
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path .\test17.exe)) {
+            throw 'Test C++17 fallito prima del setup'
+          }
 
-          $size = (Get-ChildItem .\publish\compiler\ucrt64 -Recurse -File | Measure-Object Length -Sum).Sum
-          if ($size -lt 100MB) { throw "Toolchain GCC incompleto: $([math]::Round($size/1MB,1)) MB" }
-          "Toolchain bytes: $size" | Set-Content .\publish\compiler_manifest.txt
-          Get-ChildItem .\publish\compiler\ucrt64 -Recurse -File | ForEach-Object FullName | Set-Content .\publish\compiler_file_list.txt
+          $size = (Get-ChildItem $dest -Recurse -File | Measure-Object Length -Sum).Sum
+          if ($size -lt 100MB) {
+            throw "Toolchain GCC incompleto: $([math]::Round($size/1MB,1)) MB"
+          }
+
+          "MSYS2 root: $msysRoot" | Set-Content .\publish\compiler_manifest.txt
+          "Toolchain bytes: $size" | Add-Content .\publish\compiler_manifest.txt
+          "g++: $gpp" | Add-Content .\publish\compiler_manifest.txt
+          Get-ChildItem $dest -Recurse -File | ForEach-Object FullName | Set-Content .\publish\compiler_file_list.txt
 
       - name: Installa Inno Setup
         shell: pwsh
@@ -79,12 +94,20 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
           if (-not (Test-Path $iscc)) { throw 'ISCC.exe non trovato' }
+
+          if (-not (Test-Path .\publish\compiler\ucrt64\bin\g++.exe)) {
+            throw 'g++.exe assente da publish prima di Inno Setup'
+          }
+
           & $iscc .\setup_student.iss
           if ($LASTEXITCODE -ne 0) { throw 'Compilazione Inno Setup fallita' }
+
           $setup = '.\installer\CppStudentClient_Setup.exe'
           if (-not (Test-Path $setup)) { throw 'Installer non creato' }
           $setupSize = (Get-Item $setup).Length
-          if ($setupSize -lt 70MB) { throw "Installer troppo piccolo: $([math]::Round($setupSize/1MB,1)) MB. GCC non incluso." }
+          if ($setupSize -lt 70MB) {
+            throw "Installer troppo piccolo: $([math]::Round($setupSize/1MB,1)) MB. GCC non incluso."
+          }
 
       - name: Verifica realmente l'installer prodotto
         shell: pwsh
@@ -93,13 +116,24 @@ jobs:
           $verify = Join-Path $env:RUNNER_TEMP 'cvplus_verify'
           Remove-Item $verify -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force $verify | Out-Null
-          Start-Process .\installer\CppStudentClient_Setup.exe -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=$verify" -Wait
+
+          $args = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$verify")
+          $p = Start-Process .\installer\CppStudentClient_Setup.exe -ArgumentList $args -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Installazione di verifica fallita: exit code $($p.ExitCode)" }
+
           $gpp = Join-Path $verify 'compiler\ucrt64\bin\g++.exe'
           if (-not (Test-Path $gpp)) { throw "g++.exe assente dopo installazione: $gpp" }
+
           $env:PATH = "$(Split-Path $gpp);$env:PATH"
-          '@\n#include <iostream>\nint main(){ std::cout << "INSTALLER C++17 OK"; return 0; }\n'@ | Set-Content (Join-Path $verify 'verify.cpp') -Encoding ascii
+          @(
+            '#include <iostream>',
+            'int main(){ std::cout << "INSTALLER C++17 OK"; return 0; }'
+          ) | Set-Content (Join-Path $verify 'verify.cpp') -Encoding ascii
+
           & $gpp -std=c++17 (Join-Path $verify 'verify.cpp') -o (Join-Path $verify 'verify.exe')
-          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $verify 'verify.exe'))) { throw 'Test C++17 dopo installazione fallito' }
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $verify 'verify.exe'))) {
+            throw 'Test C++17 dopo installazione fallito'
+          }
 
       - name: Crea GitHub Release
         shell: pwsh
@@ -108,5 +142,5 @@ jobs:
         run: |
           $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
           $sha = '${{ github.sha }}'.Substring(0,7)
-          $tag = "compilatore-alunni-1.6.2-$stamp-$sha"
-          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno 1.6.2 - GCC C++17 incluso" --notes "Installer verificato: GCC UCRT64 incorporato e testato dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+          $tag = "compilatore-alunni-1.6.3-$stamp-$sha"
+          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno 1.6.3 - GCC C++17 incluso" --notes "Installer verificato realmente dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
