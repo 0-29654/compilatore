@@ -43,17 +43,49 @@ public partial class MainWindow : Window
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
 
-    private string BundledCompilerRoot => Path.Combine(AppContext.BaseDirectory, "compiler", "ucrt64");
-    private string BundledCompilerBin => Path.Combine(BundledCompilerRoot, "bin");
-    private string BundledCompilerPath => Path.Combine(BundledCompilerBin, "g++.exe");
+    private string? _resolvedCompilerPath;
+
+    private string BundledCompilerPath => _resolvedCompilerPath ??= ResolveBundledCompilerPath();
+    private string BundledCompilerBin => string.IsNullOrWhiteSpace(BundledCompilerPath)
+        ? Path.Combine(AppContext.BaseDirectory, "compiler", "ucrt64", "bin")
+        : Path.GetDirectoryName(BundledCompilerPath)!;
+
+    private static string ResolveBundledCompilerPath()
+    {
+        string baseDir = AppContext.BaseDirectory;
+        string[] candidates =
+        {
+            Path.Combine(baseDir, "compiler", "ucrt64", "bin", "g++.exe"),
+            Path.Combine(baseDir, "compiler", "bin", "g++.exe"),
+            Path.Combine(baseDir, "ucrt64", "bin", "g++.exe"),
+            Path.Combine(baseDir, "bin", "g++.exe")
+        };
+
+        foreach (string candidate in candidates)
+            if (File.Exists(candidate)) return candidate;
+
+        string compilerRoot = Path.Combine(baseDir, "compiler");
+        if (Directory.Exists(compilerRoot))
+        {
+            try
+            {
+                string? found = Directory.EnumerateFiles(compilerRoot, "g++.exe", SearchOption.AllDirectories)
+                    .FirstOrDefault(path => path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrWhiteSpace(found)) return found;
+            }
+            catch { }
+        }
+
+        return string.Empty;
+    }
 
     public MainWindow()
     {
         InitializeComponent();
         ConfigureCppHighlighting();
         LoadSettings();
-        if (!File.Exists(BundledCompilerPath))
-            OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
+        if (string.IsNullOrWhiteSpace(BundledCompilerPath) || !File.Exists(BundledCompilerPath))
+            OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma dalla nuova Release 1.4.4.";
         LoadExerciseStates();
         ActivateExercise(GetTaskType(), GetExerciseNumber());
 
@@ -62,7 +94,11 @@ public partial class MainWindow : Window
         _modeTimer.Tick += async (_, _) => await RefreshServerModeAsync(false);
         _modeTimer.Start();
 
-        Loaded += async (_, _) => await RefreshServerModeAsync(false);
+        Loaded += async (_, _) =>
+        {
+            WindowState = WindowState.Maximized;
+            await RefreshServerModeAsync(false);
+        };
     }
 
     private void ConfigureCppHighlighting()
@@ -216,11 +252,12 @@ public partial class MainWindow : Window
     {
         try
         {
+            _resolvedCompilerPath = null;
             string gpp = BundledCompilerPath;
-            if (!File.Exists(gpp))
+            if (string.IsNullOrWhiteSpace(gpp) || !File.Exists(gpp))
             {
                 OutputBox.Text = "Installazione incompleta: il compilatore C++17 incorporato non è stato trovato.\n\n" +
-                    "Reinstalla CV+ Compilatore Alunno dalla Release ufficiale.";
+                    "Reinstalla CV+ Compilatore Alunno dalla Release 1.4.4 o successiva.";
                 return false;
             }
             string dir = Path.Combine(Path.GetTempPath(), "CppStudentClient");

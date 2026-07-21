@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
         Title="CV+ Compilatore Alunno" Width="1280" Height="860" MinWidth="1080" MinHeight="720"
-        WindowStartupLocation="CenterScreen" Background="#07111F" Icon="Assets/app.ico"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized" Background="#07111F" Icon="Assets/app.ico"
         PreviewKeyDown="Window_PreviewKeyDown" Deactivated="Window_Deactivated" Closing="Window_Closing">
     <Window.Resources>
         <SolidColorBrush x:Key="PanelBrush" Color="#101D31"/>

@@ -1,5 +1,5 @@
 #define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.4.3"
+#define MyAppVersion "1.4.4"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -40,7 +40,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescription: "Collegamenti:"; Flags: checkedonce
 
 [Files]
-Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "package_root\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
@@ -56,4 +56,18 @@ begin
   WizardForm.WelcomeLabel2.Caption := 'Installa CV+ con compilatore C++17 già incluso. Non servono MSYS2, Dev-C++, configurazioni o diritti di amministratore.' + #13#10 + #13#10 + '© Alessandro Barazzuol';
   WizardForm.FinishedHeadingLabel.Caption := 'Installazione completata';
   WizardForm.FinishedLabel.Caption := 'CV+ Compilatore Alunno è pronto. Il compilatore C++17 è già incluso: configura soltanto IP, porta e codice sessione comunicati dal docente.';
+end;
+
+function CompilerIncluded(): Boolean;
+begin
+  Result := FileExists(ExpandConstant('{app}\compiler\ucrt64\bin\g++.exe'));
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+  begin
+    if not CompilerIncluded() then
+      MsgBox('Installazione incompleta: il compilatore C++17 non è stato copiato. Scaricare nuovamente la Release 1.4.4.', mbError, MB_OK);
+  end;
 end;
