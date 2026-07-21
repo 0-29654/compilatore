@@ -1,0 +1,12 @@
+CV+ COMPILATORE ALUNNO 1.4.9
+
+Correzione definitiva del compilatore incorporato:
+- usa l'output ufficiale msys2-location dell'action setup-msys2;
+- copia fisicamente l'intera cartella ucrt64 con robocopy;
+- inserisce GCC dentro publish/compiler/ucrt64 prima di Inno Setup;
+- Inno Setup include una sola sorgente publish/*;
+- nessun controllo errato della cartella publish durante l'installazione sul PC utente;
+- prova reale C++17 prima del setup;
+- installazione reale di prova del setup sul runner;
+- prova reale C++17 usando il g++.exe estratto dall'installer;
+- la Release non viene creata se manca GCC.
