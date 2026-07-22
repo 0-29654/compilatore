@@ -1,0 +1,50 @@
+PATCH COMPLETA CV+ COMPILATORE ALUNNO 1.6.5
+================================================
+
+Questa patch comprende anche tutte le modifiche della precedente versione 1.6.4.
+
+MODIFICHE INSTALLER
+- Immagine del cane nella pagina iniziale.
+- Immagine del cane nel riquadro delle pagine interne.
+- Schermata obbligatoria di accettazione condizioni.
+- Copyright corretto: Alessandro Barazzuol.
+- Versione installer 1.6.5.
+
+MODIFICHE COMPILAZIONE
+- Cattura contemporanea di stdout e stderr.
+- Visualizzazione completa degli errori GCC.
+- Disattivazione dei codici colore ANSI.
+- Messaggio esplicito anche se GCC termina senza diagnostica.
+- Salvataggio dell'esito per ogni singola scheda/esercizio.
+
+MODIFICHE INVIO AL DOCENTE
+- Alla pressione di “Invia al docente” viene chiesto quanti esercizi inviare.
+- Inserendo 3 vengono inviati gli esercizi 1, 2 e 3.
+- Ogni esercizio viene ricompilato immediatamente prima dell'invio.
+- Se compila, viene inviato l'output/esito positivo.
+- Se non compila, viene inviato il testo completo degli errori.
+- Un vecchio output di esecuzione non viene associato a una compilazione fallita.
+- L'invio avviene separatamente per ciascun esercizio, mantenendo compatibilità
+  con l'endpoint /submit attualmente usato dal programma.
+- Nel payload sono presenti anche totalExercises, compilationSucceeded e output.
+
+APPLICAZIONE
+1. Estrai lo ZIP.
+2. Apri PowerShell nella cartella estratta.
+3. Esegui:
+
+   py APPLICA_PATCH_COMPLETA_1_6_5.py "C:\percorso\repository\compilatore"
+
+4. Poi, dentro la repository:
+
+   CREA_INSTALLER.bat
+
+Oppure:
+
+   git add .
+   git commit -m "Versione 1.6.5 invio multiplo e diagnostica compilazione"
+   git push
+
+COPIE DI SICUREZZA
+- setup_student.iss.prima_patch_1_6_5
+- MainWindow.xaml.cs.prima_patch_1_6_5

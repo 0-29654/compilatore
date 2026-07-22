@@ -1,0 +1,114 @@
+CONDIZIONI D'USO, COPYRIGHT, PRIVACY E LIMITAZIONE DI RESPONSABILITÀ
+CV+ COMPILATORE ALUNNO
+
+Ultimo aggiornamento: 22 luglio 2026
+
+1. TITOLARITÀ E COPYRIGHT
+
+Il software “CV+ Compilatore Alunno”, il relativo codice sorgente e compilato,
+le interfacce, le immagini, la documentazione e i materiali didattici sono
+protetti dalla normativa vigente in materia di diritto d'autore.
+
+Copyright © 2026 Alessandro Barazzuol. Tutti i diritti riservati.
+
+Salvo preventiva autorizzazione scritta dell'autore, non è consentito copiare,
+modificare, distribuire, vendere, concedere in licenza, pubblicare, cedere a
+terzi, decompilare o effettuare operazioni di reverse engineering sul software,
+fatti salvi i casi inderogabilmente consentiti dalla legge.
+
+2. DESTINATARI E USO CONSENTITO
+
+Il software è destinato esclusivamente agli studenti e al personale autorizzato
+del Liceo Guglielmo Marconi di Conegliano, nell'ambito delle attività
+scolastiche, formative e didattiche autorizzate dall'Istituto.
+
+Non è autorizzato l'utilizzo da parte di soggetti esterni né l'impiego per
+finalità commerciali, professionali, illecite o estranee alla didattica.
+
+Il software è distribuito senza scopo di lucro.
+
+3. FINALITÀ DIDATTICA
+
+Il programma è uno strumento di supporto allo studio della programmazione C++,
+alla compilazione, all'esecuzione, alla verifica e alla trasmissione degli
+esercizi al docente.
+
+Le descrizioni degli errori, le correzioni automatiche e i suggerimenti prodotti
+dal programma hanno valore esclusivamente indicativo e didattico e non
+sostituiscono la verifica e la valutazione del docente.
+
+4. ASSENZA DI GARANZIE
+
+Il software è fornito “così com'è”, senza garanzie espresse o implicite circa
+il funzionamento continuo, l'assenza di errori, la compatibilità con qualsiasi
+dispositivo, sistema operativo, rete, compilatore o configurazione.
+
+Non è garantito che il programma:
+- individui o descriva correttamente ogni errore di sintassi, logico o di esecuzione;
+- rilevi sempre cicli infiniti, blocchi o comportamenti anomali;
+- produca risultati completi o adatti a uno scopo specifico;
+- impedisca la perdita, la modifica o la mancata trasmissione degli elaborati.
+
+L'utente deve controllare il codice, l'esito della compilazione e i file prima
+della consegna e deve conservarne una copia di sicurezza.
+
+5. LIMITAZIONE DI RESPONSABILITÀ
+
+Nei limiti consentiti dalla legge, Alessandro Barazzuol non risponde di danni
+diretti o indiretti, perdita di dati o elaborati, mancata consegna, risultati
+errati, interruzioni, incompatibilità, problemi di rete o conseguenze dovute
+all'uso improprio o all'impossibilità di utilizzare il software.
+
+Restano ferme le responsabilità che non possono essere escluse o limitate dalla
+normativa applicabile.
+
+6. PRIVACY E DATI TRATTATI
+
+Il software non utilizza i dati per pubblicità, profilazione, vendita o finalità
+commerciali e non è progettato per raccogliere dati personali non necessari.
+
+Per consentire le funzioni didattiche e tecniche, il programma può trattare
+esclusivamente i dati necessari, quali:
+- nome o identificativo dello studente;
+- classe, tipologia e numero dell'esercizio;
+- codice sorgente, file ed elaborati trasmessi;
+- risultato della compilazione, output e messaggi di errore;
+- indirizzo IP locale, porta, codice sessione e dati tecnici di collegamento;
+- data, ora ed eventuali log tecnici indispensabili.
+
+Tali informazioni devono essere usate esclusivamente per il collegamento tra
+studente e docente, la consegna degli esercizi, la sicurezza e la risoluzione
+di problemi tecnici. Non devono essere conservate più a lungo del necessario
+e devono essere accessibili soltanto ai soggetti autorizzati.
+
+Non devono essere inseriti nel programma password, documenti di identità, dati
+sanitari, dati finanziari o altri dati non necessari all'attività didattica.
+
+Il trattamento svolto nell'ambito scolastico resta soggetto alle informative
+privacy, alle regole organizzative e alle misure di sicurezza adottate dal
+Liceo Guglielmo Marconi di Conegliano.
+
+7. SERVIZI ESTERNI E RETE
+
+Alcune funzioni possono richiedere la rete locale, Internet, repository, servizi
+cloud o servizi di terze parti. Tali servizi possono applicare condizioni e
+informative privacy proprie.
+
+8. USO CORRETTO E SICUREZZA
+
+È vietato utilizzare il programma per accedere senza autorizzazione a sistemi,
+reti, account o dati, alterare sistemi scolastici, diffondere codice dannoso,
+intercettare dati, aggirare controlli di sicurezza, copiare elaborati altrui o
+violare le regole scolastiche.
+
+9. ACCETTAZIONE
+
+Per proseguire con l'installazione è necessario leggere e accettare integralmente
+le presenti condizioni. Chi non le accetta non è autorizzato a installare o
+utilizzare il software.
+
+NOTA
+
+Il presente documento è una bozza generale e non sostituisce l'informativa
+privacy ufficiale dell'Istituto né una verifica legale da parte del Liceo o del
+Responsabile della protezione dei dati (RPD/DPO).
