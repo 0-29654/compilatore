@@ -1,4 +1,4 @@
-<Window x:Class="CppStudentClient.MainWindow"
+﻿<Window x:Class="CppStudentClient.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
@@ -111,7 +111,7 @@
                 <StackPanel Grid.Column="2" Margin="4"><TextBlock Text="CLASSE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ClassBox"/></StackPanel>
                 <StackPanel Grid.Column="3" Margin="4"><TextBlock Text="TIPOLOGIA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="TaskTypeBox" Text="A" LostFocus="TaskIdentity_LostFocus"/></StackPanel>
                 <StackPanel Grid.Column="4" Margin="4"><TextBlock Text="N° ESERCIZIO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ExerciseBox" Text="1" LostFocus="TaskIdentity_LostFocus"/></StackPanel>
-                <StackPanel Grid.Column="5" Margin="4"><TextBlock Text="IP DOCENTE : PORTA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ServerBox" Text="192.168.1.50:5050"/></StackPanel>
+                <StackPanel Grid.Column="5" Margin="4"><TextBlock Text="IP DOCENTE : PORTA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ServerBox" Text=""/></StackPanel>
                 <StackPanel Grid.Column="6" Margin="4"><TextBlock Text="CODICE SESSIONE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="SessionBox"/></StackPanel>
                 <StackPanel Grid.Column="7" Margin="4">
                     <TextBlock Text="CAMBIA ESERCIZIO" Style="{StaticResource LabelStyle}"/>
@@ -162,7 +162,7 @@
         <Border Grid.Row="4" Background="#0B1729" BorderBrush="#20324C" BorderThickness="0,1,0,0" Margin="0,10,0,0">
             <Grid Margin="16,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <Button Content="Compila C++17" Click="Compile_Click" Style="{StaticResource ModernButton}" Background="#116DA8" BorderBrush="#2CA9F4" VerticalAlignment="Center"/>
+                <Button x:Name="CompileButton" Content="Compila C++17" Click="Compile_Click" Style="{StaticResource ModernButton}" Background="#116DA8" BorderBrush="#2CA9F4" VerticalAlignment="Center"/>
                 <Button x:Name="RunButton" Grid.Column="1" Content="Compila e apri CMD" Click="Run_Click" Style="{StaticResource ModernButton}" Background="#059669" BorderBrush="#19C790" VerticalAlignment="Center"/>
                 <Button x:Name="SendButton" Grid.Column="2" Content="Invia al docente" Click="Send_Click" Style="{StaticResource ModernButton}" Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
                 <TextBlock x:Name="StatusText" Grid.Column="3" Text="Pronto" Foreground="#A8B5C7" VerticalAlignment="Center" Margin="10,0"/>

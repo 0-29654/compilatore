@@ -1,0 +1,10 @@
+PATCH CV+ COMPILATORE ALUNNO
+
+Modifiche:
+- IP docente:porta e codice sessione sempre vuoti all'avvio.
+- Ricezione automatica dei dati inviati dal server C++ Visual Base tramite UDP porta 5051.
+- Ricezione di modalità esercitazione/verifica e stato compilazione.
+- Se il docente inibisce la compilazione, vengono disabilitati "Compila C++17" e "Compila e apri CMD".
+- Quando il docente riabilita la compilazione, i pulsanti tornano disponibili secondo la modalità attiva.
+
+Compilatore incorporato, editor, timer, invio compiti e resto del progetto restano invariati.

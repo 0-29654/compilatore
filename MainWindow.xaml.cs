@@ -1,4 +1,4 @@
-using ICSharpCode.AvalonEdit;
+﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using System;
@@ -9,7 +9,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -43,7 +42,10 @@ public partial class MainWindow : Window
     private bool _verificationMode;
     private bool _allowClose;
     private bool _serverModeCheckRunning;
-    private bool _serverDiscoveryRunning;
+    private bool _compilationAllowed = true;
+    private UdpClient? _teacherDiscoveryUdp;
+    private CancellationTokenSource? _teacherDiscoveryCts;
+    private const int TeacherDiscoveryPort = 5051;
     private IHighlightingDefinition? _cppHighlighting;
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
@@ -57,6 +59,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         ConfigureCppHighlighting();
         LoadSettings();
+        // IP docente e codice sessione devono essere vuoti ad ogni avvio e vengono ricevuti dal server.
+        ServerBox.Text = "";
+        SessionBox.Text = "";
+        StartTeacherDiscoveryListener();
+        Closed += (_, _) => StopTeacherDiscoveryListener();
         if (!File.Exists(BundledCompilerPath))
             OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
         LoadExerciseStates();
@@ -67,11 +74,97 @@ public partial class MainWindow : Window
         _modeTimer.Tick += async (_, _) => await RefreshServerModeAsync(false);
         _modeTimer.Start();
 
-        Loaded += async (_, _) =>
+        Loaded += async (_, _) => await RefreshServerModeAsync(false);
+    }
+
+    private void StartTeacherDiscoveryListener()
+    {
+        try
         {
-            await DiscoverTeacherServerAsync();
-            await RefreshServerModeAsync(false);
-        };
+            StopTeacherDiscoveryListener();
+            _teacherDiscoveryCts = new CancellationTokenSource();
+            _teacherDiscoveryUdp = new UdpClient(AddressFamily.InterNetwork);
+            _teacherDiscoveryUdp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            _teacherDiscoveryUdp.Client.Bind(new IPEndPoint(IPAddress.Any, TeacherDiscoveryPort));
+            _ = TeacherDiscoveryLoopAsync(_teacherDiscoveryCts.Token);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Ricezione automatica docente non disponibile";
+            OutputBox.Text = "Impossibile ascoltare IP e codice sessione sulla porta UDP 5051:\n" + ex.Message;
+        }
+    }
+
+    private void StopTeacherDiscoveryListener()
+    {
+        try { _teacherDiscoveryCts?.Cancel(); _teacherDiscoveryUdp?.Close(); } catch { }
+        _teacherDiscoveryUdp?.Dispose();
+        _teacherDiscoveryUdp = null;
+        _teacherDiscoveryCts?.Dispose();
+        _teacherDiscoveryCts = null;
+    }
+
+    private async Task TeacherDiscoveryLoopAsync(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested && _teacherDiscoveryUdp != null)
+        {
+            try
+            {
+                UdpReceiveResult packet = await _teacherDiscoveryUdp.ReceiveAsync(token);
+                string json = Encoding.UTF8.GetString(packet.Buffer);
+                using var document = JsonDocument.Parse(json);
+                JsonElement root = document.RootElement;
+                string app = Get(root, "app", "");
+                if (!app.Equals("CVPlusTeacherDiscovery", StringComparison.OrdinalIgnoreCase) &&
+                    !app.Equals("C++ Visual Base", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string ip = Get(root, "serverIp", packet.RemoteEndPoint.Address.ToString());
+                int port = root.TryGetProperty("serverPort", out JsonElement portElement) && portElement.TryGetInt32(out int parsedPort)
+                    ? parsedPort : 5050;
+                string session = Get(root, "sessionCode", Get(root, "code", Get(root, "session", "")));
+                string mode = Get(root, "mode", Get(root, "sessionMode", "esercitazione"));
+                bool compileAllowed = ReadCompilationAllowed(root);
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    ServerBox.Text = $"{ip}:{port}";
+                    SessionBox.Text = session;
+                    ApplySessionMode(mode);
+                    ApplyCompilationPermission(compileAllowed);
+                    StatusText.Text = $"Docente rilevato: {ip}:{port}";
+                });
+            }
+            catch (OperationCanceledException) { break; }
+            catch (ObjectDisposedException) { break; }
+            catch
+            {
+                try { await Task.Delay(500, token); } catch { break; }
+            }
+        }
+    }
+
+    private static bool ReadCompilationAllowed(JsonElement root)
+    {
+        foreach (string name in new[] { "compileEnabled", "compilationEnabled", "allowCompile" })
+            if (root.TryGetProperty(name, out JsonElement value) && (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False))
+                return value.GetBoolean();
+        if (root.TryGetProperty("compilationDisabled", out JsonElement disabled) &&
+            (disabled.ValueKind == JsonValueKind.True || disabled.ValueKind == JsonValueKind.False))
+            return !disabled.GetBoolean();
+        return true;
+    }
+
+    private void ApplyCompilationPermission(bool allowed)
+    {
+        _compilationAllowed = allowed;
+        CompileButton.IsEnabled = allowed;
+        RunButton.IsEnabled = allowed && !_verificationMode;
+        if (!allowed)
+        {
+            StatusText.Text = "Compilazione inibita dal docente";
+            OutputBox.Text = "Il docente ha temporaneamente inibito la compilazione sui client.";
+        }
     }
 
     private void ConfigureCppHighlighting()
@@ -230,6 +323,11 @@ public partial class MainWindow : Window
 
     private async void Run_Click(object sender, RoutedEventArgs e)
     {
+        if (!_compilationAllowed)
+        {
+            MessageBox.Show("La compilazione è stata inibita dal docente.", "Compilazione non disponibile", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         if (_verificationMode)
         {
             MessageBox.Show("Durante una verifica l'esecuzione in una finestra CMD separata è disabilitata.", "Modalità verifica", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -246,6 +344,11 @@ public partial class MainWindow : Window
 
     private async Task<bool> CompileAsync()
     {
+        if (!_compilationAllowed)
+        {
+            OutputBox.Text = "Il docente ha temporaneamente inibito la compilazione sui client.";
+            return false;
+        }
         try
         {
             string gpp = BundledCompilerPath;
@@ -296,160 +399,6 @@ public partial class MainWindow : Window
             OutputBox.Text = "Errore durante la compilazione C++17:\n" + ex.Message;
             return false;
         }
-    }
-
-
-    private async Task DiscoverTeacherServerAsync()
-    {
-        if (_serverDiscoveryRunning) return;
-        _serverDiscoveryRunning = true;
-        try
-        {
-            StatusText.Text = "Ricerca automatica del docente...";
-
-            // Prima verifica l'indirizzo già memorizzato: è il percorso più rapido.
-            if (await TryUseTeacherServerAsync(ServerBox.Text)) return;
-
-            int port = GetConfiguredServerPort();
-            string[] candidates = GetLocalIpv4Addresses()
-                .SelectMany(ip => Enumerable.Range(1, 254).Select(last => $"{ip[0]}.{ip[1]}.{ip[2]}.{last}:{port}"))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            using var gate = new SemaphoreSlim(32);
-            using var found = new CancellationTokenSource();
-            var tasks = candidates.Select(async candidate =>
-            {
-                await gate.WaitAsync(found.Token).ConfigureAwait(false);
-                try
-                {
-                    if (found.IsCancellationRequested) return false;
-                    if (!await IsTeacherServerAsync(candidate, found.Token).ConfigureAwait(false)) return false;
-                    if (!found.IsCancellationRequested) found.Cancel();
-                    await Dispatcher.InvokeAsync(() => ServerBox.Text = candidate);
-                    await TryLoadSessionDataAsync(candidate).ConfigureAwait(false);
-                    return true;
-                }
-                catch (OperationCanceledException) { return false; }
-                catch { return false; }
-                finally { gate.Release(); }
-            }).ToArray();
-
-            try { await Task.WhenAll(tasks); } catch (OperationCanceledException) { }
-
-            if (!string.IsNullOrWhiteSpace(ServerBox.Text) && await IsTeacherServerAsync(ServerBox.Text, CancellationToken.None))
-            {
-                await TryLoadSessionDataAsync(ServerBox.Text);
-                SaveSettings();
-                StatusText.Text = "Server docente trovato automaticamente";
-            }
-            else
-            {
-                StatusText.Text = "Server docente non trovato: inserimento manuale disponibile";
-            }
-        }
-        finally { _serverDiscoveryRunning = false; }
-    }
-
-    private async Task<bool> TryUseTeacherServerAsync(string candidate)
-    {
-        if (string.IsNullOrWhiteSpace(candidate)) return false;
-        if (!await IsTeacherServerAsync(candidate, CancellationToken.None)) return false;
-        await TryLoadSessionDataAsync(candidate);
-        SaveSettings();
-        StatusText.Text = "Server docente collegato";
-        return true;
-    }
-
-    private async Task<bool> IsTeacherServerAsync(string candidate, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(TimeSpan.FromMilliseconds(450));
-            using HttpRequestMessage request = new(HttpMethod.Get, NormalizeServerAddress(candidate) + "/ping");
-            using HttpResponseMessage response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);
-            return response.IsSuccessStatusCode;
-        }
-        catch { return false; }
-    }
-
-    private async Task TryLoadSessionDataAsync(string candidate)
-    {
-        string baseAddress = NormalizeServerAddress(candidate);
-        string[] endpoints = { "/discovery", "/session-info", "/ping" };
-        foreach (string endpoint in endpoints)
-        {
-            try
-            {
-                using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(900));
-                using HttpResponseMessage response = await _http.GetAsync(baseAddress + endpoint, timeout.Token).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode) continue;
-                string body = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
-                string? sessionCode = ExtractSessionCode(body);
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    ServerBox.Text = candidate;
-                    if (!string.IsNullOrWhiteSpace(sessionCode)) SessionBox.Text = sessionCode;
-                });
-                if (!string.IsNullOrWhiteSpace(sessionCode)) return;
-            }
-            catch { }
-        }
-    }
-
-    private static string? ExtractSessionCode(string body)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(body);
-            JsonElement root = doc.RootElement;
-            foreach (string name in new[] { "sessionCode", "code", "session", "codiceSessione" })
-                if (root.TryGetProperty(name, out JsonElement value) && !string.IsNullOrWhiteSpace(value.GetString()))
-                    return value.GetString()!.Trim();
-        }
-        catch { }
-        return null;
-    }
-
-    private int GetConfiguredServerPort()
-    {
-        try
-        {
-            var uri = new Uri(NormalizeServerAddress(ServerBox.Text));
-            if (uri.Port > 0) return uri.Port;
-        }
-        catch { }
-        return 5050;
-    }
-
-    private static IEnumerable<byte[]> GetLocalIpv4Addresses()
-    {
-        foreach (NetworkInterface network in NetworkInterface.GetAllNetworkInterfaces())
-        {
-            if (network.OperationalStatus != OperationalStatus.Up || network.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
-            foreach (UnicastIPAddressInformation address in network.GetIPProperties().UnicastAddresses)
-            {
-                if (address.Address.AddressFamily != AddressFamily.InterNetwork) continue;
-                byte[] bytes = address.Address.GetAddressBytes();
-                if (bytes[0] == 169 && bytes[1] == 254) continue;
-                yield return bytes;
-            }
-        }
-    }
-
-    private static string GetClientIpv4Address(string serverAddress)
-    {
-        try
-        {
-            Uri server = new(NormalizeServerAddress(serverAddress));
-            using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            socket.Connect(server.Host, server.Port);
-            if (socket.LocalEndPoint is IPEndPoint local) return local.Address.ToString();
-        }
-        catch { }
-
-        return GetLocalIpv4Addresses().Select(bytes => new IPAddress(bytes).ToString()).FirstOrDefault() ?? "";
     }
 
     private async void TestServer_Click(object sender, RoutedEventArgs e)
@@ -513,6 +462,15 @@ public partial class MainWindow : Window
             else if (root.TryGetProperty("sessionMode", out JsonElement smEl)) mode = smEl.GetString() ?? mode;
             if (root.TryGetProperty("taskType", out JsonElement typeEl) && !string.IsNullOrWhiteSpace(typeEl.GetString()))
                 TaskTypeBox.Text = typeEl.GetString()!;
+            string serverIp = Get(root, "serverIp", "");
+            if (!string.IsNullOrWhiteSpace(serverIp))
+            {
+                int serverPort = root.TryGetProperty("serverPort", out JsonElement portEl) && portEl.TryGetInt32(out int parsedPort) ? parsedPort : 5050;
+                ServerBox.Text = $"{serverIp}:{serverPort}";
+            }
+            string receivedSession = Get(root, "sessionCode", Get(root, "code", Get(root, "session", "")));
+            if (!string.IsNullOrWhiteSpace(receivedSession)) SessionBox.Text = receivedSession;
+            ApplyCompilationPermission(ReadCompilationAllowed(root));
         }
         catch
         {
@@ -538,6 +496,7 @@ public partial class MainWindow : Window
         ModeBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(199, 110, 34));
         SendButton.Content = "Invio compito";
         RunButton.IsEnabled = false;
+        CompileButton.IsEnabled = _compilationAllowed;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         WindowState = WindowState.Maximized;
@@ -554,7 +513,7 @@ public partial class MainWindow : Window
         ModeBadge.Background = new SolidColorBrush(Color.FromRgb(16, 45, 37));
         ModeBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(31, 109, 85));
         SendButton.Content = "Invia al docente";
-        RunButton.IsEnabled = true;
+        ApplyCompilationPermission(_compilationAllowed);
         Topmost = false;
         WindowStyle = WindowStyle.SingleBorderWindow;
         ResizeMode = ResizeMode.CanResize;
@@ -578,19 +537,12 @@ public partial class MainWindow : Window
         {
             SaveSettings();
             string address = NormalizeServerAddress(ServerBox.Text) + "/submit";
-            string clientIp = GetClientIpv4Address(ServerBox.Text);
-            string normalizedStudentName = StudentNameBox.Text.Trim().ToUpperInvariant();
             var timings = _exerciseStates.ToDictionary(k => k.Key, v => (long)v.Value.Elapsed.TotalSeconds);
             var payload = new
             {
                 studentId = registerNumber.ToString(),
                 registerNumber,
                 studentName = StudentNameBox.Text.Trim(),
-                normalizedStudentName,
-                clientIp,
-                studentIp = clientIp,
-                ipAddress = clientIp,
-                submissionKey = normalizedStudentName + "|" + clientIp,
                 className = ClassBox.Text.Trim(),
                 taskType = type,
                 exerciseId = exerciseNumber.ToString(),
@@ -777,8 +729,8 @@ public partial class MainWindow : Window
             File.WriteAllText(SettingsPath, JsonSerializer.Serialize(new
             {
                 studentId = StudentIdBox.Text, studentName = StudentNameBox.Text, className = ClassBox.Text,
-                taskType = TaskTypeBox.Text, exerciseId = ExerciseBox.Text, server = ServerBox.Text,
-                sessionCode = SessionBox.Text
+                taskType = TaskTypeBox.Text, exerciseId = ExerciseBox.Text, server = "",
+                sessionCode = ""
             }), Encoding.UTF8);
         }
         catch { }
@@ -796,8 +748,8 @@ public partial class MainWindow : Window
             ClassBox.Text = Get(root, "className", "");
             TaskTypeBox.Text = Get(root, "taskType", "A");
             ExerciseBox.Text = Get(root, "exerciseId", "1");
-            ServerBox.Text = Get(root, "server", ServerBox.Text);
-            SessionBox.Text = Get(root, "sessionCode", "");
+            ServerBox.Text = "";
+            SessionBox.Text = "";
         }
         catch { }
     }
@@ -838,7 +790,7 @@ public partial class MainWindow : Window
                 File.WriteAllText(SettingsPath, JsonSerializer.Serialize(new
                 {
                     studentId = Get(root, "studentId", ""), studentName = Get(root, "studentName", ""), className = Get(root, "className", ""),
-                    taskType = "A", exerciseId = "1", server = Get(root, "server", ""), sessionCode = ""
+                    taskType = "A", exerciseId = "1", server = "", sessionCode = ""
                 }), Encoding.UTF8);
             }
         }
