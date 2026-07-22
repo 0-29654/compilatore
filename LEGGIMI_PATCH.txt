@@ -1,7 +1,31 @@
-CV+ Compilatore Alunno 1.5.0
+PATCH ANALISI AUTOMATICA ERRORI C++
+Repository: 0-29654/compilatore
 
-Sostituire nella radice della repository:
-- .github/workflows/build-release.yml
-- setup_student.iss
+COSA FA
+- Mantiene l'output originale di GCC C++17.
+- Aggiunge sotto una spiegazione in italiano degli errori più comuni.
+- Indica riga e colonna quando GCC le fornisce.
+- Classifica errori di sintassi, identificatori non dichiarati, tipi incompatibili,
+  funzioni non compatibili, include mancanti ed errori del linker.
+- Cerca anche possibili problemi logici con controlli euristici:
+  loop while(true)/for(;;) senza uscita evidente, variabile del while non modificata,
+  assegnazione '=' dentro if/while, punto e virgola dopo if/for/while e graffe sbilanciate.
 
-La correzione include GCC in modo esplicito, cartella per cartella, e verifica il setup installandolo sul runner GitHub e compilando davvero un programma C++17.
+LIMITI IMPORTANTI
+Un errore logico non è sempre riconoscibile automaticamente: il codice può compilare ma
+produrre un risultato sbagliato. La patch mostra quindi "possibili problemi logici", non
+una diagnosi certa. Anche un loop infinito può dipendere dall'input o da funzioni esterne.
+
+COME APPLICARLA
+1. Estrai questa cartella.
+2. Apri PowerShell nella cartella estratta.
+3. Esegui, sostituendo il percorso con quello della repository:
+
+   powershell -ExecutionPolicy Bypass -File .\Apply-Patch.ps1 -RepositoryPath "C:\percorso\compilatore"
+
+4. Entra nella repository ed esegui:
+
+   dotnet build
+
+Il progetto usa .NET 8 e i file .cs nella cartella vengono inclusi automaticamente.
+Lo script crea anche un backup di MainWindow.xaml.cs.
