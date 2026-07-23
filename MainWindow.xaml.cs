@@ -13,6 +13,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -1433,7 +1434,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
     private static Version? ExtractVersionFromTag(
         string tag)
     {
-        Match match =
+        System.Text.RegularExpressions.Match match =
             System.Text.RegularExpressions.Regex.Match(
                 tag ?? "",
                 @"(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)"

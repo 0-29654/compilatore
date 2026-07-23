@@ -1,0 +1,12 @@
+CORREZIONE BUILD 1.9.1
+
+Errore risolto:
+CS0246 - il tipo o namespace 'Match' non è stato trovato.
+
+Correzione:
+- aggiunto using System.Text.RegularExpressions;
+- qualificato esplicitamente il tipo Match.
+
+Tutte le modifiche della versione 1.9.0 restano invariate.
+
+Aggiornare soltanto la repository compilatore.
