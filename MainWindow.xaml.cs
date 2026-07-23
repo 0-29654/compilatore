@@ -737,17 +737,30 @@ public partial class MainWindow : Window
                 ".bat"
             );
 
+        string compilerBin =
+            Path.Combine(
+                AppContext.BaseDirectory,
+                "compiler",
+                "ucrt64",
+                "bin"
+            );
+
         string batch =
             "@echo off\r\n" +
             "title CV+ Compilatore Alunno - Esecuzione C++17\r\n" +
             "color 0A\r\n" +
+            "set \"PATH=" + compilerBin + ";%PATH%\"\r\n" +
             "cls\r\n" +
             "echo ================================================\r\n" +
             "echo   CV+ - ESECUZIONE PROGRAMMA C++17\r\n" +
             "echo ================================================\r\n" +
             "echo.\r\n" +
-            $"\"{exePath}\"\r\n" +
+            "echo Compilatore runtime: " + compilerBin + "\r\n" +
             "echo.\r\n" +
+            $"\"{exePath}\"\r\n" +
+            "set \"CVPLUS_EXIT=%ERRORLEVEL%\"\r\n" +
+            "echo.\r\n" +
+            "echo Codice di uscita: %CVPLUS_EXIT%\r\n" +
             "echo ================================================\r\n" +
             "echo Programma terminato. Premi un tasto per chiudere.\r\n" +
             "pause >nul\r\n";
@@ -901,7 +914,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             }
 
             string arguments =
-                $"-std=c++17 -Wall -Wextra -Wpedantic " +
+                $"-std=c++17 -Wall -Wextra -Wpedantic  -static-libgcc -static-libstdc++" +
                 $"-fdiagnostics-color=never -I\"{dir}\" " +
                 $"-o \"{exe}\" \"{cpp}\"";
             var psi = new ProcessStartInfo(BundledCompilerPath, arguments)

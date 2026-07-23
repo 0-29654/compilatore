@@ -1,0 +1,19 @@
+CORREZIONE COMPILATORE 1.9.2
+
+Problema:
+in modalità verifica la CMD si apriva, ma l'eseguibile C++ mostrava
+l'errore Windows 0xc000007b.
+
+Causa probabile:
+l'eseguibile temporaneo dipendeva dalle DLL runtime di GCC e Windows
+poteva non trovarle o caricare DLL incompatibili.
+
+Correzioni:
+- aggiunte le opzioni GCC:
+  -static-libgcc -static-libstdc++
+- la CMD antepone al PATH:
+  compiler\ucrt64\bin
+- la console mostra il percorso runtime e il codice di uscita del programma.
+- alla chiusura della CMD il client torna massimizzato e protetto.
+
+Aggiornare soltanto la repository compilatore.
