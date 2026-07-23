@@ -1,5 +1,5 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.7.7"
+#define MyAppVersion "1.8.3"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -63,9 +63,13 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDi
 Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [Code]
+const
+  PromoFrameCount = 12;
+
 var
   PromoImage: TBitmapImage;
   PromoFrame: Integer;
+  PromoProgressTick: Integer;
 
 function PromoFrameName(Index: Integer): String;
 begin
@@ -82,20 +86,39 @@ begin
       ExpandConstant('{tmp}\') + PromoFrameName(PromoFrame)
     );
   except
+    { Se un singolo fotogramma non è disponibile, l'installazione continua. }
   end;
 end;
 
+procedure PositionPromoOnInstallingPage;
+var
+  AvailableWidth: Integer;
+begin
+  AvailableWidth := WizardForm.InstallingPage.SurfaceWidth;
+
+  PromoImage.Left :=
+    (AvailableWidth - PromoImage.Width) div 2;
+
+  PromoImage.Top :=
+    WizardForm.ProgressGauge.Top +
+    WizardForm.ProgressGauge.Height +
+    ScaleY(22);
+end;
 
 procedure UpdatePromoVisibility(CurPageID: Integer);
 begin
-  PromoImage.Visible :=
-    (CurPageID = wpWelcome) or
-    (CurPageID = wpLicense) or
-    (CurPageID = wpSelectTasks);
+  PromoImage.Visible := CurPageID = wpInstalling;
 
+  if PromoImage.Visible then
+  begin
+    PositionPromoOnInstallingPage;
+    LoadPromoFrame;
+  end;
 end;
 
 procedure InitializeWizard;
+var
+  I: Integer;
 begin
   WizardForm.WelcomeLabel1.Caption :=
     'Benvenuto in CV+ Compilatore Alunno';
@@ -123,21 +146,21 @@ begin
   WizardForm.LicenseNotAcceptedRadio.Caption :=
     'Non accetto le condizioni';
 
-  ExtractTemporaryFile(PromoFrameName(0));
+  for I := 0 to PromoFrameCount - 1 do
+    ExtractTemporaryFile(PromoFrameName(I));
 
   PromoImage := TBitmapImage.Create(WizardForm);
-  PromoImage.Parent := WizardForm;
-  PromoImage.Left := WizardForm.ClientWidth - ScaleX(340);
-  PromoImage.Top := WizardForm.ClientHeight - ScaleY(235);
-  PromoImage.Width := ScaleX(300);
-  PromoImage.Height := ScaleY(127);
+  PromoImage.Parent := WizardForm.InstallingPage.Surface;
+  PromoImage.Width := ScaleX(390);
+  PromoImage.Height := ScaleY(165);
   PromoImage.Stretch := True;
   PromoImage.Center := True;
   PromoImage.Visible := False;
 
   PromoFrame := 0;
+  PromoProgressTick := 0;
+  PositionPromoOnInstallingPage;
   LoadPromoFrame;
-
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
@@ -150,4 +173,19 @@ begin
     WizardForm.TasksList.Checked[0] := True;
 
   UpdatePromoVisibility(CurPageID);
+end;
+
+procedure CurInstallProgressChanged(
+  CurProgress, MaxProgress: Integer);
+begin
+  if not PromoImage.Visible then
+    Exit;
+
+  PromoProgressTick := PromoProgressTick + 1;
+
+  if (PromoProgressTick mod 2) = 0 then
+  begin
+    PromoFrame := (PromoFrame + 1) mod PromoFrameCount;
+    LoadPromoFrame;
+  end;
 end;

@@ -64,7 +64,7 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid x:Name="RootLayout">
         <Grid.RowDefinitions>
             <RowDefinition Height="96"/>
             <RowDefinition Height="Auto"/>
@@ -153,7 +153,7 @@
                     <TabItem x:Name="HeaderTab" Header="esercizio.h" Visibility="Collapsed">
                         <avalonEdit:TextEditor x:Name="HeaderEditor" ShowLineNumbers="True" FontFamily="Cascadia Mono, Consolas" FontSize="16"
                                                Background="#050B14" Foreground="#F7FBFF" LineNumbersForeground="#7690B1" Padding="10"
-                                               TextChanged="HeaderEditor_TextChanged"/>
+                                               TextChanged="HeaderEditor_TextChanged" PreviewMouseLeftButtonDown="HeaderEditor_PreviewMouseLeftButtonDown"/>
                     </TabItem>
                 </TabControl>
             </Grid>
@@ -170,13 +170,38 @@
 
         <Border Grid.Row="4" Background="#0B1729" BorderBrush="#20324C" BorderThickness="0,1,0,0" Margin="0,10,0,0">
             <Grid Margin="16,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <Button x:Name="RunButton" Grid.Column="0" Content="Compila e apri CMD" Click="Run_Click" Style="{StaticResource ModernButton}" Background="#059669" BorderBrush="#19C790" VerticalAlignment="Center"/>
-                <Button Grid.Column="1" Content="Aggiungi .h" Click="AddHeader_Click" Style="{StaticResource ModernButton}" Background="#7C3AED" BorderBrush="#9F7AEA" VerticalAlignment="Center"/>
-                <Button x:Name="SendButton" Grid.Column="1" Content="Invia al docente" Margin="130,0,0,0" Click="Send_Click" Style="{StaticResource ModernButton}" Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
-                <TextBlock x:Name="StatusText" Grid.Column="2" Text="Pronto" Foreground="#A8B5C7" VerticalAlignment="Center" Margin="10,0"/>
-                <Border Grid.Column="3" Background="#102C46" BorderBrush="#1E719C" BorderThickness="1" CornerRadius="8" Padding="12,7">
-                    <TextBlock Text="© Alessandro Barazzuol" Foreground="#B7F3FF" VerticalAlignment="Center" FontSize="18" FontWeight="ExtraBold"/>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Button x:Name="RunButton" Grid.Column="0" Content="Compila e apri CMD"
+                        Click="Run_Click" Style="{StaticResource ModernButton}"
+                        Background="#059669" BorderBrush="#19C790" VerticalAlignment="Center"/>
+
+                <Button Grid.Column="1" Content="Aggiungi esercizio.h"
+                        Click="AddHeader_Click" Style="{StaticResource ModernButton}"
+                        Background="#7C3AED" BorderBrush="#9F7AEA" VerticalAlignment="Center"/>
+
+                <Button x:Name="RenameHeaderButton" Grid.Column="2" Content="Rinomina .h"
+                        Click="RenameHeader_Click" Style="{StaticResource ModernButton}"
+                        Background="#9333EA" BorderBrush="#C084FC" VerticalAlignment="Center"/>
+
+                <Button x:Name="SendButton" Grid.Column="3" Content="Invia al docente"
+                        Click="Send_Click" Style="{StaticResource ModernButton}"
+                        Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
+
+                <TextBlock x:Name="StatusText" Grid.Column="4" Text="Pronto"
+                           Foreground="#A8B5C7" VerticalAlignment="Center" Margin="12,0"/>
+
+                <Border Grid.Column="5" Background="#102C46" BorderBrush="#1E719C"
+                        BorderThickness="1" CornerRadius="8" Padding="12,7">
+                    <TextBlock Text="© Alessandro Barazzuol" Foreground="#B7F3FF"
+                               VerticalAlignment="Center" FontSize="18" FontWeight="ExtraBold"/>
                 </Border>
             </Grid>
         </Border>

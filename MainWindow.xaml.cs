@@ -43,6 +43,8 @@ public partial class MainWindow : Window
     private bool _allowClose;
     private bool _serverModeCheckRunning;
     private bool _modalDialogOpen;
+    private int _openToolWindowCount;
+    private System.Windows.Controls.Grid? _activeOverlay;
     private bool _compilationAllowed = true;
     private UdpClient? _teacherDiscoveryUdp;
     private CancellationTokenSource? _teacherDiscoveryCts;
@@ -204,13 +206,68 @@ public partial class MainWindow : Window
 
     private static bool ReadCompilationAllowed(JsonElement root)
     {
+        bool globallyAllowed = true;
+
         foreach (string name in new[] { "compileEnabled", "compilationEnabled", "allowCompile" })
-            if (root.TryGetProperty(name, out JsonElement value) && (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False))
-                return value.GetBoolean();
+        {
+            if (root.TryGetProperty(name, out JsonElement value) &&
+                (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False))
+            {
+                globallyAllowed = value.GetBoolean();
+                break;
+            }
+        }
+
         if (root.TryGetProperty("compilationDisabled", out JsonElement disabled) &&
             (disabled.ValueKind == JsonValueKind.True || disabled.ValueKind == JsonValueKind.False))
-            return !disabled.GetBoolean();
+        {
+            globallyAllowed = !disabled.GetBoolean();
+        }
+
+        if (!globallyAllowed)
+            return false;
+
+        foreach (string propertyName in new[] { "disabledClientIps", "compilationDisabledClientIps" })
+        {
+            if (!root.TryGetProperty(propertyName, out JsonElement list) ||
+                list.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            var disabledIps = list
+                .EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.String)
+                .Select(item => item.GetString())
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string localIp in GetLocalIpv4Addresses())
+            {
+                if (disabledIps.Contains(localIp))
+                    return false;
+            }
+        }
+
         return true;
+    }
+
+    private static IEnumerable<string> GetLocalIpv4Addresses()
+    {
+        try
+        {
+            return Dns.GetHostAddresses(Dns.GetHostName())
+                .Where(address =>
+                    address.AddressFamily == AddressFamily.InterNetwork &&
+                    !IPAddress.IsLoopback(address))
+                .Select(address => address.ToString())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
     }
 
     private void ApplyCompilationPermission(bool allowed)
@@ -272,6 +329,129 @@ public partial class MainWindow : Window
 
 
 
+    private void CloseActiveOverlay()
+    {
+        if (_activeOverlay == null)
+            return;
+
+        RootLayout.Children.Remove(_activeOverlay);
+        _activeOverlay = null;
+        _openToolWindowCount = 0;
+        _modalDialogOpen = false;
+
+        if (_verificationMode)
+        {
+            Topmost = true;
+            WindowState = WindowState.Maximized;
+            Activate();
+            Focus();
+        }
+    }
+
+    private void ShowFullscreenOverlay(
+        string title,
+        FrameworkElement content,
+        IEnumerable<System.Windows.Controls.Button>? buttons = null,
+        Action? closingAction = null)
+    {
+        CloseActiveOverlay();
+
+        _openToolWindowCount = 1;
+        _modalDialogOpen = true;
+
+        var overlay = new System.Windows.Controls.Grid
+        {
+            Background = new SolidColorBrush(Color.FromArgb(252, 3, 9, 18))
+        };
+
+        overlay.RowDefinitions.Add(
+            new System.Windows.Controls.RowDefinition { Height = new GridLength(72) });
+        overlay.RowDefinitions.Add(
+            new System.Windows.Controls.RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        overlay.RowDefinitions.Add(
+            new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+
+        var heading = new System.Windows.Controls.TextBlock
+        {
+            Text = title,
+            Foreground = Brushes.White,
+            FontSize = 22,
+            FontWeight = FontWeights.Bold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(22, 0, 22, 0)
+        };
+
+        var closeTop = new System.Windows.Controls.Button
+        {
+            Content = "✕ Chiudi",
+            MinWidth = 120,
+            Padding = new Thickness(16, 9, 16, 9),
+            Margin = new Thickness(10),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Background = new SolidColorBrush(Color.FromRgb(51, 65, 85)),
+            Foreground = Brushes.White,
+            FontWeight = FontWeights.Bold
+        };
+
+        var header = new System.Windows.Controls.Grid
+        {
+            Background = new SolidColorBrush(Color.FromRgb(11, 23, 41))
+        };
+        header.Children.Add(heading);
+        header.Children.Add(closeTop);
+
+        System.Windows.Controls.Grid.SetRow(header, 0);
+        System.Windows.Controls.Grid.SetRow(content, 1);
+        overlay.Children.Add(header);
+        overlay.Children.Add(content);
+
+        var footer = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Background = new SolidColorBrush(Color.FromRgb(11, 23, 41)),
+            Margin = new Thickness(0),
+            Padding = new Thickness(12)
+        };
+
+        if (buttons != null)
+        {
+            foreach (var button in buttons)
+                footer.Children.Add(button);
+        }
+
+        if (footer.Children.Count > 0)
+        {
+            System.Windows.Controls.Grid.SetRow(footer, 2);
+            overlay.Children.Add(footer);
+        }
+
+        void CloseOverlay()
+        {
+            closingAction?.Invoke();
+            CloseActiveOverlay();
+        }
+
+        closeTop.Click += (_, _) => CloseOverlay();
+
+        overlay.PreviewKeyDown += (_, args) =>
+        {
+            if (args.Key == Key.Escape)
+            {
+                args.Handled = true;
+                CloseOverlay();
+            }
+        };
+
+        System.Windows.Controls.Grid.SetRowSpan(overlay, RootLayout.RowDefinitions.Count);
+        System.Windows.Controls.Panel.SetZIndex(overlay, 10000);
+
+        _activeOverlay = overlay;
+        RootLayout.Children.Add(overlay);
+        overlay.Focusable = true;
+        overlay.Focus();
+    }
+
     private void OutputBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if ((Keyboard.Modifiers & ModifierKeys.Shift) == 0)
@@ -283,133 +463,80 @@ public partial class MainWindow : Window
 
     private void OpenFullscreenOutput()
     {
-        _modalDialogOpen = true;
-        bool oldTopmost = Topmost;
-
-        try
+        var fullOutput = new System.Windows.Controls.TextBox
         {
-            var fullOutput = new System.Windows.Controls.TextBox
-            {
-                Text = OutputBox.Text,
-                IsReadOnly = true,
-                AcceptsReturn = true,
-                AcceptsTab = true,
-                TextWrapping = TextWrapping.NoWrap,
-                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                FontFamily = new FontFamily("Cascadia Mono, Consolas"),
-                FontSize = 18,
-                Background = new SolidColorBrush(Color.FromRgb(5, 11, 20)),
-                Foreground = new SolidColorBrush(Color.FromRgb(231, 244, 255)),
-                BorderThickness = new Thickness(0),
-                Padding = new Thickness(18)
-            };
+            Text = OutputBox.Text,
+            IsReadOnly = true,
+            AcceptsReturn = true,
+            AcceptsTab = true,
+            TextWrapping = TextWrapping.NoWrap,
+            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 19,
+            Background = new SolidColorBrush(Color.FromRgb(5, 11, 20)),
+            Foreground = new SolidColorBrush(Color.FromRgb(231, 244, 255)),
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(20)
+        };
 
-            var copyButton = new System.Windows.Controls.Button
-            {
-                Content = "Copia tutto",
-                MinWidth = 120,
-                Padding = new Thickness(16, 9, 16, 9),
-                Margin = new Thickness(8),
-                Background = new SolidColorBrush(Color.FromRgb(36, 52, 77)),
-                Foreground = Brushes.White
-            };
-
-            var closeButton = new System.Windows.Controls.Button
-            {
-                Content = "Chiudi",
-                IsDefault = true,
-                MinWidth = 120,
-                Padding = new Thickness(16, 9, 16, 9),
-                Margin = new Thickness(8),
-                Background = new SolidColorBrush(Color.FromRgb(14, 143, 232)),
-                Foreground = Brushes.White,
-                FontWeight = FontWeights.Bold
-            };
-
-            var buttons = new System.Windows.Controls.StackPanel
-            {
-                Orientation = System.Windows.Controls.Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right
-            };
-            buttons.Children.Add(copyButton);
-            buttons.Children.Add(closeButton);
-
-            var root = new System.Windows.Controls.Grid();
-            root.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            root.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
-
-            var title = new System.Windows.Controls.TextBlock
-            {
-                Text = $"Compilazione ed esecuzione — Tipologia {GetTaskType()} — Esercizio {GetExerciseNumber()}",
-                Foreground = Brushes.White,
-                FontSize = 20,
-                FontWeight = FontWeights.Bold,
-                Margin = new Thickness(18, 14, 18, 12)
-            };
-
-            System.Windows.Controls.Grid.SetRow(title, 0);
-            System.Windows.Controls.Grid.SetRow(fullOutput, 1);
-            System.Windows.Controls.Grid.SetRow(buttons, 2);
-            root.Children.Add(title);
-            root.Children.Add(fullOutput);
-            root.Children.Add(buttons);
-
-            var popup = new Window
-            {
-                Title = "Compilazione ed esecuzione",
-                Owner = this,
-                Content = root,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                WindowState = WindowState.Maximized,
-                WindowStyle = WindowStyle.None,
-                ResizeMode = ResizeMode.NoResize,
-                Background = new SolidColorBrush(Color.FromRgb(7, 17, 31)),
-                Topmost = _verificationMode
-            };
-
-            copyButton.Click += (_, _) =>
-            {
-                Clipboard.SetText(fullOutput.Text ?? string.Empty);
-                StatusText.Text = "Output copiato negli appunti";
-            };
-
-            closeButton.Click += (_, _) => popup.Close();
-            popup.PreviewKeyDown += (_, keyEvent) =>
-            {
-                if (keyEvent.Key == Key.Escape)
-                {
-                    keyEvent.Handled = true;
-                    popup.Close();
-                }
-            };
-
-            Topmost = false;
-            popup.ShowDialog();
-        }
-        finally
+        var copyButton = new System.Windows.Controls.Button
         {
-            Topmost = oldTopmost;
-            _modalDialogOpen = false;
-            Activate();
-        }
+            Content = "Copia tutto",
+            MinWidth = 130,
+            Padding = new Thickness(18, 10, 18, 10),
+            Margin = new Thickness(6),
+            Background = new SolidColorBrush(Color.FromRgb(36, 52, 77)),
+            Foreground = Brushes.White
+        };
+
+        copyButton.Click += (_, _) =>
+        {
+            Clipboard.SetText(fullOutput.Text ?? string.Empty);
+            StatusText.Text = "Output copiato negli appunti";
+        };
+
+        ShowFullscreenOverlay(
+            $"Compilazione ed esecuzione — Tipologia {GetTaskType()} — Esercizio {GetExerciseNumber()}",
+            fullOutput,
+            new[] { copyButton }
+        );
     }
 
-    private void Editor_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void Editor_PreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
     {
-        if ((Keyboard.Modifiers & ModifierKeys.Shift) == 0) return;
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) == 0)
+            return;
+
         e.Handled = true;
-        OpenFullscreenEditor();
+        OpenFullscreenCodeEditor(Editor, "main.cpp");
     }
 
-    private void OpenFullscreenEditor()
+    private void HeaderEditor_PreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) == 0)
+            return;
+
+        e.Handled = true;
+        OpenFullscreenCodeEditor(
+            HeaderEditor,
+            GetCurrentHeaderFileName()
+        );
+    }
+
+    private void OpenFullscreenCodeEditor(
+        TextEditor sourceEditor,
+        string displayName)
     {
         SaveCurrentExercise();
 
         var popupEditor = new TextEditor
         {
-            Text = Editor.Text,
+            Text = sourceEditor.Text,
             ShowLineNumbers = true,
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = 21,
@@ -422,84 +549,98 @@ public partial class MainWindow : Window
             VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto
         };
 
-        var closeButton = new System.Windows.Controls.Button
+        var applyButton = new System.Windows.Controls.Button
         {
-            Content = "Applica e torna al compilatore",
-            MinWidth = 230,
+            Content = "Applica modifiche",
+            MinWidth = 160,
             Padding = new Thickness(18, 10, 18, 10),
-            Margin = new Thickness(12),
-            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(6),
             Background = new SolidColorBrush(Color.FromRgb(14, 143, 232)),
             Foreground = Brushes.White,
             FontWeight = FontWeights.Bold
         };
 
-        var title = new System.Windows.Controls.TextBlock
+        var compileButton = new System.Windows.Controls.Button
         {
-            Text = $"main.cpp — Tipologia {GetTaskType()} — Esercizio {GetExerciseNumber()} — C++17",
+            Content = "Compila ed esegui",
+            MinWidth = 170,
+            Padding = new Thickness(18, 10, 18, 10),
+            Margin = new Thickness(6),
+            Background = new SolidColorBrush(Color.FromRgb(22, 163, 74)),
             Foreground = Brushes.White,
-            FontSize = 18,
-            FontWeight = FontWeights.Bold,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(18, 0, 0, 0)
+            FontWeight = FontWeights.Bold
         };
 
-        var header = new System.Windows.Controls.Grid { Background = new SolidColorBrush(Color.FromRgb(11, 23, 41)) };
-        header.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition());
-        header.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
-        header.Children.Add(title);
-        System.Windows.Controls.Grid.SetColumn(closeButton, 1);
-        header.Children.Add(closeButton);
-
-        var layout = new System.Windows.Controls.Grid();
-        layout.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = new GridLength(64) });
-        layout.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-        layout.Children.Add(header);
-        System.Windows.Controls.Grid.SetRow(popupEditor, 1);
-        layout.Children.Add(popupEditor);
-
-        var popup = new Window
+        void ApplyChanges()
         {
-            Title = "CV+ Editor C++17 a tutto schermo",
-            Content = layout,
-            Background = new SolidColorBrush(Color.FromRgb(5, 11, 20)),
-            WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            WindowState = WindowState.Maximized,
-            Topmost = _verificationMode,
-            ShowInTaskbar = !_verificationMode,
-            WindowStyle = _verificationMode ? WindowStyle.None : WindowStyle.SingleBorderWindow,
-            ResizeMode = _verificationMode ? ResizeMode.NoResize : ResizeMode.CanResize
-        };
-
-        bool applied = false;
-        void ApplyAndClose()
-        {
-            applied = true;
-            Editor.Text = popupEditor.Text;
+            sourceEditor.Text = popupEditor.Text;
             SaveCurrentExercise();
-            popup.Close();
-            Activate();
+            StatusText.Text = $"Modifiche di {displayName} applicate";
         }
 
-        closeButton.Click += (_, _) => ApplyAndClose();
-        popup.PreviewKeyDown += (_, args) =>
+        applyButton.Click += (_, _) => ApplyChanges();
+
+        compileButton.Click += async (_, _) =>
         {
-            if (args.Key == Key.Escape && !_verificationMode)
+            ApplyChanges();
+
+            if (!_compilationAllowed)
             {
-                args.Handled = true;
-                ApplyAndClose();
+                OutputBox.Text =
+                    "La compilazione è stata inibita dal docente.";
+                return;
             }
-        };
-        popup.Closing += (_, _) =>
-        {
-            if (!applied)
+
+            CompilationResult compilation =
+                await CompileSourceAsync(
+                    Editor.Text,
+                    true,
+                    HeaderEditor.Text,
+                    GetCurrentHeaderFileName()
+                );
+
+            _compileOutput = compilation.CompileOutput;
+            _exePath = compilation.ExePath;
+
+            if (compilation.Success &&
+                !string.IsNullOrWhiteSpace(compilation.ExePath))
             {
-                Editor.Text = popupEditor.Text;
-                SaveCurrentExercise();
+                ExecutionResult execution =
+                    await RunCapturedAsync(compilation.ExePath, 5);
+
+                _programOutput = execution.Output;
+                OutputBox.Text =
+                    compilation.CompileOutput +
+                    Environment.NewLine +
+                    Environment.NewLine +
+                    execution.Output;
+
+                SaveCurrentExerciseResult(
+                    compilation.CompileOutput,
+                    execution.Output
+                );
             }
+            else
+            {
+                SaveCurrentExerciseResult(
+                    compilation.CompileOutput,
+                    ""
+                );
+            }
+
+            StatusText.Text = compilation.Success
+                ? "Compilazione completata"
+                : "Compilazione non riuscita: controlla l'output";
         };
-        popup.ShowDialog();
+
+        ShowFullscreenOverlay(
+            $"{displayName} — Tipologia {GetTaskType()} — Esercizio {GetExerciseNumber()} — C++17",
+            popupEditor,
+            new[] { applyButton, compileButton },
+            ApplyChanges
+        );
     }
+
 private async void Run_Click(object sender, RoutedEventArgs e)
     {
         if (!_compilationAllowed)
@@ -508,7 +649,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             return;
         }
 
-        CompilationResult compilation = await CompileSourceAsync(Editor.Text, true, HeaderEditor.Text, "esercizio.h");
+        CompilationResult compilation = await CompileSourceAsync(Editor.Text, true, HeaderEditor.Text, GetCurrentHeaderFileName());
         _compileOutput = compilation.CompileOutput;
         _exePath = compilation.ExePath;
 
@@ -1212,35 +1353,166 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         return true;
     }
 
+    private string GetCurrentHeaderFileName()
+    {
+        if (_exerciseStates.TryGetValue(
+                _activeKey,
+                out ExerciseState? state) &&
+            !string.IsNullOrWhiteSpace(state.HeaderFileName))
+        {
+            return state.HeaderFileName;
+        }
+
+        return "esercizio.h";
+    }
+
     private const string DefaultHeaderCode =
         "#ifndef ESERCIZIO_H\n#define ESERCIZIO_H\n\n// Dichiarazioni e funzioni dell'esercizio\n\n#endif // ESERCIZIO_H\n";
 
     private void AddHeader_Click(object sender, RoutedEventArgs e)
     {
-        if (!_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state))
+        if (!_exerciseStates.TryGetValue(
+                _activeKey,
+                out ExerciseState? state))
+        {
             return;
+        }
+
+        if (string.IsNullOrWhiteSpace(state.HeaderFileName))
+            if (string.IsNullOrWhiteSpace(state.HeaderFileName))
+            state.HeaderFileName = "esercizio.h";
 
         if (string.IsNullOrWhiteSpace(state.HeaderCode))
             state.HeaderCode = DefaultHeaderCode;
 
+        HeaderTab.Header = state.HeaderFileName;
         HeaderTab.Visibility = Visibility.Visible;
         HeaderEditor.Text = state.HeaderCode;
         HeaderTab.IsSelected = true;
 
-        if (!Editor.Text.Contains("#include \"esercizio.h\"", StringComparison.Ordinal))
+        string includeLine =
+            $"#include \"{state.HeaderFileName}\"";
+
+        if (!Editor.Text.Contains(
+                includeLine,
+                StringComparison.Ordinal))
         {
-            MessageBoxResult addInclude = ShowVerificationSafeMessage(
-                "Vuoi aggiungere automaticamente #include \"esercizio.h\" nel main.cpp?",
-                "Collega header al main",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question,
-                MessageBoxResult.Yes);
+            MessageBoxResult addInclude =
+                ShowVerificationSafeMessage(
+                    $"Vuoi aggiungere automaticamente {includeLine} nel main.cpp?",
+                    "Collega header al main",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question,
+                    MessageBoxResult.Yes
+                );
 
             if (addInclude == MessageBoxResult.Yes)
-                Editor.Text = "#include \"esercizio.h\"\n" + Editor.Text;
+                Editor.Text = includeLine + "\n" + Editor.Text;
         }
 
         SaveCurrentExercise();
+    }
+
+    private void RenameHeader_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (!_exerciseStates.TryGetValue(
+                _activeKey,
+                out ExerciseState? state) ||
+            string.IsNullOrWhiteSpace(state.HeaderCode))
+        {
+            ShowVerificationSafeMessage(
+                "Prima aggiungi un file header all'esercizio.",
+                "Nessun header presente",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information,
+                MessageBoxResult.OK
+            );
+            return;
+        }
+
+        string oldName = string.IsNullOrWhiteSpace(state.HeaderFileName)
+            ? "esercizio.h"
+            : state.HeaderFileName;
+
+        var nameBox = new System.Windows.Controls.TextBox
+        {
+            Text = oldName,
+            FontSize = 20,
+            MinWidth = 360,
+            Margin = new Thickness(28),
+            HorizontalContentAlignment =
+                HorizontalAlignment.Center
+        };
+
+        var saveButton = new System.Windows.Controls.Button
+        {
+            Content = "Rinomina",
+            MinWidth = 140,
+            Padding = new Thickness(18, 10, 18, 10),
+            Margin = new Thickness(6),
+            Background = new SolidColorBrush(Color.FromRgb(14, 143, 232)),
+            Foreground = Brushes.White,
+            FontWeight = FontWeights.Bold
+        };
+
+        saveButton.Click += (_, _) =>
+        {
+            string newName = Path.GetFileName(
+                nameBox.Text.Trim()
+            );
+
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                StatusText.Text = "Inserisci un nome valido";
+                return;
+            }
+
+            if (!newName.EndsWith(
+                    ".h",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                newName += ".h";
+            }
+
+            if (newName.IndexOfAny(
+                    Path.GetInvalidFileNameChars()) >= 0)
+            {
+                StatusText.Text =
+                    "Il nome del file header contiene caratteri non validi";
+                return;
+            }
+
+            string oldInclude =
+                $"#include \"{oldName}\"";
+            string newInclude =
+                $"#include \"{newName}\"";
+
+            Editor.Text = Editor.Text.Replace(
+                oldInclude,
+                newInclude,
+                StringComparison.Ordinal
+            );
+
+            state.HeaderFileName = newName;
+            HeaderTab.Header = newName;
+            SaveCurrentExercise();
+
+            StatusText.Text =
+                $"Header rinominato in {newName}";
+
+            CloseActiveOverlay();
+        };
+
+        ShowFullscreenOverlay(
+            "Rinomina file header",
+            nameBox,
+            new[] { saveButton }
+        );
+
+        nameBox.Focus();
+        nameBox.SelectAll();
     }
 
     private void HeaderEditor_TextChanged(object? sender, EventArgs e)
@@ -1332,7 +1604,12 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         _loadingExercise = true;
         Editor.Text = string.IsNullOrWhiteSpace(state.Code) ? DefaultCode : state.Code;
         HeaderEditor.Text = state.HeaderCode ?? "";
-        HeaderTab.Visibility = string.IsNullOrWhiteSpace(state.HeaderCode) ? Visibility.Collapsed : Visibility.Visible;
+        HeaderTab.Header = string.IsNullOrWhiteSpace(state.HeaderFileName)
+            ? "esercizio.h"
+            : state.HeaderFileName;
+        HeaderTab.Visibility = string.IsNullOrWhiteSpace(state.HeaderCode)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
         _loadingExercise = false;
         _activeStartedUtc = DateTime.UtcNow;
         StatusText.Text = $"Tipologia {type} - esercizio {number}";
