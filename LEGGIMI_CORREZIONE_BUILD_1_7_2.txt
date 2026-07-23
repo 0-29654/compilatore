@@ -1,0 +1,13 @@
+CORREZIONE BUILD 1.7.2
+======================
+
+1. Copia tutto il contenuto di questa cartella nella repository locale compilatore.
+2. Scegli Sostituisci i file nella destinazione.
+3. Elimina dalla repository tutte le cartelle che iniziano con backup_ o COMPILATORE_.
+4. Esegui git add, commit e push.
+
+Correzioni:
+- virgolette corrette nel comando CMD di MainWindow.xaml.cs;
+- esclusione delle cartelle backup dalla compilazione .NET;
+- pulizia automatica delle vecchie cartelle nel workflow;
+- regole .gitignore per impedire che vengano aggiunte nuovamente.

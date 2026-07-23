@@ -17,4 +17,12 @@
     <PackageReference Include="AvalonEdit" Version="6.3.1" />
     <Resource Include="Assets\app.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Non compilare mai vecchi sorgenti presenti nelle cartelle di backup. -->
+    <Compile Remove="backup_*\**\*.cs" />
+    <Compile Remove="COMPILATORE_*\**\*.cs" />
+    <Compile Remove="__pycache__\**\*.cs" />
+    <None Remove="backup_*\**\*" />
+    <None Remove="COMPILATORE_*\**\*" />
+  </ItemGroup>
 </Project>

@@ -347,9 +347,14 @@ private async void Run_Click(object sender, RoutedEventArgs e)
 
         string bat = Path.Combine(Path.GetTempPath(), "cppstudent_run_" + Guid.NewGuid().ToString("N") + ".bat");
         File.WriteAllText(bat,
-            $"@echo off\r\nset "PATH={BundledCompilerBin};%PATH%"\r\n"{compilation.ExePath}"\r\necho.\r\necho Programma terminato.\r\npause\r\n",
+            $"@echo off\r\n" +
+            $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
+            $"\"{compilation.ExePath}\"\r\n" +
+            "echo.\r\n" +
+            "echo Programma terminato.\r\n" +
+            "pause\r\n",
             Encoding.Default);
-        Process.Start(new ProcessStartInfo("cmd.exe", $"/c "{bat}"") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{bat}\"") { UseShellExecute = true });
         _programOutput = "Esecuzione aperta nella finestra CMD.";
         SaveCurrentExerciseResult(compilation.CompileOutput, _programOutput);
     }

@@ -1,0 +1,7 @@
+
+# Cartelle locali create dalle vecchie patch: non versionare né compilare
+backup_*/
+backup-prima-*/
+COMPILATORE_CORRETTO_*/
+COMPILATORE_RIFORMULATO_*/
+__pycache__/
