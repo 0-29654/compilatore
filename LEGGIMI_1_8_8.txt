@@ -1,0 +1,1 @@
+Client 1.8.8: fix header rinominato, popup verifica, invio nome .h e A.png installer.

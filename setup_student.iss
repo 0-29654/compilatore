@@ -1,5 +1,5 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.8.6"
+#define MyAppVersion "1.8.8"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -41,19 +41,8 @@ Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescr
 
 [Files]
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "Assets\cpp_animated.gif"; DestDir: "{app}\Assets"; Flags: ignoreversion
-Source: "Assets\cpp_anim_00.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_01.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_02.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_03.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_04.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_05.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_06.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_07.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_08.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_09.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_10.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_11.bmp"; Flags: dontcopy
+Source: "Assets\A.png"; DestDir: "{app}\Assets"; Flags: ignoreversion
+Source: "Assets\installing_a.bmp"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
@@ -63,62 +52,21 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDi
 Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-const
-  PromoFrameCount = 12;
-
 var
-  PromoImage: TBitmapImage;
-  PromoFrame: Integer;
-  PromoProgressTick: Integer;
+  InstallImage: TBitmapImage;
 
-function PromoFrameName(Index: Integer): String;
+procedure PositionInstallImage;
 begin
-  if Index < 10 then
-    Result := 'cpp_anim_0' + IntToStr(Index) + '.bmp'
-  else
-    Result := 'cpp_anim_' + IntToStr(Index) + '.bmp';
-end;
+  InstallImage.Left :=
+    (WizardForm.InstallingPage.Width - InstallImage.Width) div 2;
 
-procedure LoadPromoFrame;
-begin
-  try
-    PromoImage.Bitmap.LoadFromFile(
-      ExpandConstant('{tmp}\') + PromoFrameName(PromoFrame)
-    );
-  except
-    { Se un singolo fotogramma non è disponibile, l'installazione continua. }
-  end;
-end;
-
-procedure PositionPromoOnInstallingPage;
-var
-  AvailableWidth: Integer;
-begin
-  AvailableWidth := WizardForm.InstallingPage.Width;
-
-  PromoImage.Left :=
-    (AvailableWidth - PromoImage.Width) div 2;
-
-  PromoImage.Top :=
+  InstallImage.Top :=
     WizardForm.ProgressGauge.Top +
     WizardForm.ProgressGauge.Height +
-    ScaleY(22);
-end;
-
-procedure UpdatePromoVisibility(CurPageID: Integer);
-begin
-  PromoImage.Visible := CurPageID = wpInstalling;
-
-  if PromoImage.Visible then
-  begin
-    PositionPromoOnInstallingPage;
-    LoadPromoFrame;
-  end;
+    ScaleY(18);
 end;
 
 procedure InitializeWizard;
-var
-  I: Integer;
 begin
   WizardForm.WelcomeLabel1.Caption :=
     'Benvenuto in CV+ Compilatore Alunno';
@@ -146,21 +94,20 @@ begin
   WizardForm.LicenseNotAcceptedRadio.Caption :=
     'Non accetto le condizioni';
 
-  for I := 0 to PromoFrameCount - 1 do
-    ExtractTemporaryFile(PromoFrameName(I));
+  ExtractTemporaryFile('installing_a.bmp');
 
-  PromoImage := TBitmapImage.Create(WizardForm);
-  PromoImage.Parent := WizardForm.InstallingPage;
-  PromoImage.Width := ScaleX(390);
-  PromoImage.Height := ScaleY(165);
-  PromoImage.Stretch := True;
-  PromoImage.Center := True;
-  PromoImage.Visible := False;
+  InstallImage := TBitmapImage.Create(WizardForm);
+  InstallImage.Parent := WizardForm.InstallingPage;
+  InstallImage.Width := ScaleX(430);
+  InstallImage.Height := ScaleY(200);
+  InstallImage.Stretch := True;
+  InstallImage.Center := True;
+  InstallImage.Visible := False;
+  InstallImage.Bitmap.LoadFromFile(
+    ExpandConstant('{tmp}\installing_a.bmp')
+  );
 
-  PromoFrame := 0;
-  PromoProgressTick := 0;
-  PositionPromoOnInstallingPage;
-  LoadPromoFrame;
+  PositionInstallImage;
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
@@ -172,20 +119,8 @@ begin
      (WizardForm.TasksList.Items.Count > 0) then
     WizardForm.TasksList.Checked[0] := True;
 
-  UpdatePromoVisibility(CurPageID);
-end;
+  InstallImage.Visible := CurPageID = wpInstalling;
 
-procedure CurInstallProgressChanged(
-  CurProgress, MaxProgress: Integer);
-begin
-  if not PromoImage.Visible then
-    Exit;
-
-  PromoProgressTick := PromoProgressTick + 1;
-
-  if (PromoProgressTick mod 2) = 0 then
-  begin
-    PromoFrame := (PromoFrame + 1) mod PromoFrameCount;
-    LoadPromoFrame;
-  end;
+  if InstallImage.Visible then
+    PositionInstallImage;
 end;

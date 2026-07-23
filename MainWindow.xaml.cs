@@ -713,13 +713,20 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             string cpp = Path.Combine(dir, stem + ".cpp");
             string exe = Path.Combine(dir, stem + ".exe");
             File.WriteAllText(cpp, sourceCode, new UTF8Encoding(false));
+            string safeHeaderName = NormalizeHeaderFileName(headerFileName);
             if (!string.IsNullOrWhiteSpace(headerCode))
             {
-                string safeHeaderName = Path.GetFileName(string.IsNullOrWhiteSpace(headerFileName) ? "esercizio.h" : headerFileName);
-                File.WriteAllText(Path.Combine(dir, safeHeaderName), headerCode, new UTF8Encoding(false));
+                File.WriteAllText(
+                    Path.Combine(dir, safeHeaderName),
+                    headerCode,
+                    new UTF8Encoding(false)
+                );
             }
 
-            string arguments = $"-std=c++17 -Wall -Wextra -Wpedantic -fdiagnostics-color=never -o \"{exe}\" \"{cpp}\"";
+            string arguments =
+                $"-std=c++17 -Wall -Wextra -Wpedantic " +
+                $"-fdiagnostics-color=never -I\"{dir}\" " +
+                $"-o \"{exe}\" \"{cpp}\"";
             var psi = new ProcessStartInfo(BundledCompilerPath, arguments)
             {
                 UseShellExecute = false,
@@ -1138,7 +1145,12 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                 { failed.Add(exerciseNumber); continue; }
 
                 StatusText.Text = $"Compilazione esercizio {exerciseNumber}...";
-                CompilationResult compilation = await CompileSourceAsync(state.Code, exerciseNumber == activeExercise, state.HeaderCode, state.HeaderFileName);
+                CompilationResult compilation = await CompileSourceAsync(
+                    state.Code,
+                    exerciseNumber == activeExercise,
+                    state.HeaderCode,
+                    NormalizeHeaderFileName(state.HeaderFileName)
+                );
                 ExecutionResult execution = compilation.Success && !string.IsNullOrWhiteSpace(compilation.ExePath)
                     ? await RunCapturedAsync(compilation.ExePath, 5)
                     : new ExecutionResult(false, "Programma non eseguito perché la compilazione non è riuscita.", null, false);
@@ -1188,7 +1200,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                     exerciseTimes = timings,
 
                     code = state.Code,
-                    headerFileName = state.HeaderFileName,
+                    headerFileName = NormalizeHeaderFileName(state.HeaderFileName),
                     headerCode = state.HeaderCode,
                     hasHeader = !string.IsNullOrWhiteSpace(state.HeaderCode),
                     compilationSucceeded = compilation.Success,
@@ -1333,20 +1345,56 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         registerNumber = 0; exerciseNumber = 0;
         if (string.IsNullOrWhiteSpace(StudentIdBox.Text) || string.IsNullOrWhiteSpace(StudentNameBox.Text) || string.IsNullOrWhiteSpace(TaskTypeBox.Text) || string.IsNullOrWhiteSpace(ExerciseBox.Text))
         {
-            MessageBox.Show("Compila N° registro, nome e cognome, tipologia e N° esercizio.", "Dati mancanti", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowVerificationSafeMessage(
+                "Compila N° registro, nome e cognome, tipologia e N° esercizio.",
+                "Dati mancanti",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                MessageBoxResult.OK
+            );
             return false;
         }
         if (!int.TryParse(StudentIdBox.Text.Trim(), out registerNumber) || registerNumber <= 0)
         {
-            MessageBox.Show("Il N° registro alunno deve essere un numero intero maggiore di zero.", "Numero non valido", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowVerificationSafeMessage(
+                "Il N° registro alunno deve essere un numero intero maggiore di zero.",
+                "Numero non valido",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                MessageBoxResult.OK
+            );
             StudentIdBox.Focus(); StudentIdBox.SelectAll(); return false;
         }
         if (!int.TryParse(ExerciseBox.Text.Trim(), out exerciseNumber) || exerciseNumber <= 0)
         {
-            MessageBox.Show("Il N° esercizio deve essere un numero intero maggiore di zero.", "Numero non valido", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowVerificationSafeMessage(
+                "Il N° esercizio deve essere un numero intero maggiore di zero.",
+                "Numero non valido",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                MessageBoxResult.OK
+            );
             ExerciseBox.Focus(); ExerciseBox.SelectAll(); return false;
         }
         return true;
+    }
+
+    private static string NormalizeHeaderFileName(string? value)
+    {
+        string fileName = Path.GetFileName(
+            string.IsNullOrWhiteSpace(value) ? "esercizio.h" : value.Trim()
+        );
+
+        if (string.IsNullOrWhiteSpace(fileName))
+            fileName = "esercizio.h";
+
+        if (!fileName.EndsWith(".h", StringComparison.OrdinalIgnoreCase) &&
+            !fileName.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase))
+        {
+            fileName += ".h";
+        }
+
+        return fileName;
     }
 
     private string GetCurrentHeaderFileName()
@@ -1356,7 +1404,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                 out ExerciseState? state) &&
             !string.IsNullOrWhiteSpace(state.HeaderFileName))
         {
-            return state.HeaderFileName;
+            return NormalizeHeaderFileName(state.HeaderFileName);
         }
 
         return "esercizio.h";
@@ -1375,7 +1423,6 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         }
 
         if (string.IsNullOrWhiteSpace(state.HeaderFileName))
-            if (string.IsNullOrWhiteSpace(state.HeaderFileName))
             state.HeaderFileName = "esercizio.h";
 
         if (string.IsNullOrWhiteSpace(state.HeaderCode))
@@ -1480,6 +1527,9 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                 return;
             }
 
+            newName = NormalizeHeaderFileName(newName);
+            oldName = NormalizeHeaderFileName(oldName);
+
             string oldInclude =
                 $"#include \"{oldName}\"";
             string newInclude =
@@ -1488,10 +1538,11 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             Editor.Text = Editor.Text.Replace(
                 oldInclude,
                 newInclude,
-                StringComparison.Ordinal
+                StringComparison.OrdinalIgnoreCase
             );
 
             state.HeaderFileName = newName;
+            state.HeaderCode = HeaderEditor.Text;
             HeaderTab.Header = newName;
             SaveCurrentExercise();
 
@@ -1618,7 +1669,8 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         if (!_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state)) state = _exerciseStates[_activeKey] = new ExerciseState();
         state.Code = Editor.Text;
         state.HeaderCode = HeaderEditor.Text;
-        state.HeaderFileName = "esercizio.h";
+        if (string.IsNullOrWhiteSpace(state.HeaderFileName))
+            state.HeaderFileName = "esercizio.h";
         state.Elapsed += DateTime.UtcNow - _activeStartedUtc;
         _activeStartedUtc = DateTime.UtcNow;
         SaveExerciseStates();
