@@ -1,5 +1,5 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.7.4"
+#define MyAppVersion "1.7.5"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -65,7 +65,6 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: now
 [Code]
 var
   PromoImage: TBitmapImage;
-  PromoTimer: TTimer;
   PromoFrame: Integer;
 
 function PromoFrameName(Index: Integer): String;
@@ -86,13 +85,6 @@ begin
   end;
 end;
 
-procedure PromoTimerTick(Sender: TObject);
-begin
-  PromoFrame := PromoFrame + 1;
-  if PromoFrame > 11 then
-    PromoFrame := 0;
-  LoadPromoFrame;
-end;
 
 procedure UpdatePromoVisibility(CurPageID: Integer);
 begin
@@ -101,12 +93,9 @@ begin
     (CurPageID = wpLicense) or
     (CurPageID = wpSelectTasks);
 
-  PromoTimer.Enabled := PromoImage.Visible;
 end;
 
 procedure InitializeWizard;
-var
-  I: Integer;
 begin
   WizardForm.WelcomeLabel1.Caption :=
     'Benvenuto in CV+ Compilatore Alunno';
@@ -134,8 +123,7 @@ begin
   WizardForm.LicenseNotAcceptedRadio.Caption :=
     'Non accetto le condizioni';
 
-  for I := 0 to 11 do
-    ExtractTemporaryFile(PromoFrameName(I));
+  ExtractTemporaryFile(PromoFrameName(0));
 
   PromoImage := TBitmapImage.Create(WizardForm);
   PromoImage.Parent := WizardForm;
@@ -150,10 +138,6 @@ begin
   PromoFrame := 0;
   LoadPromoFrame;
 
-  PromoTimer := TTimer.Create(WizardForm);
-  PromoTimer.Interval := 110;
-  PromoTimer.OnTimer := @PromoTimerTick;
-  PromoTimer.Enabled := False;
 end;
 
 procedure CurPageChanged(CurPageID: Integer);

@@ -1,0 +1,17 @@
+CORREZIONE INNO SETUP 1.7.5
+
+Problema risolto:
+Unknown type 'TTimer' in setup_student.iss.
+
+Inno Setup Pascal Script non espone TTimer come componente standard.
+La versione 1.7.5 elimina il timer e mostra nell'installer un'immagine C++
+statica ricavata dalla GIF.
+
+Il file cpp_animated.gif continua a essere installato nella cartella Assets
+del programma, ma non viene animato durante l'installazione.
+
+APPLICAZIONE:
+1. Copiare tutto il contenuto di questa cartella nella repository locale.
+2. Sostituire i file esistenti.
+3. Fare commit e push.
+4. Attendere una nuova workflow collegata al nuovo commit.
