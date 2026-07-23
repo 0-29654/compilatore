@@ -1,0 +1,18 @@
+COMPILATORE CLIENT 1.9.0
+
+- editor main.cpp più alto;
+- area Compilazione ed esecuzione più bassa;
+- STANDARD C++17 spostato nell'intestazione;
+- comandi riordinati nella barra inferiore;
+- Tipologia ed esercizio visibili accanto ai comandi;
+- Test server con barra luminosa indeterminata;
+- IP locale sotto il tempo esercizio;
+- Elimina .h ripristina il modello base main.cpp;
+- ritorno dalla verifica sempre massimizzato;
+- Ricerca aggiornamenti dalla Release pubblica GitHub;
+- download e avvio dell'installer più recente;
+- aggiornamenti disabilitati durante la verifica;
+- Compila ed esegui in verifica apre una vera CMD visibile;
+- chiusa la CMD, il compilatore torna protetto e massimizzato.
+
+Aggiornare soltanto la repository compilatore.

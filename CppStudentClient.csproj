@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>CppStudentClient</AssemblyName>
     <RootNamespace>CppStudentClient</RootNamespace>
-    <Version>1.4.0</Version>
+    <Version>1.9.0</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Product>CV+ Compilatore Alunno</Product>
     <Company>Alessandro Barazzuol</Company>

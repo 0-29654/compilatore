@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -72,7 +73,32 @@ public partial class MainWindow : Window
         _modeTimer.Tick += async (_, _) => await RefreshServerModeAsync(false);
         _modeTimer.Start();
 
-        Loaded += async (_, _) => await RefreshServerModeAsync(false);
+        Loaded += async (_, _) =>
+        {
+            UpdateLocalIpText();
+            UpdateTaskSummary();
+            await RefreshServerModeAsync(false);
+        };
+    }
+
+    private void UpdateLocalIpText()
+    {
+        string localIp =
+            GetLocalIpv4Addresses().FirstOrDefault() ??
+            "non disponibile";
+
+        LocalIpText.Text = "IP: " + localIp;
+    }
+
+    private void UpdateTaskSummary()
+    {
+        string type =
+            string.IsNullOrWhiteSpace(TaskTypeBox.Text)
+            ? "—"
+            : TaskTypeBox.Text.Trim().ToUpperInvariant();
+
+        CurrentTaskSummaryText.Text =
+            $"Tipologia {type} • esercizio {GetExerciseNumber()}";
     }
 
     private void ResetClientStateOnStartup()
@@ -93,6 +119,7 @@ public partial class MainWindow : Window
         HeaderTab.Visibility = Visibility.Collapsed;
         OutputBox.Text = "";
         StatusText.Text = "Pronto - nuova sessione";
+        UpdateTaskSummary();
     }
 
     private void StartTeacherDiscoveryListener()
@@ -699,6 +726,79 @@ public partial class MainWindow : Window
         );
     }
 
+    private async Task RunInVisibleCmdAsync(string exePath)
+    {
+        string batchPath =
+            Path.Combine(
+                Path.GetTempPath(),
+                "cvplus_verifica_" +
+                Guid.NewGuid().ToString("N") +
+                ".bat"
+            );
+
+        string batch =
+            "@echo off\r\n" +
+            "title CV+ Compilatore Alunno - Esecuzione C++17\r\n" +
+            "color 0A\r\n" +
+            "cls\r\n" +
+            "echo ================================================\r\n" +
+            "echo   CV+ - ESECUZIONE PROGRAMMA C++17\r\n" +
+            "echo ================================================\r\n" +
+            "echo.\r\n" +
+            $"\"{exePath}\"\r\n" +
+            "echo.\r\n" +
+            "echo ================================================\r\n" +
+            "echo Programma terminato. Premi un tasto per chiudere.\r\n" +
+            "pause >nul\r\n";
+
+        File.WriteAllText(
+            batchPath,
+            batch,
+            Encoding.Default
+        );
+
+        bool oldTopmost = Topmost;
+        Topmost = false;
+
+        try
+        {
+            using Process? process =
+                Process.Start(
+                    new ProcessStartInfo(
+                        "cmd.exe",
+                        $"/c \"{batchPath}\""
+                    )
+                    {
+                        UseShellExecute = true,
+                        WindowStyle = ProcessWindowStyle.Normal
+                    }
+                );
+
+            if (process == null)
+                throw new InvalidOperationException(
+                    "Impossibile aprire la finestra CMD."
+                );
+
+            await process.WaitForExitAsync();
+        }
+        finally
+        {
+            try { File.Delete(batchPath); }
+            catch { }
+
+            if (_verificationMode)
+            {
+                Topmost = oldTopmost;
+                WindowStyle = WindowStyle.None;
+                ResizeMode = ResizeMode.NoResize;
+                WindowState = WindowState.Maximized;
+                ShowInTaskbar = false;
+                Activate();
+                Focus();
+            }
+        }
+    }
+
 private async void Run_Click(object sender, RoutedEventArgs e)
     {
         if (!_compilationAllowed)
@@ -719,31 +819,22 @@ private async void Run_Click(object sender, RoutedEventArgs e)
 
         if (_verificationMode)
         {
-            ExecutionResult execution =
-                await RunCapturedAsync(
-                    compilation.ExePath,
-                    5
-                );
+            await RunInVisibleCmdAsync(
+                compilation.ExePath
+            );
 
-            _programOutput = execution.Output;
+            _programOutput =
+                "Esecuzione completata nella finestra CMD visibile.";
 
             OutputBox.Text =
                 compilation.CompileOutput +
                 Environment.NewLine +
                 Environment.NewLine +
-                execution.Output;
+                _programOutput;
 
             SaveCurrentExerciseResult(
                 compilation.CompileOutput,
-                execution.Output
-            );
-
-            // In verifica non apriamo una vera finestra esterna di Windows,
-            // perché permetterebbe di uscire dall'ambiente protetto.
-            // Mostriamo invece un terminale CMD interno, visibile e chiudibile.
-            ShowVerificationTerminal(
-                compilation.CompileOutput,
-                execution
+                _programOutput
             );
 
             return;
@@ -972,23 +1063,66 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         }
     }
 
-    private async void TestServer_Click(object sender, RoutedEventArgs e)
+    private async void TestServer_Click(
+        object sender,
+        RoutedEventArgs e)
     {
+        TestServerButton.IsEnabled = false;
+        ServerTestProgress.Visibility =
+            Visibility.Visible;
+        StatusText.Text = "Verifica server...";
+
         try
         {
-            string baseAddress = NormalizeServerAddress(ServerBox.Text);
-            StatusText.Text = "Verifica server...";
-            using HttpResponseMessage response = await _http.GetAsync(baseAddress + "/ping");
-            string message = await response.Content.ReadAsStringAsync();
+            string baseAddress =
+                NormalizeServerAddress(ServerBox.Text);
+
+            using var timeout =
+                new CancellationTokenSource(
+                    TimeSpan.FromSeconds(5)
+                );
+
+            using HttpResponseMessage response =
+                await _http.GetAsync(
+                    baseAddress + "/ping",
+                    timeout.Token
+                );
+
+            string message =
+                await response.Content.ReadAsStringAsync();
+
             response.EnsureSuccessStatusCode();
             await RefreshServerModeAsync(true);
+
             StatusText.Text = "Server raggiungibile";
-            MessageBox.Show(message + $"\n\nModalità: {(_verificationMode ? "VERIFICA" : "ESERCITAZIONE")}", "Connessione al docente", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            ShowVerificationSafeMessage(
+                message +
+                $"\n\nModalità: {(_verificationMode ? "VERIFICA" : "ESERCITAZIONE")}",
+                "Connessione al docente",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information,
+                MessageBoxResult.OK
+            );
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Server non raggiungibile";
-            MessageBox.Show(BuildNetworkError(ex), "Connessione non riuscita", MessageBoxButton.OK, MessageBoxImage.Warning);
+            StatusText.Text =
+                "Server non raggiungibile";
+
+            ShowVerificationSafeMessage(
+                BuildNetworkError(ex),
+                "Connessione non riuscita",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                MessageBoxResult.OK
+            );
+        }
+        finally
+        {
+            ServerTestProgress.Visibility =
+                Visibility.Collapsed;
+            TestServerButton.IsEnabled = true;
         }
     }
 
@@ -1073,6 +1207,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         WindowState = WindowState.Maximized;
         Topmost = true;
         ShowInTaskbar = false;
+        UpdateButton.IsEnabled = false;
         StatusText.Text = "Modalità verifica attiva";
         Activate();
     }
@@ -1089,8 +1224,229 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         Topmost = false;
         WindowStyle = WindowStyle.SingleBorderWindow;
         ResizeMode = ResizeMode.CanResize;
-        WindowState = WindowState.Normal;
+        WindowState = WindowState.Maximized;
         ShowInTaskbar = true;
+        UpdateButton.IsEnabled = true;
+        Activate();
+    }
+
+    private async void CheckUpdates_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (_verificationMode)
+        {
+            ShowVerificationSafeMessage(
+                "La ricerca degli aggiornamenti è disponibile soltanto in modalità esercitazione.",
+                "Aggiornamenti non disponibili",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information,
+                MessageBoxResult.OK
+            );
+            return;
+        }
+
+        UpdateButton.IsEnabled = false;
+        StatusText.Text = "Ricerca aggiornamenti...";
+
+        try
+        {
+            using var request =
+                new HttpRequestMessage(
+                    HttpMethod.Get,
+                    "https://api.github.com/repos/0-29654/compilatore/releases/latest"
+                );
+
+            request.Headers.UserAgent.ParseAdd(
+                "CVPlusCompilatoreAlunno/1.9.0"
+            );
+
+            using HttpResponseMessage response =
+                await _http.SendAsync(request);
+
+            response.EnsureSuccessStatusCode();
+
+            string body =
+                await response.Content.ReadAsStringAsync();
+
+            using JsonDocument document =
+                JsonDocument.Parse(body);
+
+            JsonElement release =
+                document.RootElement;
+
+            string tag =
+                release.TryGetProperty(
+                    "tag_name",
+                    out JsonElement tagElement)
+                ? tagElement.GetString() ?? ""
+                : "";
+
+            Version currentVersion =
+                Assembly.GetExecutingAssembly()
+                    .GetName()
+                    .Version ??
+                new Version(1, 9, 0);
+
+            Version? latestVersion =
+                ExtractVersionFromTag(tag);
+
+            if (latestVersion == null ||
+                latestVersion <= currentVersion)
+            {
+                StatusText.Text =
+                    "Il programma è aggiornato";
+
+                ShowVerificationSafeMessage(
+                    $"La versione installata ({currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}) è già aggiornata.",
+                    "Nessun aggiornamento",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information,
+                    MessageBoxResult.OK
+                );
+
+                return;
+            }
+
+            string? downloadUrl = null;
+
+            if (release.TryGetProperty(
+                    "assets",
+                    out JsonElement assets) &&
+                assets.ValueKind == JsonValueKind.Array)
+            {
+                foreach (
+                    JsonElement asset
+                    in assets.EnumerateArray())
+                {
+                    string name =
+                        asset.TryGetProperty(
+                            "name",
+                            out JsonElement nameElement)
+                        ? nameElement.GetString() ?? ""
+                        : "";
+
+                    if (!name.EndsWith(
+                            ".exe",
+                            StringComparison.OrdinalIgnoreCase) ||
+                        !name.Contains(
+                            "Setup",
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    downloadUrl =
+                        asset.TryGetProperty(
+                            "browser_download_url",
+                            out JsonElement urlElement)
+                        ? urlElement.GetString()
+                        : null;
+
+                    if (!string.IsNullOrWhiteSpace(downloadUrl))
+                        break;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(downloadUrl))
+                throw new InvalidOperationException(
+                    "La Release più recente non contiene un installer .exe."
+                );
+
+            MessageBoxResult answer =
+                ShowVerificationSafeMessage(
+                    $"È disponibile la versione {latestVersion}.\n\n" +
+                    "Vuoi scaricarla e avviare l'installazione?",
+                    "Aggiornamento disponibile",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question,
+                    MessageBoxResult.Yes
+                );
+
+            if (answer != MessageBoxResult.Yes)
+            {
+                StatusText.Text =
+                    "Aggiornamento annullato";
+                return;
+            }
+
+            StatusText.Text =
+                "Download aggiornamento...";
+
+            string installerPath =
+                Path.Combine(
+                    Path.GetTempPath(),
+                    "CppStudentClient_Update_" +
+                    latestVersion +
+                    ".exe"
+                );
+
+            using HttpResponseMessage download =
+                await _http.GetAsync(
+                    downloadUrl,
+                    HttpCompletionOption.ResponseHeadersRead
+                );
+
+            download.EnsureSuccessStatusCode();
+
+            await using Stream source =
+                await download.Content.ReadAsStreamAsync();
+
+            await using FileStream destination =
+                File.Create(installerPath);
+
+            await source.CopyToAsync(destination);
+
+            StatusText.Text = "Avvio installer...";
+
+            Process.Start(
+                new ProcessStartInfo(installerPath)
+                {
+                    UseShellExecute = true
+                }
+            );
+
+            _allowClose = true;
+            Close();
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text =
+                "Ricerca aggiornamenti non riuscita";
+
+            ShowVerificationSafeMessage(
+                "Non è stato possibile verificare o scaricare l'aggiornamento.\n\n" +
+                ex.Message,
+                "Errore aggiornamenti",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                MessageBoxResult.OK
+            );
+        }
+        finally
+        {
+            if (IsVisible)
+                UpdateButton.IsEnabled = true;
+        }
+    }
+
+    private static Version? ExtractVersionFromTag(
+        string tag)
+    {
+        Match match =
+            System.Text.RegularExpressions.Regex.Match(
+                tag ?? "",
+                @"(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)"
+            );
+
+        if (!match.Success)
+            return null;
+
+        return new Version(
+            int.Parse(match.Groups[1].Value),
+            int.Parse(match.Groups[2].Value),
+            int.Parse(match.Groups[3].Value)
+        );
     }
 
     private async Task<bool> IsTeacherServerAvailableAsync()
@@ -1700,12 +2056,16 @@ private async void Run_Click(object sender, RoutedEventArgs e)
 
         state.HeaderCode = "";
         state.HeaderFileName = "";
+        state.Code = DefaultCode;
+
         HeaderEditor.Text = "";
         HeaderTab.Header = "esercizio.h";
         HeaderTab.Visibility = Visibility.Collapsed;
+        Editor.Text = DefaultCode;
 
         SaveCurrentExercise();
-        StatusText.Text = $"{headerName} eliminato";
+        StatusText.Text =
+            $"{headerName} eliminato; main.cpp ripristinato";
     }
 
     private void HeaderEditor_TextChanged(object? sender, EventArgs e)
@@ -1834,7 +2194,14 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         return stored + (DateTime.UtcNow - _activeStartedUtc);
     }
 
-    private void UpdateExerciseClock() => ExerciseTimeText.Text = "Tempo esercizio: " + FormatDuration(GetElapsedForActive());
+    private void UpdateExerciseClock()
+    {
+        ExerciseTimeText.Text =
+            "Tempo esercizio: " +
+            FormatDuration(GetElapsedForActive());
+
+        UpdateTaskSummary();
+    }
     private static string FormatDuration(TimeSpan value) => $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}";
     private string GetTaskType() => string.IsNullOrWhiteSpace(TaskTypeBox.Text) ? "A" : TaskTypeBox.Text.Trim();
     private int GetExerciseNumber() => int.TryParse(ExerciseBox.Text.Trim(), out int n) && n > 0 ? n : 1;
