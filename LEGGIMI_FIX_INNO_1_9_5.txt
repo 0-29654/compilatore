@@ -1,0 +1,32 @@
+CORREZIONE INSTALLER 1.9.5
+
+Errore risolto:
+setup_student.iss, riga 79:
+Invalid number of parameters.
+
+Causa:
+Inno Setup 6.6 e versioni successive richiedono quattro parametri
+per CreateCustomForm. ClientWidth e ClientHeight non vanno più
+assegnati successivamente.
+
+Vecchio codice non compatibile:
+StartupForm := CreateCustomForm;
+StartupForm.ClientWidth := ScaleX(440);
+StartupForm.ClientHeight := ScaleY(160);
+
+Nuovo codice:
+StartupForm := CreateCustomForm(
+  ScaleX(440),
+  ScaleY(160),
+  False,
+  False
+);
+
+Restano inclusi:
+- finestra iniziale Preparazione installazione;
+- terminale interno in modalità verifica;
+- correzione GCC senza opzioni static;
+- aggiornamento automatico;
+- tutte le modifiche precedenti.
+
+Aggiornare soltanto la repository compilatore.

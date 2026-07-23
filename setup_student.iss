@@ -1,5 +1,5 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.9.4"
+#define MyAppVersion "1.9.5"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -76,10 +76,15 @@ function InitializeSetup(): Boolean;
 begin
   Result := True;
 
-  StartupForm := CreateCustomForm;
+  StartupForm :=
+    CreateCustomForm(
+      ScaleX(440),
+      ScaleY(160),
+      False,
+      False
+    );
+
   StartupForm.Caption := 'CV+ Compilatore Alunno';
-  StartupForm.ClientWidth := ScaleX(440);
-  StartupForm.ClientHeight := ScaleY(160);
   StartupForm.Position := poScreenCenter;
   StartupForm.BorderStyle := bsDialog;
   StartupForm.Color := clWhite;
