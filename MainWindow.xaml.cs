@@ -680,7 +680,8 @@ public partial class MainWindow : Window
             "C:\\CVPlus\\Esercizio> esercizio.exe\r\n\r\n" +
             execution.Output +
             "\r\n\r\n" +
-            "Programma terminato. Premi Chiudi o ESC per tornare all'editor.";
+            "Programma terminato. Premi Chiudi o ESC per tornare all'editor.\r\n" +
+            "Terminale integrato nella modalità verifica.";
 
         var terminal = new System.Windows.Controls.TextBox
         {
@@ -727,92 +728,6 @@ public partial class MainWindow : Window
         );
     }
 
-    private async Task RunInVisibleCmdAsync(string exePath)
-    {
-        string batchPath =
-            Path.Combine(
-                Path.GetTempPath(),
-                "cvplus_verifica_" +
-                Guid.NewGuid().ToString("N") +
-                ".bat"
-            );
-
-        string compilerBin =
-            Path.Combine(
-                AppContext.BaseDirectory,
-                "compiler",
-                "ucrt64",
-                "bin"
-            );
-
-        string batch =
-            "@echo off\r\n" +
-            "title CV+ Compilatore Alunno - Esecuzione C++17\r\n" +
-            "color 0A\r\n" +
-            "set \"PATH=" + compilerBin + ";%PATH%\"\r\n" +
-            "cls\r\n" +
-            "echo ================================================\r\n" +
-            "echo   CV+ - ESECUZIONE PROGRAMMA C++17\r\n" +
-            "echo ================================================\r\n" +
-            "echo.\r\n" +
-            "echo Compilatore runtime: " + compilerBin + "\r\n" +
-            "echo.\r\n" +
-            $"\"{exePath}\"\r\n" +
-            "set \"CVPLUS_EXIT=%ERRORLEVEL%\"\r\n" +
-            "echo.\r\n" +
-            "echo Codice di uscita: %CVPLUS_EXIT%\r\n" +
-            "echo ================================================\r\n" +
-            "echo Programma terminato. Premi un tasto per chiudere.\r\n" +
-            "pause >nul\r\n";
-
-        File.WriteAllText(
-            batchPath,
-            batch,
-            Encoding.Default
-        );
-
-        bool oldTopmost = Topmost;
-        Topmost = false;
-
-        try
-        {
-            using Process? process =
-                Process.Start(
-                    new ProcessStartInfo(
-                        "cmd.exe",
-                        $"/c \"{batchPath}\""
-                    )
-                    {
-                        UseShellExecute = true,
-                        WindowStyle = ProcessWindowStyle.Normal
-                    }
-                );
-
-            if (process == null)
-                throw new InvalidOperationException(
-                    "Impossibile aprire la finestra CMD."
-                );
-
-            await process.WaitForExitAsync();
-        }
-        finally
-        {
-            try { File.Delete(batchPath); }
-            catch { }
-
-            if (_verificationMode)
-            {
-                Topmost = oldTopmost;
-                WindowStyle = WindowStyle.None;
-                ResizeMode = ResizeMode.NoResize;
-                WindowState = WindowState.Maximized;
-                ShowInTaskbar = false;
-                Activate();
-                Focus();
-            }
-        }
-    }
-
 private async void Run_Click(object sender, RoutedEventArgs e)
     {
         if (!_compilationAllowed)
@@ -833,22 +748,28 @@ private async void Run_Click(object sender, RoutedEventArgs e)
 
         if (_verificationMode)
         {
-            await RunInVisibleCmdAsync(
-                compilation.ExePath
-            );
+            ExecutionResult execution =
+                await RunCapturedAsync(
+                    compilation.ExePath,
+                    30
+                );
 
-            _programOutput =
-                "Esecuzione completata nella finestra CMD visibile.";
+            _programOutput = execution.Output;
 
             OutputBox.Text =
                 compilation.CompileOutput +
                 Environment.NewLine +
                 Environment.NewLine +
-                _programOutput;
+                execution.Output;
 
             SaveCurrentExerciseResult(
                 compilation.CompileOutput,
-                _programOutput
+                execution.Output
+            );
+
+            ShowVerificationTerminal(
+                compilation.CompileOutput,
+                execution
             );
 
             return;

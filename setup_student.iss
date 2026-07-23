@@ -1,5 +1,5 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.9.3"
+#define MyAppVersion "1.9.4"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -53,6 +53,12 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: now
 
 [Code]
 var
+  StartupForm: TSetupForm;
+  StartupLabel: TNewStaticText;
+  StartupSubLabel: TNewStaticText;
+  StartupProgress: TNewProgressBar;
+
+var
   InstallImage: TBitmapImage;
 
 procedure PositionInstallImage;
@@ -66,8 +72,70 @@ begin
     ScaleY(10);
 end;
 
+function InitializeSetup(): Boolean;
+begin
+  Result := True;
+
+  StartupForm := CreateCustomForm;
+  StartupForm.Caption := 'CV+ Compilatore Alunno';
+  StartupForm.ClientWidth := ScaleX(440);
+  StartupForm.ClientHeight := ScaleY(160);
+  StartupForm.Position := poScreenCenter;
+  StartupForm.BorderStyle := bsDialog;
+  StartupForm.Color := clWhite;
+
+  StartupLabel := TNewStaticText.Create(StartupForm);
+  StartupLabel.Parent := StartupForm;
+  StartupLabel.Caption := 'Preparazione installazione...';
+  StartupLabel.Left := ScaleX(26);
+  StartupLabel.Top := ScaleY(24);
+  StartupLabel.Width := ScaleX(390);
+  StartupLabel.Height := ScaleY(32);
+  StartupLabel.Font.Size := 14;
+  StartupLabel.Font.Style := [fsBold];
+  StartupLabel.Font.Color := clNavy;
+
+  StartupSubLabel := TNewStaticText.Create(StartupForm);
+  StartupSubLabel.Parent := StartupForm;
+  StartupSubLabel.Caption :=
+    'Caricamento dei componenti. Attendi qualche secondo.';
+  StartupSubLabel.Left := ScaleX(26);
+  StartupSubLabel.Top := ScaleY(66);
+  StartupSubLabel.Width := ScaleX(390);
+  StartupSubLabel.Height := ScaleY(24);
+  StartupSubLabel.Font.Size := 9;
+  StartupSubLabel.Font.Color := clGray;
+
+  StartupProgress := TNewProgressBar.Create(StartupForm);
+  StartupProgress.Parent := StartupForm;
+  StartupProgress.Left := ScaleX(26);
+  StartupProgress.Top := ScaleY(108);
+  StartupProgress.Width := ScaleX(388);
+  StartupProgress.Height := ScaleY(18);
+  StartupProgress.Min := 0;
+  StartupProgress.Max := 100;
+  StartupProgress.Position := 45;
+
+  StartupForm.Show;
+  StartupForm.Update;
+end;
+
+procedure CloseStartupForm;
+begin
+  if StartupForm <> nil then
+  begin
+    StartupProgress.Position := 100;
+    StartupForm.Update;
+    Sleep(100);
+    StartupForm.Close;
+    StartupForm.Free;
+    StartupForm := nil;
+  end;
+end;
+
 procedure InitializeWizard;
 begin
+  CloseStartupForm;
   WizardForm.WelcomeLabel1.Caption :=
     'Benvenuto in CV+ Compilatore Alunno';
 
@@ -123,4 +191,10 @@ begin
 
   if InstallImage.Visible then
     PositionInstallImage;
+end;
+
+
+procedure DeinitializeSetup;
+begin
+  CloseStartupForm;
 end;

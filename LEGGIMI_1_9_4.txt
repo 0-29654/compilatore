@@ -1,0 +1,21 @@
+COMPILATORE CLIENT 1.9.4
+
+MODALITÀ VERIFICA
+- eliminata la dipendenza dalla CMD esterna;
+- il programma viene eseguito in modo controllato;
+- compilazione, output e codice di uscita sono mostrati in un terminale
+  interno a tutto schermo;
+- il terminale è sempre visibile anche con il blocco della verifica;
+- si chiude con Chiudi o ESC;
+- non consente di aprire browser, cartelle o altre applicazioni.
+
+INSTALLER
+- appena il motore Inno Setup entra in esecuzione compare una finestra
+  “Preparazione installazione...”;
+- viene mostrata una barra di attesa prima della pagina della licenza;
+- la finestra si chiude automaticamente all'apertura del wizard.
+
+Nota: Windows deve prima caricare l'eseguibile di Inno Setup; nessun codice
+interno all'installer può mostrare una finestra prima di quel caricamento.
+
+Aggiornare soltanto la repository compilatore.
