@@ -153,7 +153,7 @@
         <Border Grid.Row="3" Margin="16,10,16,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Background="#132139"><TextBlock Text="OUTPUT COMPILAZIONE ED ESECUZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" Margin="13,0" VerticalAlignment="Center"/></Border>
+                <Border Background="#132139"><TextBlock Text="COMPILAZIONE ED ESECUZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" Margin="13,0" VerticalAlignment="Center"/></Border>
                 <TextBox x:Name="OutputBox" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
                          TextWrapping="Wrap" BorderThickness="0" Background="#07101C" Foreground="#E7F4FF" FontFamily="Cascadia Mono, Consolas" Padding="12"/>
             </Grid>

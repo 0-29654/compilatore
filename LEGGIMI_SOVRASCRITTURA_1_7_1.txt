@@ -1,0 +1,6 @@
+COMPILATORE CORRETTO 1.7.1
+
+Copia tutto il contenuto di questa cartella nella repository locale compilatore e scegli Sostituisci.
+Poi esegui commit e push.
+
+Questa versione parte dal file sorgente pulito MainWindow.xaml.cs.prima_patch_1_6_5 e non dai file danneggiati dalle patch precedenti.
