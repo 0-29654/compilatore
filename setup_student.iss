@@ -1,5 +1,5 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.8.8"
+#define MyAppVersion "1.8.9"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -63,7 +63,7 @@ begin
   InstallImage.Top :=
     WizardForm.ProgressGauge.Top +
     WizardForm.ProgressGauge.Height +
-    ScaleY(18);
+    ScaleY(10);
 end;
 
 procedure InitializeWizard;
@@ -98,8 +98,8 @@ begin
 
   InstallImage := TBitmapImage.Create(WizardForm);
   InstallImage.Parent := WizardForm.InstallingPage;
-  InstallImage.Width := ScaleX(430);
-  InstallImage.Height := ScaleY(200);
+  InstallImage.Width := ScaleX(560);
+  InstallImage.Height := ScaleY(270);
   InstallImage.Stretch := True;
   InstallImage.Center := True;
   InstallImage.Visible := False;

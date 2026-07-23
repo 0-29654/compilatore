@@ -175,6 +175,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -191,14 +192,18 @@
                         Click="RenameHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#9333EA" BorderBrush="#C084FC" VerticalAlignment="Center"/>
 
-                <Button x:Name="SendButton" Grid.Column="3" Content="Invia al docente"
+                <Button x:Name="DeleteHeaderButton" Grid.Column="3" Content="Elimina .h"
+                        Click="DeleteHeader_Click" Style="{StaticResource ModernButton}"
+                        Background="#B91C1C" BorderBrush="#F87171" VerticalAlignment="Center"/>
+
+                <Button x:Name="SendButton" Grid.Column="4" Content="Invia al docente"
                         Click="Send_Click" Style="{StaticResource ModernButton}"
                         Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
 
-                <TextBlock x:Name="StatusText" Grid.Column="4" Text="Pronto"
+                <TextBlock x:Name="StatusText" Grid.Column="5" Text="Pronto"
                            Foreground="#A8B5C7" VerticalAlignment="Center" Margin="12,0"/>
 
-                <Border Grid.Column="5" Background="#102C46" BorderBrush="#1E719C"
+                <Border Grid.Column="6" Background="#102C46" BorderBrush="#1E719C"
                         BorderThickness="1" CornerRadius="8" Padding="12,7">
                     <TextBlock Text="© Alessandro Barazzuol" Foreground="#B7F3FF"
                                VerticalAlignment="Center" FontSize="18" FontWeight="ExtraBold"/>

@@ -316,12 +316,14 @@ public partial class MainWindow : Window
             using var reader = XmlReader.Create(new StringReader(xshd), new XmlReaderSettings { IgnoreComments = true });
             _cppHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
             Editor.SyntaxHighlighting = _cppHighlighting;
+            HeaderEditor.SyntaxHighlighting = _cppHighlighting;
         }
         catch (Exception ex)
         {
             // Non ricadere sulla tavolozza C++ predefinita (blu poco leggibile).
             _cppHighlighting = null;
             Editor.SyntaxHighlighting = null;
+            HeaderEditor.SyntaxHighlighting = null;
             OutputBox.Text = "Colorazione C++ ad alto contrasto non caricata: " + ex.Message;
         }
     }
@@ -637,6 +639,66 @@ public partial class MainWindow : Window
         );
     }
 
+    private void ShowVerificationTerminal(
+        string compileOutput,
+        ExecutionResult execution)
+    {
+        string terminalText =
+            "Microsoft Windows [Versione modalità verifica CV+]\r\n" +
+            "(c) CV+ Compilatore Alunno\r\n\r\n" +
+            "C:\\CVPlus\\Esercizio> g++ main.cpp -std=c++17 -o esercizio.exe\r\n\r\n" +
+            compileOutput +
+            "\r\n\r\n" +
+            "C:\\CVPlus\\Esercizio> esercizio.exe\r\n\r\n" +
+            execution.Output +
+            "\r\n\r\n" +
+            "Programma terminato. Premi Chiudi o ESC per tornare all'editor.";
+
+        var terminal = new System.Windows.Controls.TextBox
+        {
+            Text = terminalText,
+            IsReadOnly = true,
+            AcceptsReturn = true,
+            AcceptsTab = true,
+            TextWrapping = TextWrapping.NoWrap,
+            VerticalScrollBarVisibility =
+                System.Windows.Controls.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility =
+                System.Windows.Controls.ScrollBarVisibility.Auto,
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 18,
+            Background = Brushes.Black,
+            Foreground = new SolidColorBrush(
+                Color.FromRgb(220, 255, 220)),
+            CaretBrush = Brushes.White,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(20)
+        };
+
+        var copyButton = new System.Windows.Controls.Button
+        {
+            Content = "Copia output",
+            MinWidth = 140,
+            Padding = new Thickness(18, 10, 18, 10),
+            Margin = new Thickness(6),
+            Background = new SolidColorBrush(
+                Color.FromRgb(31, 41, 55)),
+            Foreground = Brushes.White
+        };
+
+        copyButton.Click += (_, _) =>
+        {
+            Clipboard.SetText(terminal.Text ?? string.Empty);
+            StatusText.Text = "Output terminale copiato";
+        };
+
+        ShowFullscreenOverlay(
+            $"CMD C++17 — Tipologia {GetTaskType()} — Esercizio {GetExerciseNumber()}",
+            terminal,
+            new[] { copyButton }
+        );
+    }
+
 private async void Run_Click(object sender, RoutedEventArgs e)
     {
         if (!_compilationAllowed)
@@ -657,10 +719,33 @@ private async void Run_Click(object sender, RoutedEventArgs e)
 
         if (_verificationMode)
         {
-            ExecutionResult execution = await RunCapturedAsync(compilation.ExePath, 5);
+            ExecutionResult execution =
+                await RunCapturedAsync(
+                    compilation.ExePath,
+                    5
+                );
+
             _programOutput = execution.Output;
-            OutputBox.Text = compilation.CompileOutput + Environment.NewLine + Environment.NewLine + execution.Output;
-            SaveCurrentExerciseResult(compilation.CompileOutput, execution.Output);
+
+            OutputBox.Text =
+                compilation.CompileOutput +
+                Environment.NewLine +
+                Environment.NewLine +
+                execution.Output;
+
+            SaveCurrentExerciseResult(
+                compilation.CompileOutput,
+                execution.Output
+            );
+
+            // In verifica non apriamo una vera finestra esterna di Windows,
+            // perché permetterebbe di uscire dall'ambiente protetto.
+            // Mostriamo invece un terminale CMD interno, visibile e chiudibile.
+            ShowVerificationTerminal(
+                compilation.CompileOutput,
+                execution
+            );
+
             return;
         }
 
@@ -1560,6 +1645,67 @@ private async void Run_Click(object sender, RoutedEventArgs e)
 
         nameBox.Focus();
         nameBox.SelectAll();
+    }
+
+    private void DeleteHeader_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (!_exerciseStates.TryGetValue(
+                _activeKey,
+                out ExerciseState? state) ||
+            string.IsNullOrWhiteSpace(state.HeaderCode))
+        {
+            ShowVerificationSafeMessage(
+                "Questo esercizio non contiene un file header.",
+                "Nessun file .h",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information,
+                MessageBoxResult.OK
+            );
+            return;
+        }
+
+        string headerName = NormalizeHeaderFileName(
+            string.IsNullOrWhiteSpace(state.HeaderFileName)
+                ? "esercizio.h"
+                : state.HeaderFileName
+        );
+
+        MessageBoxResult confirmation =
+            ShowVerificationSafeMessage(
+                $"Vuoi eliminare definitivamente {headerName} da questo esercizio?\n\n" +
+                "Verrà rimossa anche la relativa direttiva #include dal main.cpp.",
+                "Elimina file header",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No
+            );
+
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        string includePattern =
+            @"(?m)^[ \t]*#include[ \t]*[\""<]" +
+            System.Text.RegularExpressions.Regex.Escape(headerName) +
+            @"[\"">][ \t]*\r?\n?";
+
+        Editor.Text =
+            System.Text.RegularExpressions.Regex.Replace(
+                Editor.Text,
+                includePattern,
+                "",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            );
+
+        state.HeaderCode = "";
+        state.HeaderFileName = "";
+        HeaderEditor.Text = "";
+        HeaderTab.Header = "esercizio.h";
+        HeaderTab.Visibility = Visibility.Collapsed;
+
+        SaveCurrentExercise();
+        StatusText.Text = $"{headerName} eliminato";
     }
 
     private void HeaderEditor_TextChanged(object? sender, EventArgs e)

@@ -1,0 +1,13 @@
+AGGIORNAMENTO COMPILATORE CLIENT 1.8.9
+
+- Il file .h usa lo stesso evidenziatore C++ colorato del main.cpp.
+- Aggiunto il pulsante “Elimina .h”.
+- Eliminando l'header viene rimossa anche la relativa direttiva #include.
+- In modalità verifica, Compila ed esegui mostra un terminale interno in stile CMD.
+- Il terminale è visibile, scorrevole e chiudibile con Chiudi o ESC.
+- Non viene aperta una shell Windows esterna, quindi lo studente non può
+  uscire dall'ambiente protetto, aprire cartelle o usare altre applicazioni.
+- A.png è più grande nella schermata Installazione in corso.
+- Tutte le modifiche precedenti del client 1.8.8 sono mantenute.
+
+Aggiornare soltanto la repository compilatore.
