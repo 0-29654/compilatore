@@ -43,7 +43,6 @@ public partial class MainWindow : Window
     private bool _allowClose;
     private bool _serverModeCheckRunning;
     private bool _modalDialogOpen;
-    private int _openToolWindowCount;
     private System.Windows.Controls.Grid? _activeOverlay;
     private bool _compilationAllowed = true;
     private UdpClient? _teacherDiscoveryUdp;
@@ -336,7 +335,6 @@ public partial class MainWindow : Window
 
         RootLayout.Children.Remove(_activeOverlay);
         _activeOverlay = null;
-        _openToolWindowCount = 0;
         _modalDialogOpen = false;
 
         if (_verificationMode)
@@ -356,7 +354,6 @@ public partial class MainWindow : Window
     {
         CloseActiveOverlay();
 
-        _openToolWindowCount = 1;
         _modalDialogOpen = true;
 
         var overlay = new System.Windows.Controls.Grid
@@ -410,8 +407,7 @@ public partial class MainWindow : Window
             Orientation = System.Windows.Controls.Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
             Background = new SolidColorBrush(Color.FromRgb(11, 23, 41)),
-            Margin = new Thickness(0),
-            Padding = new Thickness(12)
+            Margin = new Thickness(12)
         };
 
         if (buttons != null)
