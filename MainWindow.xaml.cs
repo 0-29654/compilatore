@@ -1,4 +1,4 @@
-using ICSharpCode.AvalonEdit;
+﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using System;
@@ -1082,9 +1082,43 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         int next = Math.Max(1, current + delta);
         if (next == current) return;
 
-        MessageBoxResult answer = MessageBox.Show(this,
-            $"Vuoi salvare le modifiche dell'esercizio {current} prima di passare all'esercizio {next}?\n\nSì = salva e cambia\nNo = scarta le modifiche e cambia\nAnnulla = resta nell'esercizio corrente",
-            "Cambia esercizio", MessageBoxButton.YesNoCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
+        _modalDialogOpen = true;
+        bool oldTopmost = Topmost;
+        MessageBoxResult answer;
+
+        try
+        {
+            // In modalità verifica la finestra principale è Topmost e tenta di
+            // riprendersi il focus quando viene disattivata. Durante il popup
+            // sospendiamo questo comportamento, altrimenti i pulsanti del
+            // MessageBox non ricevono correttamente il clic.
+            Topmost = false;
+
+            answer = MessageBox.Show(
+                this,
+                $"Vuoi salvare le modifiche dell'esercizio {current} prima di passare all'esercizio {next}?\n\n" +
+                "Sì = salva e cambia\n" +
+                "No = scarta le modifiche e cambia\n" +
+                "Annulla = resta nell'esercizio corrente",
+                "Cambia esercizio",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question,
+                MessageBoxResult.Cancel
+            );
+        }
+        finally
+        {
+            Topmost = oldTopmost;
+            _modalDialogOpen = false;
+
+            if (_verificationMode)
+            {
+                WindowState = WindowState.Maximized;
+                Activate();
+                Focus();
+            }
+        }
+
         if (answer == MessageBoxResult.Cancel) return;
         if (answer == MessageBoxResult.Yes) SaveCurrentExercise();
         else if (_exerciseStates.TryGetValue(_activeKey, out ExerciseState? oldState))
@@ -1170,9 +1204,23 @@ private async void Run_Click(object sender, RoutedEventArgs e)
 
     private void Window_Deactivated(object? sender, EventArgs e)
     {
-        if (_modalDialogOpen) return;
-        if (_verificationMode)
-            Dispatcher.BeginInvoke(new Action(() => { Topmost = true; Activate(); }), DispatcherPriority.ApplicationIdle);
+        if (!_verificationMode || _modalDialogOpen)
+            return;
+
+        Dispatcher.BeginInvoke(
+            new Action(() =>
+            {
+                // Ricontrolla il flag quando il callback viene realmente eseguito:
+                // un popup potrebbe essere stato aperto dopo l'evento Deactivated.
+                if (!_verificationMode || _modalDialogOpen)
+                    return;
+
+                Topmost = true;
+                WindowState = WindowState.Maximized;
+                Activate();
+            }),
+            DispatcherPriority.ApplicationIdle
+        );
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)

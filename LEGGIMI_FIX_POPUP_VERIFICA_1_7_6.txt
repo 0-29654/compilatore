@@ -1,0 +1,17 @@
+CORREZIONE 1.7.6 - POPUP BLOCCATO IN MODALITÀ VERIFICA
+
+Problema:
+La finestra principale, essendo Topmost in modalità verifica, si riattivava
+immediatamente quando compariva il popup “Cambia esercizio”. Questo sottraeva
+il focus al popup e i pulsanti Sì, No e Annulla sembravano non funzionare.
+
+Correzione:
+- imposta _modalDialogOpen prima di aprire la finestra;
+- disattiva temporaneamente Topmost;
+- impedisce a Window_Deactivated di riattivare la finestra principale;
+- ripristina Topmost e il tutto schermo soltanto dopo la chiusura del popup;
+- ricontrolla _modalDialogOpen anche nel callback differito.
+
+APPLICAZIONE:
+Copiare tutto il contenuto nella repository locale, sovrascrivere e fare
+commit + push.
