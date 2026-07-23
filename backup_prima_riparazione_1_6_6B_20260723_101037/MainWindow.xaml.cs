@@ -477,144 +477,7 @@ private async Task<CompilationResult> CompileSourceAsync(string sourceCode, bool
     }
 } 
 
-    private async Task<ExecutionResult> RunCapturedAsync(
-    string exePath,
-    int timeoutSeconds = 5)
-{
-    try
-    {
-        var psi = new ProcessStartInfo(exePath)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            RedirectStandardInput = true,
-            CreateNoWindow = true,
-            WorkingDirectory =
-                Path.GetDirectoryName(exePath) ??
-                Path.GetTempPath(),
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
-        };
-
-        ConfigureCompilerEnvironment(psi);
-
-        using var process = Process.Start(psi)
-            ?? throw new InvalidOperationException(
-                "Impossibile avviare il programma compilato."
-            );
-
-        process.StandardInput.Close();
-
-        Task<string> stdoutTask =
-            process.StandardOutput.ReadToEndAsync();
-
-        Task<string> stderrTask =
-            process.StandardError.ReadToEndAsync();
-
-        Task completed = await Task.WhenAny(
-            process.WaitForExitAsync(),
-            Task.Delay(TimeSpan.FromSeconds(timeoutSeconds))
-        );
-
-        if (!process.HasExited)
-        {
-            try
-            {
-                process.Kill(true);
-            }
-            catch
-            {
-            }
-
-            await process.WaitForExitAsync();
-
-            string partialOutput = (await stdoutTask).Trim();
-            string partialError = (await stderrTask).Trim();
-
-            string timeoutMessage =
-                $"Esecuzione interrotta dopo {timeoutSeconds} secondi. " +
-                "Possibile ciclo infinito o programma in attesa di input.";
-
-            if (!string.IsNullOrWhiteSpace(partialOutput))
-            {
-                timeoutMessage +=
-                    "\n\nOUTPUT PARZIALE\n" +
-                    partialOutput;
-            }
-
-            if (!string.IsNullOrWhiteSpace(partialError))
-            {
-                timeoutMessage +=
-                    "\n\nERRORI DI ESECUZIONE\n" +
-                    partialError;
-            }
-
-            return new ExecutionResult(
-                false,
-                timeoutMessage,
-                null,
-                true
-            );
-        }
-
-        string stdout = (await stdoutTask).Trim();
-        string stderr = (await stderrTask).Trim();
-
-        var sections = new List<string>
-        {
-            process.ExitCode == 0
-                ? "ESECUZIONE TERMINATA CORRETTAMENTE"
-                : "ESECUZIONE TERMINATA IN MODO ANOMALO",
-
-            $"Codice di uscita: {process.ExitCode}",
-
-            string.IsNullOrWhiteSpace(stdout)
-                ? "OUTPUT PROGRAMMA\nNessun testo prodotto."
-                : "OUTPUT PROGRAMMA\n" + stdout
-        };
-
-        if (!string.IsNullOrWhiteSpace(stderr))
-        {
-            sections.Add(
-                "ERRORI DI ESECUZIONE\n" +
-                stderr
-            );
-        }
-
-        if (process.ExitCode != 0 &&
-            string.IsNullOrWhiteSpace(stderr))
-        {
-            sections.Add(
-                "Possibile errore durante l'esecuzione: " +
-                "controlla divisioni o modulo per zero, " +
-                "accessi non validi alla memoria e altri errori runtime."
-            );
-        }
-
-        return new ExecutionResult(
-            process.ExitCode == 0,
-            string.Join(
-                Environment.NewLine +
-                Environment.NewLine,
-                sections
-            ),
-            process.ExitCode,
-            false
-        );
-    }
-    catch (Exception ex)
-    {
-        return new ExecutionResult(
-            false,
-            "Errore durante l'esecuzione:\n" +
-            ex.GetType().Name + ": " + ex.Message,
-            null,
-            false
-        );
-    }
-}
-private async void TestServer_Click(object sender, RoutedEventArgs e)
+    private async void TestServer_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -734,141 +597,51 @@ private async void TestServer_Click(object sender, RoutedEventArgs e)
         ShowInTaskbar = true;
     }
 
-    private int? AskExerciseCount(int suggestedCount)
-{
-    var input = new System.Windows.Controls.TextBox
-    {
-        Text = Math.Max(1, suggestedCount).ToString(),
-        FontSize = 22,
-        MinWidth = 220,
-        Margin = new Thickness(0, 16, 0, 16),
-        HorizontalContentAlignment = HorizontalAlignment.Center
-    };
-
-    var sendButton = new System.Windows.Controls.Button
-    {
-        Content = "Invia",
-        IsDefault = true,
-        MinWidth = 120,
-        Margin = new Thickness(6)
-    };
-
-    var cancelButton = new System.Windows.Controls.Button
-    {
-        Content = "Annulla",
-        IsCancel = true,
-        MinWidth = 120,
-        Margin = new Thickness(6)
-    };
-
-    var buttons = new System.Windows.Controls.StackPanel
-    {
-        Orientation = System.Windows.Controls.Orientation.Horizontal,
-        HorizontalAlignment = HorizontalAlignment.Center
-    };
-
-    buttons.Children.Add(sendButton);
-    buttons.Children.Add(cancelButton);
-
-    var panel = new System.Windows.Controls.StackPanel
-    {
-        Margin = new Thickness(28)
-    };
-
-    panel.Children.Add(new System.Windows.Controls.TextBlock
-    {
-        Text =
-            "Quanti esercizi vuoi inviare?\n\n" +
-            "Inserendo 5 verranno inviati gli esercizi 1, 2, 3, 4 e 5.",
-        FontSize = 17,
-        TextWrapping = TextWrapping.Wrap
-    });
-
-    panel.Children.Add(input);
-    panel.Children.Add(buttons);
-
-    var dialog = new Window
-    {
-        Title = "Numero di esercizi da inviare",
-        Owner = this,
-        Content = panel,
-        SizeToContent = SizeToContent.WidthAndHeight,
-        WindowStartupLocation = WindowStartupLocation.CenterOwner,
-        ResizeMode = ResizeMode.NoResize,
-        ShowInTaskbar = false,
-        Topmost = true
-    };
-
-    int? result = null;
-
-    sendButton.Click += (_, _) =>
-    {
-        if (!int.TryParse(input.Text.Trim(), out int count) ||
-            count < 1 ||
-            count > 100)
-        {
-            MessageBox.Show(
-                dialog,
-                "Inserisci un numero intero compreso tra 1 e 100.",
-                "Numero non valido",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
-
-            input.Focus();
-            input.SelectAll();
-            return;
-        }
-
-        result = count;
-        dialog.DialogResult = true;
-    };
-
-    dialog.Loaded += (_, _) =>
-    {
-        input.Focus();
-        input.SelectAll();
-    };
-
-    dialog.ShowDialog();
-    Activate();
-
-    return result;
-}
-private async void Send_Click(object sender, RoutedEventArgs e)
+    private async void Send_Click(object sender, RoutedEventArgs e)
 {
     SaveCurrentExercise();
 
-    if (!ValidateSubmission(
-            out int registerNumber,
-            out int activeExerciseNumber))
-    {
+    if (!ValidateSubmission(out int registerNumber, out int activeExerciseNumber))
         return;
-    }
 
-    int? selectedCount =
-        AskExerciseCount(activeExerciseNumber);
+    string countText = Microsoft.VisualBasic.Interaction.InputBox(
+        "Quanti esercizi vuoi inviare?\n\n" +
+        "Inserendo 3 verranno inviati gli esercizi 1, 2 e 3 della tipologia selezionata.",
+        "Numero di esercizi da inviare",
+        activeExerciseNumber.ToString()
+    );
 
-    if (!selectedCount.HasValue)
+    if (string.IsNullOrWhiteSpace(countText))
     {
         StatusText.Text = "Invio annullato";
         return;
     }
 
-    int exerciseCount = selectedCount.Value;
+    if (!int.TryParse(countText.Trim(), out int exerciseCount) ||
+        exerciseCount < 1 || exerciseCount > 100)
+    {
+        MessageBox.Show(
+            "Inserisci un numero intero compreso tra 1 e 100.",
+            "Numero di esercizi non valido",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning
+        );
+        return;
+    }
+
     string type = GetTaskType();
+    string modeLabel = _verificationMode ? "VERIFICA" : "ESERCITAZIONE";
 
     MessageBoxResult confirmation = MessageBox.Show(
-        this,
         $"Confermi l'invio?\n\n" +
-        $"Modalità: {(_verificationMode ? "VERIFICA" : "ESERCITAZIONE")}\n" +
+        $"Modalità: {modeLabel}\n" +
         $"N° registro: {registerNumber}\n" +
         $"Nome: {StudentNameBox.Text.Trim()}\n" +
         $"Classe: {ClassBox.Text.Trim()}\n" +
         $"Tipologia: {type}\n" +
         $"Esercizi: da 1 a {exerciseCount}\n\n" +
-        "Ogni esercizio verrà compilato ed eseguito in modo nascosto. " +
-        "Saranno inviati codice, errori e output.",
+        "Ogni esercizio verrà ricompilato. In caso di errore saranno inviati " +
+        "gli errori del compilatore; in caso di successo sarà inviato l'output disponibile.",
         "Conferma consegna multipla",
         MessageBoxButton.YesNo,
         MessageBoxImage.Question,
@@ -885,131 +658,87 @@ private async void Send_Click(object sender, RoutedEventArgs e)
     {
         SaveSettings();
 
-        string address =
-            NormalizeServerAddress(ServerBox.Text) +
-            "/submit";
-
-        int sent = 0;
+        string address = NormalizeServerAddress(ServerBox.Text) + "/submit";
+        string clientIp = GetClientIpv4Address(ServerBox.Text);
+        string normalizedStudentName = StudentNameBox.Text.Trim().ToUpperInvariant();
         var failedExercises = new List<int>();
+        int sent = 0;
 
-        for (int exerciseNumber = 1;
-             exerciseNumber <= exerciseCount;
-             exerciseNumber++)
+        for (int exerciseNumber = 1; exerciseNumber <= exerciseCount; exerciseNumber++)
         {
-            string key =
-                BuildExerciseKey(type, exerciseNumber);
+            string key = BuildExerciseKey(type, exerciseNumber);
 
-            if (!_exerciseStates.TryGetValue(
-                    key,
-                    out ExerciseState? state))
+            if (!_exerciseStates.TryGetValue(key, out ExerciseState? state))
             {
                 state = new ExerciseState
                 {
                     Code = DefaultCode,
                     Elapsed = TimeSpan.Zero
                 };
-
                 _exerciseStates[key] = state;
             }
 
-            string code =
-                string.IsNullOrWhiteSpace(state.Code)
+            string code = string.IsNullOrWhiteSpace(state.Code)
                 ? DefaultCode
                 : state.Code;
 
             StatusText.Text =
                 $"Compilazione esercizio {exerciseNumber} di {exerciseCount}...";
 
-            string previousEditorText = Editor.Text;
-            string previousActiveKey = _activeKey;
+            CompilationResult compilation =
+                await CompileSourceAsync(code, false);
 
-            Editor.Text = code;
-            _activeKey = key;
+            state.CompileOutput = compilation.CompileOutput;
 
-            bool compilationSucceeded =
-                await CompileAsync();
+            if (!compilation.Success)
+                state.ProgramOutput = "";
 
-            string compileOutput =
-                _compileOutput;
+            string programOutput = compilation.Success
+                ? (string.IsNullOrWhiteSpace(state.ProgramOutput)
+                    ? "Compilazione riuscita. Programma non eseguito prima dell'invio."
+                    : state.ProgramOutput)
+                : "";
 
-            string? exePath =
-                _exePath;
+            string transmittedOutput = compilation.Success
+                ? programOutput
+                : compilation.CompileOutput;
 
-            Editor.Text = previousEditorText;
-            _activeKey = previousActiveKey;
-
-            ExecutionResult execution;
-
-            if (compilationSucceeded &&
-                !string.IsNullOrWhiteSpace(exePath))
-            {
-                StatusText.Text =
-                    $"Esecuzione esercizio {exerciseNumber} di {exerciseCount}...";
-
-                execution = await RunCapturedAsync(
-                    exePath,
-                    5
-                );
-            }
-            else
-            {
-                execution = new ExecutionResult(
-                    false,
-                    "Programma non eseguito perché la compilazione non è riuscita.",
-                    null,
-                    false
-                );
-            }
-
-            state.CompileOutput = compileOutput;
-            state.ProgramOutput = execution.Output;
-
-            string combinedOutput =
-                compileOutput +
-                Environment.NewLine +
-                Environment.NewLine +
-                execution.Output;
-
-            var timings =
-                _exerciseStates.ToDictionary(
-                    pair => pair.Key,
-                    pair => (long)pair.Value.Elapsed.TotalSeconds
-                );
+            var timings = _exerciseStates.ToDictionary(
+                pair => pair.Key,
+                pair => (long)pair.Value.Elapsed.TotalSeconds
+            );
 
             var payload = new
             {
                 studentId = registerNumber.ToString(),
                 registerNumber,
                 studentName = StudentNameBox.Text.Trim(),
+                normalizedStudentName,
+                clientIp,
+                studentIp = clientIp,
+                ipAddress = clientIp,
+                submissionKey = normalizedStudentName + "|" + clientIp,
                 className = ClassBox.Text.Trim(),
                 taskType = type,
                 exerciseId = exerciseNumber.ToString(),
                 exerciseNumber,
                 totalExercises = exerciseCount,
                 sessionCode = SessionBox.Text.Trim(),
-                sessionMode =
-                    _verificationMode
-                    ? "verifica"
-                    : "esercitazione",
-                exerciseTimeSeconds =
-                    (long)state.Elapsed.TotalSeconds,
+                sessionMode = _verificationMode ? "verifica" : "esercitazione",
+                exerciseTimeSeconds = (long)state.Elapsed.TotalSeconds,
                 exerciseTimes = timings,
                 code,
-                compilationSucceeded,
-                compileOutput,
-                executionSucceeded = execution.Success,
-                executionExitCode = execution.ExitCode,
-                executionTimedOut = execution.TimedOut,
-                programOutput = execution.Output,
-                output = combinedOutput
+                compilationSucceeded = compilation.Success,
+                compileOutput = compilation.CompileOutput,
+                programOutput,
+                output = transmittedOutput
             };
 
-            using var content =
-                new StringContent(
-                    JsonSerializer.Serialize(payload),
-                    Encoding.UTF8,
-                    "application/json"
-                );
+            using var content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                Encoding.UTF8,
+                "application/json"
+            );
 
             StatusText.Text =
                 $"Invio esercizio {exerciseNumber} di {exerciseCount}...";
@@ -1017,8 +746,7 @@ private async void Send_Click(object sender, RoutedEventArgs e)
             using HttpResponseMessage response =
                 await _http.PostAsync(address, content);
 
-            string message =
-                await response.Content.ReadAsStringAsync();
+            string message = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1033,19 +761,16 @@ private async void Send_Click(object sender, RoutedEventArgs e)
 
         if (failedExercises.Count > 0)
         {
-            StatusText.Text =
-                $"Inviati {sent} esercizi su {exerciseCount}";
+            StatusText.Text = $"Inviati {sent} esercizi su {exerciseCount}";
 
             MessageBox.Show(
-                this,
                 $"Sono stati inviati {sent} esercizi su {exerciseCount}.\n\n" +
-                "Invio non riuscito per: " +
+                "Invio non riuscito per gli esercizi: " +
                 string.Join(", ", failedExercises),
                 "Invio completato parzialmente",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning
             );
-
             return;
         }
 
@@ -1053,9 +778,8 @@ private async void Send_Click(object sender, RoutedEventArgs e)
             $"Consegnati {sent} esercizi: {DateTime.Now:HH:mm:ss}";
 
         MessageBox.Show(
-            this,
             $"Sono stati inviati gli esercizi da 1 a {exerciseCount}.\n\n" +
-            "Per ogni esercizio sono stati inviati codice, compilazione e output.",
+            "Per ciascun esercizio sono stati inviati il codice e l'esito della compilazione.",
             "Consegna completata",
             MessageBoxButton.OK,
             MessageBoxImage.Information
@@ -1071,16 +795,14 @@ private async void Send_Click(object sender, RoutedEventArgs e)
     catch (Exception ex)
     {
         StatusText.Text = "Invio fallito";
-
         MessageBox.Show(
-            this,
             BuildNetworkError(ex),
             "Impossibile inviare il compito",
             MessageBoxButton.OK,
             MessageBoxImage.Warning
         );
     }
-}  
+} 
 
     private bool ValidateSubmission(out int registerNumber, out int exerciseNumber)
     {
@@ -1167,7 +889,7 @@ private async void Send_Click(object sender, RoutedEventArgs e)
     private static string FormatDuration(TimeSpan value) => $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}";
     private string GetTaskType() => string.IsNullOrWhiteSpace(TaskTypeBox.Text) ? "A" : TaskTypeBox.Text.Trim();
     private int GetExerciseNumber() => int.TryParse(ExerciseBox.Text.Trim(), out int n) && n > 0 ? n : 1;
-    private string BuildExerciseKey(string type, int number) => $"{SessionBox.Text.Trim().ToUpperInvariant()}|{type.Trim().ToUpperInvariant()}|{number}";
+    private static string BuildExerciseKey(string type, int number) => $"{type.Trim().ToUpperInvariant()}|{number}";
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -1306,13 +1028,6 @@ private async void Send_Click(object sender, RoutedEventArgs e)
     bool Success,
     string CompileOutput,
     string? ExePath
-);
-
-private sealed record ExecutionResult(
-    bool Success,
-    string Output,
-    int? ExitCode,
-    bool TimedOut
 );
 
 public sealed class ExerciseState
