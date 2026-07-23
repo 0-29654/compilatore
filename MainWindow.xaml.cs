@@ -1,4 +1,4 @@
-﻿using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using System;
@@ -130,7 +130,7 @@ public partial class MainWindow : Window
                 await Dispatcher.InvokeAsync(() =>
                 {
                     ServerBox.Text = $"{ip}:{port}";
-                    SessionBox.Text = session;
+                    SetSessionCode(session);
                     ApplySessionMode(mode);
                     ApplyCompilationPermission(compileAllowed);
                     StatusText.Text = $"Docente rilevato: {ip}:{port}";
@@ -143,6 +143,39 @@ public partial class MainWindow : Window
                 try { await Task.Delay(500, token); } catch { break; }
             }
         }
+    }
+
+
+    private void SetSessionCode(string newSession)
+    {
+        newSession = (newSession ?? string.Empty).Trim();
+        string currentSession = SessionBox.Text.Trim();
+
+        if (currentSession.Equals(newSession, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        SaveCurrentExercise();
+
+        string oldKey = _activeKey;
+        ExerciseState? oldState = null;
+        if (!string.IsNullOrWhiteSpace(oldKey))
+            _exerciseStates.TryGetValue(oldKey, out oldState);
+
+        SessionBox.Text = newSession;
+
+        string newKey = BuildExerciseKey(GetTaskType(), GetExerciseNumber());
+
+        if (oldState != null && !_exerciseStates.ContainsKey(newKey))
+            _exerciseStates[newKey] = oldState;
+
+        if (!string.IsNullOrWhiteSpace(oldKey) &&
+            !oldKey.Equals(newKey, StringComparison.OrdinalIgnoreCase))
+        {
+            _exerciseStates.Remove(oldKey);
+        }
+
+        _activeKey = newKey;
+        SaveExerciseStates();
     }
 
     private static bool ReadCompilationAllowed(JsonElement root)
@@ -213,6 +246,131 @@ public partial class MainWindow : Window
         }
     }
 
+
+
+    private void OutputBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) == 0)
+            return;
+
+        e.Handled = true;
+        OpenFullscreenOutput();
+    }
+
+    private void OpenFullscreenOutput()
+    {
+        _modalDialogOpen = true;
+        bool oldTopmost = Topmost;
+
+        try
+        {
+            var fullOutput = new System.Windows.Controls.TextBox
+            {
+                Text = OutputBox.Text,
+                IsReadOnly = true,
+                AcceptsReturn = true,
+                AcceptsTab = true,
+                TextWrapping = TextWrapping.NoWrap,
+                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+                FontSize = 18,
+                Background = new SolidColorBrush(Color.FromRgb(5, 11, 20)),
+                Foreground = new SolidColorBrush(Color.FromRgb(231, 244, 255)),
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(18)
+            };
+
+            var copyButton = new System.Windows.Controls.Button
+            {
+                Content = "Copia tutto",
+                MinWidth = 120,
+                Padding = new Thickness(16, 9, 16, 9),
+                Margin = new Thickness(8),
+                Background = new SolidColorBrush(Color.FromRgb(36, 52, 77)),
+                Foreground = Brushes.White
+            };
+
+            var closeButton = new System.Windows.Controls.Button
+            {
+                Content = "Chiudi",
+                IsDefault = true,
+                MinWidth = 120,
+                Padding = new Thickness(16, 9, 16, 9),
+                Margin = new Thickness(8),
+                Background = new SolidColorBrush(Color.FromRgb(14, 143, 232)),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold
+            };
+
+            var buttons = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            buttons.Children.Add(copyButton);
+            buttons.Children.Add(closeButton);
+
+            var root = new System.Windows.Controls.Grid();
+            root.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+
+            var title = new System.Windows.Controls.TextBlock
+            {
+                Text = $"Compilazione ed esecuzione — Tipologia {GetTaskType()} — Esercizio {GetExerciseNumber()}",
+                Foreground = Brushes.White,
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(18, 14, 18, 12)
+            };
+
+            System.Windows.Controls.Grid.SetRow(title, 0);
+            System.Windows.Controls.Grid.SetRow(fullOutput, 1);
+            System.Windows.Controls.Grid.SetRow(buttons, 2);
+            root.Children.Add(title);
+            root.Children.Add(fullOutput);
+            root.Children.Add(buttons);
+
+            var popup = new Window
+            {
+                Title = "Compilazione ed esecuzione",
+                Owner = this,
+                Content = root,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                WindowState = WindowState.Maximized,
+                WindowStyle = WindowStyle.None,
+                ResizeMode = ResizeMode.NoResize,
+                Background = new SolidColorBrush(Color.FromRgb(7, 17, 31)),
+                Topmost = _verificationMode
+            };
+
+            copyButton.Click += (_, _) =>
+            {
+                Clipboard.SetText(fullOutput.Text ?? string.Empty);
+                StatusText.Text = "Output copiato negli appunti";
+            };
+
+            closeButton.Click += (_, _) => popup.Close();
+            popup.PreviewKeyDown += (_, keyEvent) =>
+            {
+                if (keyEvent.Key == Key.Escape)
+                {
+                    keyEvent.Handled = true;
+                    popup.Close();
+                }
+            };
+
+            Topmost = false;
+            popup.ShowDialog();
+        }
+        finally
+        {
+            Topmost = oldTopmost;
+            _modalDialogOpen = false;
+            Activate();
+        }
+    }
 
     private void Editor_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -583,7 +741,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                 ServerBox.Text = $"{serverIp}:{serverPort}";
             }
             string receivedSession = Get(root, "sessionCode", Get(root, "code", Get(root, "session", "")));
-            if (!string.IsNullOrWhiteSpace(receivedSession)) SessionBox.Text = receivedSession;
+            if (!string.IsNullOrWhiteSpace(receivedSession)) SetSessionCode(receivedSession);
             ApplyCompilationPermission(ReadCompilationAllowed(root));
         }
         catch
@@ -714,6 +872,24 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         }
     }
 
+
+    private static string GetLocalIpv4Address()
+    {
+        try
+        {
+            return Dns.GetHostEntry(Dns.GetHostName())
+                .AddressList
+                .FirstOrDefault(address =>
+                    address.AddressFamily == AddressFamily.InterNetwork &&
+                    !IPAddress.IsLoopback(address))
+                ?.ToString() ?? "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
     private async void Send_Click(object sender, RoutedEventArgs e)
     {
         SaveCurrentExercise();
@@ -762,29 +938,102 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                 state.CompileOutput = compilation.CompileOutput;
                 state.ProgramOutput = execution.Output;
 
+                string normalizedStudentName =
+                    StudentNameBox.Text.Trim().ToUpperInvariant();
+                string clientIp = GetLocalIpv4Address();
+
+                var timings = _exerciseStates.ToDictionary(
+                    pair => pair.Key,
+                    pair => (long)pair.Value.Elapsed.TotalSeconds
+                );
+
                 var payload = new
                 {
-                    studentId = registerNumber.ToString(), registerNumber,
-                    studentName = StudentNameBox.Text.Trim(), className = ClassBox.Text.Trim(),
-                    taskType = type, exerciseId = exerciseNumber.ToString(), exerciseNumber,
-                    totalExercises = selected.Count, sessionCode = SessionBox.Text.Trim(),
+                    studentId = registerNumber.ToString(),
+                    registerNumber,
+                    studentName = StudentNameBox.Text.Trim(),
+                    normalizedStudentName,
+                    className = ClassBox.Text.Trim(),
+
+                    // Nomi moderni e nomi storici: il client resta compatibile
+                    // con entrambe le versioni del server docente.
+                    assignmentType = type,
+                    taskType = type,
+                    tipologia = type,
+                    type,
+
+                    exerciseId = exerciseNumber.ToString(),
+                    exerciseNumber,
+                    totalExercises = selected.Count,
+
+                    sessionCode = SessionBox.Text.Trim(),
                     sessionMode = _verificationMode ? "verifica" : "esercitazione",
-                    exerciseTimeSeconds = (long)state.Elapsed.TotalSeconds, code = state.Code,
-                    compilationSucceeded = compilation.Success, compileOutput = compilation.CompileOutput,
-                    executionSucceeded = execution.Success, executionExitCode = execution.ExitCode,
-                    executionTimedOut = execution.TimedOut, programOutput = execution.Output,
-                    output = compilation.CompileOutput + Environment.NewLine + Environment.NewLine + execution.Output
+
+                    clientIp,
+                    studentIp = clientIp,
+                    ipAddress = clientIp,
+                    submissionKey =
+                        normalizedStudentName + "|" +
+                        clientIp + "|" +
+                        SessionBox.Text.Trim(),
+
+                    exerciseTimeSeconds = (long)state.Elapsed.TotalSeconds,
+                    exerciseTimes = timings,
+
+                    code = state.Code,
+                    compilationSucceeded = compilation.Success,
+                    compileOutput = compilation.CompileOutput,
+                    executionSucceeded = execution.Success,
+                    executionExitCode = execution.ExitCode,
+                    executionTimedOut = execution.TimedOut,
+                    programOutput = execution.Output,
+                    output =
+                        compilation.CompileOutput +
+                        Environment.NewLine +
+                        Environment.NewLine +
+                        execution.Output
                 };
-                using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(4));
-                using HttpResponseMessage response = await _http.PostAsync(NormalizeServerAddress(ServerBox.Text) + "/submit", content, timeout.Token);
-                if (response.IsSuccessStatusCode) sent++; else failed.Add(exerciseNumber);
+
+                using var content = new StringContent(
+                    JsonSerializer.Serialize(payload),
+                    Encoding.UTF8,
+                    "application/json"
+                );
+
+                using var timeout =
+                    new CancellationTokenSource(TimeSpan.FromSeconds(6));
+
+                using HttpResponseMessage response =
+                    await _http.PostAsync(
+                        NormalizeServerAddress(ServerBox.Text) + "/submit",
+                        content,
+                        timeout.Token
+                    );
+
+                string serverMessage =
+                    await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    sent++;
+                }
+                else
+                {
+                    failed.Add(exerciseNumber);
+                    OutputBox.Text =
+                        $"INVIO ESERCIZIO {exerciseNumber} NON RIUSCITO\n\n" +
+                        $"Risposta server: {(int)response.StatusCode} " +
+                        $"{response.ReasonPhrase}\n\n" +
+                        (string.IsNullOrWhiteSpace(serverMessage)
+                            ? "Il server non ha restituito dettagli."
+                            : serverMessage);
+                }
             }
             SaveExerciseStates();
             if (failed.Count > 0)
             {
                 StatusText.Text = $"Inviati {sent}; non inviati {failed.Count}";
-                MessageBox.Show(this, $"Invio parziale.\n\nInviati: {sent}\nNon inviati: {string.Join(", ", failed)}", "Consegna parziale", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, $"Invio parziale.\n\nInviati: {sent}\nNon inviati: {string.Join(", ", failed)}\n\nLa risposta dettagliata del server è visibile nella casella Compilazione ed esecuzione.", "Consegna parziale", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             StatusText.Text = "Consegna completata: " + DateTime.Now.ToString("HH:mm:ss");

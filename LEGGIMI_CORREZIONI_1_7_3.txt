@@ -1,0 +1,20 @@
+COMPILATORE CORRETTO 1.7.3
+============================
+
+COPIA E SOVRASCRIVI
+1. Estrai questa cartella.
+2. Copia tutto il contenuto nella repository locale "compilatore".
+3. Scegli "Sostituisci i file nella destinazione".
+4. Esegui commit e push.
+
+MODIFICHE
+- Corretto il caso "Inviati 0; non inviati 1":
+  la scheda attiva viene migrata quando il server comunica il codice sessione.
+- Payload /submit compatibile con server nuovi e precedenti.
+- In caso di rifiuto, codice HTTP e risposta server vengono mostrati nell'output.
+- SHIFT+CLICK sull'output apre un popup a schermo intero.
+- Licenza installer in RTF con titoli, colori e sezioni.
+- Accettazione licenza preselezionata.
+- Icona desktop selezionata di default.
+- Animazione C++ inserita nell'installer.
+- Versione aggiornata a 1.7.3.
