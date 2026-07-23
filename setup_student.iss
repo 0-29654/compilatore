@@ -1,5 +1,5 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.8.4"
+#define MyAppVersion "1.8.5"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -94,7 +94,7 @@ procedure PositionPromoOnInstallingPage;
 var
   AvailableWidth: Integer;
 begin
-  AvailableWidth := WizardForm.InstallingPage.SurfaceWidth;
+  AvailableWidth := WizardForm.InstallingPage.Surface.Width;
 
   PromoImage.Left :=
     (AvailableWidth - PromoImage.Width) div 2;
