@@ -41,7 +41,9 @@ public partial class MainWindow : Window
     private bool _loadingExercise;
     private bool _verificationMode;
     private bool _allowClose;
-    private bool _serverModeCheckRunning; private bool _modalDialogOpen;
+    private bool _serverModeCheckRunning;
+    private bool _modalDialogOpen;
+    private bool _editorDirty;
     private bool _compilationAllowed = true;
     private UdpClient? _teacherDiscoveryUdp;
     private CancellationTokenSource? _teacherDiscoveryCts;
@@ -129,7 +131,7 @@ public partial class MainWindow : Window
                 await Dispatcher.InvokeAsync(() =>
                 {
                     ServerBox.Text = $"{ip}:{port}";
-                    SessionBox.Text = session;
+                    ApplySessionCode(session);
                     ApplySessionMode(mode);
                     ApplyCompilationPermission(compileAllowed);
                     StatusText.Text = $"Docente rilevato: {ip}:{port}";
@@ -158,8 +160,7 @@ public partial class MainWindow : Window
     private void ApplyCompilationPermission(bool allowed)
     {
         _compilationAllowed = allowed;
-        CompileButton.IsEnabled = allowed;
-        RunButton.IsEnabled = allowed && !_verificationMode;
+        RunButton.IsEnabled = allowed;
         if (!allowed)
         {
             StatusText.Text = "Compilazione inibita dal docente";
@@ -319,386 +320,196 @@ public partial class MainWindow : Window
         popup.ShowDialog();
     }
 
-    private async void Compile_Click(object sender, RoutedEventArgs e) => await CompileAsync();
-
     private async void Run_Click(object sender, RoutedEventArgs e)
     {
         if (!_compilationAllowed)
         {
-            MessageBox.Show("La compilazione è stata inibita dal docente.", "Compilazione non disponibile", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "La compilazione è stata inibita dal docente.", "Compilazione non disponibile", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+
+        CompilationResult compilation = await CompileSourceAsync(Editor.Text, true);
+        _compileOutput = compilation.CompileOutput;
+        _exePath = compilation.ExePath;
+        SaveCompilationForActiveExercise(compilation);
+
+        if (!compilation.Success || string.IsNullOrWhiteSpace(compilation.ExePath))
+            return;
+
         if (_verificationMode)
         {
-            MessageBox.Show("Durante una verifica l'esecuzione in una finestra CMD separata è disabilitata.", "Modalità verifica", MessageBoxButton.OK, MessageBoxImage.Information);
+            ExecutionResult captured = await RunCapturedAsync(compilation.ExePath, 5);
+            _programOutput = captured.Output;
+            SaveProgramOutputForActiveExercise(captured.Output);
+            OutputBox.Text = compilation.CompileOutput + Environment.NewLine + Environment.NewLine + captured.Output;
             return;
         }
-        if (!await CompileAsync()) return;
+
         string bat = Path.Combine(Path.GetTempPath(), "cppstudent_run_" + Guid.NewGuid().ToString("N") + ".bat");
-        File.WriteAllText(bat,
-            $"@echo off\r\nset \"PATH={BundledCompilerBin};%PATH%\"\r\n\"{_exePath}\"\r\necho.\r\necho Programma terminato.\r\npause\r\n",
+        File.WriteAllText(
+            bat,
+            $"@echo off\r\nset \"PATH={BundledCompilerBin};%PATH%\"\r\n\"{compilation.ExePath}\"\r\necho.\r\necho Programma terminato.\r\npause\r\n",
             Encoding.Default);
+
         Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{bat}\"") { UseShellExecute = true });
         _programOutput = "Esecuzione aperta nella finestra CMD.";
-if (_exerciseStates.TryGetValue(_activeKey, out ExerciseState? activeState))
-{
-    activeState.ProgramOutput = _programOutput;
-    activeState.CompileOutput = _compileOutput;
-    SaveExerciseStates();
-}
+        SaveProgramOutputForActiveExercise(_programOutput);
     }
 
-    private async Task<bool> CompileAsync()
-{
-    SaveCurrentExercise();
-
-    CompilationResult result =
-        await CompileSourceAsync(Editor.Text, true);
-
-    _compileOutput = result.CompileOutput;
-    _exePath = result.ExePath;
-
-    if (_exerciseStates.TryGetValue(
-            _activeKey,
-            out ExerciseState? state))
+    private async Task<CompilationResult> CompileSourceAsync(string sourceCode, bool updateOutputBox)
     {
-        state.CompileOutput = result.CompileOutput;
-
-        if (!result.Success)
+        if (!_compilationAllowed)
         {
-            state.ProgramOutput = "";
-            _programOutput = "";
+            const string denied = "Il docente ha temporaneamente inibito la compilazione sui client.";
+            if (updateOutputBox) OutputBox.Text = denied;
+            return new CompilationResult(false, denied, null);
         }
 
+        if (updateOutputBox)
+            OutputBox.Text = "Compilazione in corso...";
+
+        try
+        {
+            string gpp = BundledCompilerPath;
+            if (!File.Exists(gpp))
+            {
+                const string missing = "Installazione incompleta: il compilatore incorporato non è stato trovato. Reinstalla il programma.";
+                if (updateOutputBox) OutputBox.Text = missing;
+                return new CompilationResult(false, missing, null);
+            }
+
+            string dir = Path.Combine(Path.GetTempPath(), "CppStudentClient");
+            Directory.CreateDirectory(dir);
+            string stem = "esercizio_" + Guid.NewGuid().ToString("N");
+            string cpp = Path.Combine(dir, stem + ".cpp");
+            string exe = Path.Combine(dir, stem + ".exe");
+            File.WriteAllText(cpp, sourceCode, new UTF8Encoding(false));
+
+            string arguments = $"-std=c++17 -Wall -Wextra -Wpedantic -fdiagnostics-color=never -o \"{exe}\" \"{cpp}\"";
+            var psi = new ProcessStartInfo(gpp, arguments)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = dir,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8
+            };
+            ConfigureCompilerEnvironment(psi);
+
+            using var process = Process.Start(psi) ?? throw new InvalidOperationException("Impossibile avviare il compilatore.");
+            Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> stderrTask = process.StandardError.ReadToEndAsync();
+            await Task.WhenAll(stdoutTask, stderrTask, process.WaitForExitAsync());
+
+            string Normalize(string text) => string.IsNullOrWhiteSpace(text)
+                ? ""
+                : text.Replace(cpp, "main.cpp", StringComparison.OrdinalIgnoreCase)
+                      .Replace(cpp.Replace('\\', '/'), "main.cpp", StringComparison.OrdinalIgnoreCase)
+                      .Trim();
+
+            string stdout = Normalize(await stdoutTask);
+            string stderr = Normalize(await stderrTask);
+            string diagnostics = string.Join(Environment.NewLine + Environment.NewLine,
+                new[] { stderr, stdout }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+            bool success = process.ExitCode == 0 && File.Exists(exe);
+            string text;
+            if (success)
+            {
+                text = string.IsNullOrWhiteSpace(diagnostics)
+                    ? "COMPILAZIONE RIUSCITA\nNessun errore o avviso."
+                    : "COMPILAZIONE RIUSCITA CON AVVISI\n\n" + diagnostics;
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(diagnostics))
+                    diagnostics = $"Il compilatore ha restituito il codice {process.ExitCode} senza un messaggio diagnostico.";
+                text = "COMPILAZIONE NON RIUSCITA\n\n" + diagnostics;
+            }
+
+            if (updateOutputBox) OutputBox.Text = text;
+            return new CompilationResult(success, text, success ? exe : null);
+        }
+        catch (Exception ex)
+        {
+            string text = "ERRORE DURANTE LA COMPILAZIONE\n\n" + ex.GetType().Name + ": " + ex.Message;
+            if (updateOutputBox) OutputBox.Text = text;
+            return new CompilationResult(false, text, null);
+        }
+    }
+
+    private async Task<ExecutionResult> RunCapturedAsync(string exePath, int timeoutSeconds)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo(exePath)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(exePath) ?? Path.GetTempPath(),
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8
+            };
+            ConfigureCompilerEnvironment(psi);
+            using var process = Process.Start(psi) ?? throw new InvalidOperationException("Impossibile avviare il programma compilato.");
+            process.StandardInput.Close();
+            Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> stderrTask = process.StandardError.ReadToEndAsync();
+            Task waitTask = process.WaitForExitAsync();
+            Task completed = await Task.WhenAny(waitTask, Task.Delay(TimeSpan.FromSeconds(timeoutSeconds)));
+
+            if (completed != waitTask)
+            {
+                try { process.Kill(true); } catch { }
+                await process.WaitForExitAsync();
+                string partial = (await stdoutTask).Trim();
+                string error = (await stderrTask).Trim();
+                string message = $"ESECUZIONE INTERROTTA DOPO {timeoutSeconds} SECONDI\nPossibile ciclo infinito o programma in attesa di input.";
+                if (!string.IsNullOrWhiteSpace(partial)) message += "\n\nOUTPUT PARZIALE\n" + partial;
+                if (!string.IsNullOrWhiteSpace(error)) message += "\n\nERRORI DI ESECUZIONE\n" + error;
+                return new ExecutionResult(false, message, null, true);
+            }
+
+            string stdout = (await stdoutTask).Trim();
+            string stderr = (await stderrTask).Trim();
+            var parts = new List<string>
+            {
+                process.ExitCode == 0 ? "ESECUZIONE TERMINATA CORRETTAMENTE" : "ESECUZIONE TERMINATA IN MODO ANOMALO",
+                $"Codice di uscita: {process.ExitCode}",
+                string.IsNullOrWhiteSpace(stdout) ? "OUTPUT PROGRAMMA\nNessun testo prodotto." : "OUTPUT PROGRAMMA\n" + stdout
+            };
+            if (!string.IsNullOrWhiteSpace(stderr)) parts.Add("ERRORI DI ESECUZIONE\n" + stderr);
+            if (process.ExitCode != 0 && string.IsNullOrWhiteSpace(stderr))
+                parts.Add("Possibile errore runtime: controlla divisioni o modulo per zero e accessi non validi alla memoria.");
+            return new ExecutionResult(process.ExitCode == 0, string.Join("\n\n", parts), process.ExitCode, false);
+        }
+        catch (Exception ex)
+        {
+            return new ExecutionResult(false, "ERRORE DURANTE L'ESECUZIONE\n\n" + ex.GetType().Name + ": " + ex.Message, null, false);
+        }
+    }
+
+    private void SaveCompilationForActiveExercise(CompilationResult result)
+    {
+        if (!_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state)) return;
+        state.CompileOutput = result.CompileOutput;
+        if (!result.Success) state.ProgramOutput = "";
         SaveExerciseStates();
     }
 
-    return result.Success;
-}
-
-private async Task<CompilationResult> CompileSourceAsync(
-    string sourceCode,
-    bool updateOutputBox)
-{
-    if (!_compilationAllowed)
+    private void SaveProgramOutputForActiveExercise(string output)
     {
-        const string denied =
-            "Il docente ha temporaneamente inibito la compilazione sui client.";
-
-        if (updateOutputBox)
-            OutputBox.Text = denied;
-
-        return new CompilationResult(false, denied, null);
+        if (!_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state)) return;
+        state.ProgramOutput = output;
+        SaveExerciseStates();
     }
 
-    if (updateOutputBox)
-        OutputBox.Text = "Compilazione C++17 in corso...";
-
-    try
-    {
-        string gpp = BundledCompilerPath;
-
-        if (!File.Exists(gpp))
-        {
-            string missing =
-                "Installazione incompleta: il compilatore C++17 incorporato " +
-                "non è stato trovato.\n\nReinstalla il programma.";
-
-            if (updateOutputBox)
-                OutputBox.Text = missing;
-
-            return new CompilationResult(false, missing, null);
-        }
-
-        string dir = Path.Combine(
-            Path.GetTempPath(),
-            "CppStudentClient"
-        );
-
-        Directory.CreateDirectory(dir);
-
-        string stem =
-            "esercizio_" +
-            Guid.NewGuid().ToString("N");
-
-        string cpp = Path.Combine(dir, stem + ".cpp");
-        string exe = Path.Combine(dir, stem + ".exe");
-
-        File.WriteAllText(
-            cpp,
-            sourceCode,
-            new UTF8Encoding(false)
-        );
-
-        string arguments =
-            "-std=c++17 -Wall -Wextra -Wpedantic " +
-            "-fdiagnostics-color=never " +
-            $"-o \"{exe}\" \"{cpp}\"";
-
-        var psi = new ProcessStartInfo(gpp, arguments)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-            WorkingDirectory = dir,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
-        };
-
-        ConfigureCompilerEnvironment(psi);
-
-        using var process = Process.Start(psi)
-            ?? throw new InvalidOperationException(
-                "Impossibile avviare il compilatore C++17."
-            );
-
-        Task<string> stdoutTask =
-            process.StandardOutput.ReadToEndAsync();
-
-        Task<string> stderrTask =
-            process.StandardError.ReadToEndAsync();
-
-        await Task.WhenAll(
-            stdoutTask,
-            stderrTask,
-            process.WaitForExitAsync()
-        );
-
-        string stdout = (await stdoutTask).Trim();
-        string stderr = (await stderrTask).Trim();
-
-        string NormalizeDiagnostic(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return "";
-
-            return text
-                .Replace(cpp, "main.cpp")
-                .Replace(cpp.Replace("\\", "/"), "main.cpp")
-                .Trim();
-        }
-
-        stdout = NormalizeDiagnostic(stdout);
-        stderr = NormalizeDiagnostic(stderr);
-
-        var diagnostics = new List<string>();
-
-        if (!string.IsNullOrWhiteSpace(stderr))
-            diagnostics.Add(stderr);
-
-        if (!string.IsNullOrWhiteSpace(stdout))
-            diagnostics.Add(stdout);
-
-        string diagnosticText = string.Join(
-            Environment.NewLine + Environment.NewLine,
-            diagnostics
-        );
-
-        bool success =
-            process.ExitCode == 0 &&
-            File.Exists(exe);
-
-        if (success)
-        {
-            string resultText =
-                string.IsNullOrWhiteSpace(diagnosticText)
-                ? "COMPILAZIONE RIUSCITA\nNessun errore o avviso."
-                : "COMPILAZIONE RIUSCITA CON AVVISI\n\n" +
-                  diagnosticText;
-
-            if (updateOutputBox)
-                OutputBox.Text = resultText;
-
-            return new CompilationResult(
-                true,
-                resultText,
-                exe
-            );
-        }
-
-        if (string.IsNullOrWhiteSpace(diagnosticText))
-        {
-            diagnosticText =
-                "Il compilatore ha restituito il codice " +
-                process.ExitCode +
-                " senza fornire un messaggio diagnostico.";
-        }
-
-        string errorText =
-            "COMPILAZIONE NON RIUSCITA\n\n" +
-            diagnosticText;
-
-        if (updateOutputBox)
-            OutputBox.Text = errorText;
-
-        return new CompilationResult(
-            false,
-            errorText,
-            null
-        );
-    }
-    catch (Exception ex)
-    {
-        string errorText =
-            "ERRORE DURANTE LA COMPILAZIONE\n\n" +
-            ex.GetType().Name +
-            ": " +
-            ex.Message;
-
-        if (updateOutputBox)
-            OutputBox.Text = errorText;
-
-        return new CompilationResult(
-            false,
-            errorText,
-            null
-        );
-    }
-}
-
-private async Task<ExecutionResult> RunCapturedAsync(
-    string exePath,
-    int timeoutSeconds = 5)
-{
-    try
-    {
-        var psi = new ProcessStartInfo(exePath)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            RedirectStandardInput = true,
-            CreateNoWindow = true,
-            WorkingDirectory =
-                Path.GetDirectoryName(exePath) ??
-                Path.GetTempPath(),
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
-        };
-
-        ConfigureCompilerEnvironment(psi);
-
-        using var process = Process.Start(psi)
-            ?? throw new InvalidOperationException(
-                "Impossibile avviare il programma compilato."
-            );
-
-        process.StandardInput.Close();
-
-        Task<string> stdoutTask =
-            process.StandardOutput.ReadToEndAsync();
-
-        Task<string> stderrTask =
-            process.StandardError.ReadToEndAsync();
-
-        Task waitTask = process.WaitForExitAsync();
-
-        Task completed = await Task.WhenAny(
-            waitTask,
-            Task.Delay(TimeSpan.FromSeconds(timeoutSeconds))
-        );
-
-        if (completed != waitTask)
-        {
-            try
-            {
-                process.Kill(true);
-            }
-            catch
-            {
-            }
-
-            await process.WaitForExitAsync();
-
-            string partialOutput = (await stdoutTask).Trim();
-            string partialError = (await stderrTask).Trim();
-
-            string timeoutText =
-                $"ESECUZIONE INTERROTTA DOPO {timeoutSeconds} SECONDI\n" +
-                "Possibile ciclo infinito o programma in attesa di input.";
-
-            if (!string.IsNullOrWhiteSpace(partialOutput))
-            {
-                timeoutText +=
-                    "\n\nOUTPUT PARZIALE\n" +
-                    partialOutput;
-            }
-
-            if (!string.IsNullOrWhiteSpace(partialError))
-            {
-                timeoutText +=
-                    "\n\nERRORI DI ESECUZIONE\n" +
-                    partialError;
-            }
-
-            return new ExecutionResult(
-                false,
-                timeoutText,
-                null,
-                true
-            );
-        }
-
-        string stdout = (await stdoutTask).Trim();
-        string stderr = (await stderrTask).Trim();
-
-        var sections = new List<string>
-        {
-            process.ExitCode == 0
-                ? "ESECUZIONE TERMINATA CORRETTAMENTE"
-                : "ESECUZIONE TERMINATA IN MODO ANOMALO",
-
-            $"Codice di uscita: {process.ExitCode}",
-
-            string.IsNullOrWhiteSpace(stdout)
-                ? "OUTPUT PROGRAMMA\nNessun testo prodotto."
-                : "OUTPUT PROGRAMMA\n" + stdout
-        };
-
-        if (!string.IsNullOrWhiteSpace(stderr))
-        {
-            sections.Add(
-                "ERRORI DI ESECUZIONE\n" +
-                stderr
-            );
-        }
-
-        if (process.ExitCode != 0 &&
-            string.IsNullOrWhiteSpace(stderr))
-        {
-            sections.Add(
-                "Il programma si è chiuso con un errore runtime. " +
-                "Controlla divisioni o modulo per zero, accessi non validi " +
-                "alla memoria e altri errori che si verificano durante l'esecuzione."
-            );
-        }
-
-        return new ExecutionResult(
-            process.ExitCode == 0,
-            string.Join(
-                Environment.NewLine +
-                Environment.NewLine,
-                sections
-            ),
-            process.ExitCode,
-            false
-        );
-    }
-    catch (Exception ex)
-    {
-        return new ExecutionResult(
-            false,
-            "ERRORE DURANTE L'ESECUZIONE\n\n" +
-            ex.GetType().Name +
-            ": " +
-            ex.Message,
-            null,
-            false
-        );
-    }
-} 
-private async void TestServer_Click(object sender, RoutedEventArgs e)
+    private async void TestServer_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -766,7 +577,7 @@ private async void TestServer_Click(object sender, RoutedEventArgs e)
                 ServerBox.Text = $"{serverIp}:{serverPort}";
             }
             string receivedSession = Get(root, "sessionCode", Get(root, "code", Get(root, "session", "")));
-            if (!string.IsNullOrWhiteSpace(receivedSession)) SessionBox.Text = receivedSession;
+            if (!string.IsNullOrWhiteSpace(receivedSession)) ApplySessionCode(receivedSession);
             ApplyCompilationPermission(ReadCompilationAllowed(root));
         }
         catch
@@ -792,8 +603,7 @@ private async void TestServer_Click(object sender, RoutedEventArgs e)
         ModeBadge.Background = new SolidColorBrush(Color.FromRgb(75, 38, 15));
         ModeBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(199, 110, 34));
         SendButton.Content = "Invio compito";
-        RunButton.IsEnabled = false;
-        CompileButton.IsEnabled = _compilationAllowed;
+        RunButton.IsEnabled = _compilationAllowed;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         WindowState = WindowState.Maximized;
@@ -818,655 +628,209 @@ private async void TestServer_Click(object sender, RoutedEventArgs e)
         ShowInTaskbar = true;
     }
 
-    private int? AskExerciseCount(int suggestedCount)
-{
-    var input = new System.Windows.Controls.TextBox
+    private async Task<bool> IsTeacherServerAvailableAsync()
     {
-        Text = Math.Max(1, suggestedCount).ToString(),
-        FontSize = 22,
-        MinWidth = 220,
-        Margin = new Thickness(0, 16, 0, 16),
-        HorizontalContentAlignment = HorizontalAlignment.Center
-    };
-
-    var sendButton = new System.Windows.Controls.Button
-    {
-        Content = "Invia",
-        IsDefault = true,
-        MinWidth = 120,
-        Margin = new Thickness(6)
-    };
-
-    var cancelButton = new System.Windows.Controls.Button
-    {
-        Content = "Annulla",
-        IsCancel = true,
-        MinWidth = 120,
-        Margin = new Thickness(6)
-    };
-
-    var buttons = new System.Windows.Controls.StackPanel
-    {
-        Orientation = System.Windows.Controls.Orientation.Horizontal,
-        HorizontalAlignment = HorizontalAlignment.Center
-    };
-
-    buttons.Children.Add(sendButton);
-    buttons.Children.Add(cancelButton);
-
-    var panel = new System.Windows.Controls.StackPanel
-    {
-        Margin = new Thickness(28)
-    };
-
-    panel.Children.Add(new System.Windows.Controls.TextBlock
-    {
-        Text =
-            "Quanti esercizi vuoi inviare?\n\n" +
-            "Inserendo 5 verranno inviati gli esercizi 1, 2, 3, 4 e 5.",
-        FontSize = 17,
-        TextWrapping = TextWrapping.Wrap
-    });
-
-    panel.Children.Add(input);
-    panel.Children.Add(buttons);
-
-    var dialog = new Window
-    {
-        Title = "Numero di esercizi da inviare",
-        Owner = this,
-        Content = panel,
-        SizeToContent = SizeToContent.WidthAndHeight,
-        WindowStartupLocation = WindowStartupLocation.CenterOwner,
-        ResizeMode = ResizeMode.NoResize,
-        ShowInTaskbar = false,
-        Topmost = true
-    };
-
-    int? result = null;
-
-    sendButton.Click += (_, _) =>
-    {
-        if (!int.TryParse(input.Text.Trim(), out int count) ||
-            count < 1 ||
-            count > 100)
-        {
-            MessageBox.Show(
-                dialog,
-                "Inserisci un numero intero compreso tra 1 e 100.",
-                "Numero non valido",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
-
-            input.Focus();
-            input.SelectAll();
-            return;
-        }
-
-        result = count;
-        dialog.DialogResult = true;
-    };
-
-    dialog.Loaded += (_, _) =>
-    {
-        input.Focus();
-        input.SelectAll();
-    };
-
-    dialog.ShowDialog();
-    Activate();
-
-    return result;
-}
-private async Task<bool> IsTeacherServerAvailableAsync(
-    bool showMessage)
-{
-    try
-    {
-        string baseAddress =
-            NormalizeServerAddress(ServerBox.Text);
-
-        using var timeout =
-            new CancellationTokenSource(
-                TimeSpan.FromSeconds(2)
-            );
-
-        using HttpResponseMessage response =
-            await _http.GetAsync(
-                baseAddress + "/ping",
-                timeout.Token
-            );
-
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(
-                "Il server ha risposto con codice " +
-                (int)response.StatusCode +
-                "."
-            );
-
-        return true;
-    }
-    catch (Exception ex)
-    {
-        StatusText.Text =
-            "Server docente non raggiungibile";
-
-        if (showMessage)
-        {
-            MessageBox.Show(
-                this,
-                "SERVER DOCENTE NON RAGGIUNGIBILE\n\n" +
-                "Nessun esercizio è stato inviato.\n\n" +
-                "Controlla che il programma del docente sia aperto e che " +
-                "IP, porta e codice sessione siano corretti.\n\n" +
-                ex.Message,
-                "Invio non eseguito",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
-        }
-
-        return false;
-    }
-}
-
-private SendChoice? ShowSendChoiceDialog(
-    int activeExercise,
-    int savedExercises)
-{
-    _modalDialogOpen = true;
-
-    try
-    {
-        var activeRadio =
-            new System.Windows.Controls.RadioButton
-            {
-                Content =
-                    $"Invia solo l'esercizio attivo ({activeExercise})",
-                IsChecked = true,
-                Margin = new Thickness(0, 10, 0, 8),
-                FontSize = 16
-            };
-
-        var firstNRadio =
-            new System.Windows.Controls.RadioButton
-            {
-                Content = "Invia gli esercizi da 1 a:",
-                Margin = new Thickness(0, 8, 0, 4),
-                FontSize = 16
-            };
-
-        var countBox =
-            new System.Windows.Controls.TextBox
-            {
-                Text = Math.Max(
-                    1,
-                    Math.Max(activeExercise, savedExercises)
-                ).ToString(),
-                FontSize = 20,
-                MinWidth = 120,
-                Margin = new Thickness(24, 4, 0, 12),
-                HorizontalContentAlignment =
-                    HorizontalAlignment.Center
-            };
-
-        var confirm =
-            new System.Windows.Controls.Button
-            {
-                Content = "Continua",
-                IsDefault = true,
-                MinWidth = 120,
-                Margin = new Thickness(6)
-            };
-
-        var cancel =
-            new System.Windows.Controls.Button
-            {
-                Content = "Annulla",
-                IsCancel = true,
-                MinWidth = 120,
-                Margin = new Thickness(6)
-            };
-
-        var buttonPanel =
-            new System.Windows.Controls.StackPanel
-            {
-                Orientation =
-                    System.Windows.Controls.Orientation.Horizontal,
-                HorizontalAlignment =
-                    HorizontalAlignment.Center
-            };
-
-        buttonPanel.Children.Add(confirm);
-        buttonPanel.Children.Add(cancel);
-
-        var panel =
-            new System.Windows.Controls.StackPanel
-            {
-                Margin = new Thickness(28),
-                MinWidth = 430
-            };
-
-        panel.Children.Add(
-            new System.Windows.Controls.TextBlock
-            {
-                Text =
-                    $"Esercizio attivo: {activeExercise}\n" +
-                    $"Schede salvate nella sessione: {savedExercises}\n\n" +
-                    "Scegli cosa inviare:",
-                FontSize = 17,
-                TextWrapping = TextWrapping.Wrap
-            }
-        );
-
-        panel.Children.Add(activeRadio);
-        panel.Children.Add(firstNRadio);
-        panel.Children.Add(countBox);
-        panel.Children.Add(buttonPanel);
-
-        var dialog = new Window
-        {
-            Title = "Seleziona esercizi da inviare",
-            Owner = this,
-            Content = panel,
-            SizeToContent =
-                SizeToContent.WidthAndHeight,
-            WindowStartupLocation =
-                WindowStartupLocation.CenterOwner,
-            ResizeMode = ResizeMode.NoResize,
-            ShowInTaskbar = false,
-            Topmost = true
-        };
-
-        SendChoice? choice = null;
-
-        confirm.Click += (_, _) =>
-        {
-            if (activeRadio.IsChecked == true)
-            {
-                choice = new SendChoice(
-                    true,
-                    activeExercise,
-                    activeExercise
-                );
-
-                dialog.DialogResult = true;
-                return;
-            }
-
-            if (!int.TryParse(
-                    countBox.Text.Trim(),
-                    out int count) ||
-                count < 1 ||
-                count > 100)
-            {
-                MessageBox.Show(
-                    dialog,
-                    "Inserisci un numero compreso tra 1 e 100.",
-                    "Numero non valido",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                );
-
-                countBox.Focus();
-                countBox.SelectAll();
-                return;
-            }
-
-            choice = new SendChoice(
-                false,
-                1,
-                count
-            );
-
-            dialog.DialogResult = true;
-        };
-
-        dialog.ShowDialog();
-        Activate();
-
-        return choice;
-    }
-    finally
-    {
-        _modalDialogOpen = false;
-    }
-}
-
-private int CountSavedExercisesForCurrentSession()
-{
-    string prefix =
-        SessionBox.Text.Trim().ToUpperInvariant() +
-        "|" +
-        GetTaskType().Trim().ToUpperInvariant() +
-        "|";
-
-    return _exerciseStates.Keys.Count(
-        key => key.StartsWith(
-            prefix,
-            StringComparison.OrdinalIgnoreCase
-        )
-    );
-}private async void Send_Click(
-    object sender,
-    RoutedEventArgs e)
-{
-    SaveCurrentExercise();
-
-    if (!ValidateSubmission(
-            out int registerNumber,
-            out int activeExerciseNumber))
-    {
-        return;
-    }
-
-    if (!await IsTeacherServerAvailableAsync(true))
-        return;
-
-    int savedExercises =
-        CountSavedExercisesForCurrentSession();
-
-    SendChoice? choice =
-        ShowSendChoiceDialog(
-            activeExerciseNumber,
-            savedExercises
-        );
-
-    if (choice == null)
-    {
-        StatusText.Text = "Invio annullato";
-        return;
-    }
-
-    string type = GetTaskType();
-
-    int firstExercise = choice.FirstExercise;
-    int lastExercise = choice.LastExercise;
-
-    string exerciseDescription =
-        choice.ActiveOnly
-        ? $"Esercizio attivo: {activeExerciseNumber}"
-        : $"Esercizi da {firstExercise} a {lastExercise}";
-
-    _modalDialogOpen = true;
-
-    MessageBoxResult confirmation;
-
-    try
-    {
-        confirmation = MessageBox.Show(
-            this,
-            $"Confermi l'invio?\n\n" +
-            $"Modalità: {(_verificationMode ? "VERIFICA" : "ESERCITAZIONE")}\n" +
-            $"N° registro: {registerNumber}\n" +
-            $"Nome: {StudentNameBox.Text.Trim()}\n" +
-            $"Classe: {ClassBox.Text.Trim()}\n" +
-            $"Tipologia: {type}\n" +
-            $"{exerciseDescription}\n\n" +
-            "Ogni esercizio sarà compilato ed eseguito in modo nascosto. " +
-            "Saranno inviati il codice, gli errori e l'output.",
-            "Conferma consegna",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question,
-            MessageBoxResult.No
-        );
-    }
-    finally
-    {
-        _modalDialogOpen = false;
-    }
-
-    if (confirmation != MessageBoxResult.Yes)
-    {
-        StatusText.Text = "Invio annullato";
-        return;
-    }
-
-    if (!await IsTeacherServerAvailableAsync(true))
-        return;
-
-    try
-    {
-        SaveSettings();
-
-        string address =
-            NormalizeServerAddress(ServerBox.Text) +
-            "/submit";
-
-        int sent = 0;
-        var failed = new List<int>();
-
-        for (int exerciseNumber = firstExercise;
-             exerciseNumber <= lastExercise;
-             exerciseNumber++)
-        {
-            string key =
-                BuildExerciseKey(
-                    type,
-                    exerciseNumber
-                );
-
-            if (!_exerciseStates.TryGetValue(
-                    key,
-                    out ExerciseState? state))
-            {
-                failed.Add(exerciseNumber);
-                continue;
-            }
-
-            string code = state.Code;
-
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                failed.Add(exerciseNumber);
-                continue;
-            }
-
-            StatusText.Text =
-                $"Compilazione esercizio {exerciseNumber}...";
-
-            CompilationResult compilation =
-                await CompileSourceAsync(
-                    code,
-                    choice.ActiveOnly
-                );
-
-            state.CompileOutput =
-                compilation.CompileOutput;
-
-            ExecutionResult execution;
-
-            if (compilation.Success &&
-                !string.IsNullOrWhiteSpace(
-                    compilation.ExePath))
-            {
-                StatusText.Text =
-                    $"Esecuzione esercizio {exerciseNumber}...";
-
-                execution =
-                    await RunCapturedAsync(
-                        compilation.ExePath,
-                        5
-                    );
-            }
-            else
-            {
-                execution =
-                    new ExecutionResult(
-                        false,
-                        "Programma non eseguito perché la compilazione non è riuscita.",
-                        null,
-                        false
-                    );
-            }
-
-            state.ProgramOutput =
-                execution.Output;
-
-            string combinedOutput =
-                compilation.CompileOutput +
-                Environment.NewLine +
-                Environment.NewLine +
-                execution.Output;
-
-            var payload = new
-            {
-                studentId =
-                    registerNumber.ToString(),
-                registerNumber,
-                studentName =
-                    StudentNameBox.Text.Trim(),
-                className =
-                    ClassBox.Text.Trim(),
-                taskType = type,
-                exerciseId =
-                    exerciseNumber.ToString(),
-                exerciseNumber,
-                totalExercises =
-                    lastExercise - firstExercise + 1,
-                sessionCode =
-                    SessionBox.Text.Trim(),
-                sessionMode =
-                    _verificationMode
-                    ? "verifica"
-                    : "esercitazione",
-                exerciseTimeSeconds =
-                    (long)state.Elapsed.TotalSeconds,
-                code,
-                compilationSucceeded =
-                    compilation.Success,
-                compileOutput =
-                    compilation.CompileOutput,
-                executionSucceeded =
-                    execution.Success,
-                executionExitCode =
-                    execution.ExitCode,
-                executionTimedOut =
-                    execution.TimedOut,
-                programOutput =
-                    execution.Output,
-                output =
-                    combinedOutput
-            };
-
-            using var content =
-                new StringContent(
-                    JsonSerializer.Serialize(payload),
-                    Encoding.UTF8,
-                    "application/json"
-                );
-
-            StatusText.Text =
-                $"Invio esercizio {exerciseNumber}...";
-
-            using var requestTimeout =
-                new CancellationTokenSource(
-                    TimeSpan.FromSeconds(4)
-                );
-
-            using HttpResponseMessage response =
-                await _http.PostAsync(
-                    address,
-                    content,
-                    requestTimeout.Token
-                );
-
-            if (!response.IsSuccessStatusCode)
-            {
-                failed.Add(exerciseNumber);
-                continue;
-            }
-
-            sent++;
-        }
-
-        SaveExerciseStates();
-
-        if (failed.Count > 0)
-        {
-            StatusText.Text =
-                $"Inviati {sent}; non inviati {failed.Count}";
-
-            _modalDialogOpen = true;
-
-            try
-            {
-                MessageBox.Show(
-                    this,
-                    $"Invio completato parzialmente.\n\n" +
-                    $"Inviati: {sent}\n" +
-                    $"Non inviati: {string.Join(", ", failed)}\n\n" +
-                    "Le schede mancanti o vuote non sono state inviate.",
-                    "Consegna parziale",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                );
-            }
-            finally
-            {
-                _modalDialogOpen = false;
-            }
-
-            return;
-        }
-
-        StatusText.Text =
-            $"Consegna completata: {DateTime.Now:HH:mm:ss}";
-
-        _modalDialogOpen = true;
-
         try
         {
-            MessageBox.Show(
-                this,
-                choice.ActiveOnly
-                    ? $"Esercizio {activeExerciseNumber} inviato correttamente."
-                    : $"Esercizi da {firstExercise} a {lastExercise} inviati correttamente.",
-                "Consegna completata",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information
-            );
+            string baseAddress = NormalizeServerAddress(ServerBox.Text);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            using HttpResponseMessage response = await _http.GetAsync(baseAddress + "/ping", cts.Token);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private List<int> GetSavedExerciseNumbers()
+    {
+        string prefix = BuildExercisePrefix(GetTaskType());
+        return _exerciseStates
+            .Where(pair => pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(pair.Value.Code))
+            .Select(pair => TryGetExerciseNumberFromKey(pair.Key))
+            .Where(number => number > 0)
+            .Distinct()
+            .OrderBy(number => number)
+            .ToList();
+    }
+
+    private List<int>? ShowExerciseSelectionDialog(List<int> available, int active)
+    {
+        _modalDialogOpen = true;
+        try
+        {
+            var panel = new System.Windows.Controls.StackPanel { Margin = new Thickness(24), MinWidth = 430 };
+            panel.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = $"Schede salvate: {available.Count}\nEsercizio attivo: {active}\n\nSeleziona gli esercizi da inviare:",
+                FontSize = 17,
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            var checkBoxes = new List<System.Windows.Controls.CheckBox>();
+            foreach (int number in available)
+            {
+                var check = new System.Windows.Controls.CheckBox
+                {
+                    Content = $"Esercizio {number}" + (number == active ? " (attivo)" : ""),
+                    IsChecked = number == active,
+                    FontSize = 16,
+                    Margin = new Thickness(0, 7, 0, 0),
+                    Tag = number
+                };
+                checkBoxes.Add(check);
+                panel.Children.Add(check);
+            }
+
+            var selectAll = new System.Windows.Controls.Button { Content = "Seleziona tutti", MinWidth = 120, Margin = new Thickness(6) };
+            var send = new System.Windows.Controls.Button { Content = "Invia selezionati", IsDefault = true, MinWidth = 150, Margin = new Thickness(6) };
+            var cancel = new System.Windows.Controls.Button { Content = "Annulla", IsCancel = true, MinWidth = 110, Margin = new Thickness(6) };
+            var buttons = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 18, 0, 0) };
+            buttons.Children.Add(selectAll); buttons.Children.Add(send); buttons.Children.Add(cancel); panel.Children.Add(buttons);
+
+            var dialog = new Window
+            {
+                Title = "Esercizi da inviare",
+                Owner = this,
+                Content = panel,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                ShowInTaskbar = false,
+                Topmost = true
+            };
+
+            List<int>? result = null;
+            selectAll.Click += (_, _) => { foreach (var check in checkBoxes) check.IsChecked = true; };
+            send.Click += (_, _) =>
+            {
+                result = checkBoxes.Where(check => check.IsChecked == true).Select(check => (int)check.Tag).OrderBy(number => number).ToList();
+                if (result.Count == 0)
+                {
+                    MessageBox.Show(dialog, "Seleziona almeno un esercizio.", "Nessuna selezione", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                dialog.DialogResult = true;
+            };
+            dialog.ShowDialog();
+            Activate();
+            return result;
         }
         finally
         {
             _modalDialogOpen = false;
         }
+    }
 
-        if (_verificationMode)
+    private async void Send_Click(object sender, RoutedEventArgs e)
+    {
+        SaveCurrentExercise();
+        if (!ValidateSubmission(out int registerNumber, out int activeExerciseNumber)) return;
+
+        if (!await IsTeacherServerAvailableAsync())
         {
-            ClearLocalVerificationData();
-            _allowClose = true;
-            Close();
+            StatusText.Text = "Server docente non raggiungibile";
+            MessageBox.Show(this,
+                "SERVER DOCENTE NON RAGGIUNGIBILE\n\nNessun esercizio è stato inviato.\nControlla che il server sia avviato e che IP, porta e codice sessione siano corretti.",
+                "Invio non eseguito", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        List<int> available = GetSavedExerciseNumbers();
+        if (!available.Contains(activeExerciseNumber)) available.Add(activeExerciseNumber);
+        available = available.Distinct().OrderBy(number => number).ToList();
+        List<int>? selected = ShowExerciseSelectionDialog(available, activeExerciseNumber);
+        if (selected == null) { StatusText.Text = "Invio annullato"; return; }
+
+        _modalDialogOpen = true;
+        MessageBoxResult confirmation;
+        try
+        {
+            confirmation = MessageBox.Show(this,
+                $"Confermi l'invio?\n\nModalità: {(_verificationMode ? "VERIFICA" : "ESERCITAZIONE")}\nEsercizi: {string.Join(", ", selected)}\n\nOgni esercizio sarà ricompilato. Saranno inviati il codice, gli errori oppure l'output del programma.",
+                "Conferma consegna", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+        }
+        finally { _modalDialogOpen = false; }
+        if (confirmation != MessageBoxResult.Yes) { StatusText.Text = "Invio annullato"; return; }
+
+        try
+        {
+            string address = NormalizeServerAddress(ServerBox.Text) + "/submit";
+            var failed = new List<int>();
+            int sent = 0;
+
+            foreach (int exerciseNumber in selected)
+            {
+                string key = BuildExerciseKey(GetTaskType(), exerciseNumber);
+                if (!_exerciseStates.TryGetValue(key, out ExerciseState? state) || string.IsNullOrWhiteSpace(state.Code))
+                {
+                    failed.Add(exerciseNumber);
+                    continue;
+                }
+
+                StatusText.Text = $"Compilazione esercizio {exerciseNumber}...";
+                CompilationResult compilation = await CompileSourceAsync(state.Code, exerciseNumber == activeExerciseNumber);
+                state.CompileOutput = compilation.CompileOutput;
+
+                ExecutionResult execution = compilation.Success && !string.IsNullOrWhiteSpace(compilation.ExePath)
+                    ? await RunCapturedAsync(compilation.ExePath, 5)
+                    : new ExecutionResult(false, "Programma non eseguito perché la compilazione non è riuscita.", null, false);
+                state.ProgramOutput = execution.Output;
+
+                var payload = new
+                {
+                    studentId = registerNumber.ToString(), registerNumber,
+                    studentName = StudentNameBox.Text.Trim(), className = ClassBox.Text.Trim(),
+                    taskType = GetTaskType(), exerciseId = exerciseNumber.ToString(), exerciseNumber,
+                    totalExercises = selected.Count, sessionCode = SessionBox.Text.Trim(),
+                    sessionMode = _verificationMode ? "verifica" : "esercitazione",
+                    exerciseTimeSeconds = (long)state.Elapsed.TotalSeconds,
+                    code = state.Code,
+                    compilationSucceeded = compilation.Success,
+                    compileOutput = compilation.CompileOutput,
+                    executionSucceeded = execution.Success,
+                    executionExitCode = execution.ExitCode,
+                    executionTimedOut = execution.TimedOut,
+                    programOutput = execution.Output,
+                    output = compilation.CompileOutput + Environment.NewLine + Environment.NewLine + execution.Output
+                };
+
+                using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(4));
+                StatusText.Text = $"Invio esercizio {exerciseNumber}...";
+                using HttpResponseMessage response = await _http.PostAsync(address, content, cts.Token);
+                if (!response.IsSuccessStatusCode) failed.Add(exerciseNumber); else sent++;
+            }
+
+            SaveExerciseStates();
+            if (failed.Count > 0)
+            {
+                StatusText.Text = $"Inviati {sent}; non inviati {failed.Count}";
+                MessageBox.Show(this, $"Invio parziale.\n\nInviati: {sent}\nNon inviati: {string.Join(", ", failed)}", "Consegna parziale", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            StatusText.Text = "Consegnato: " + DateTime.Now.ToString("HH:mm:ss");
+            MessageBox.Show(this, $"Esercizi inviati: {string.Join(", ", selected)}", "Consegna completata", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_verificationMode)
+            {
+                ClearLocalVerificationData();
+                _allowClose = true;
+                Close();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "Server docente non raggiungibile";
+            MessageBox.Show(this, "Il server non ha risposto entro il tempo previsto. L'invio non è stato confermato.", "Invio interrotto", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Invio fallito";
+            MessageBox.Show(this, BuildNetworkError(ex), "Impossibile inviare il compito", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
-    catch (OperationCanceledException)
-    {
-        StatusText.Text =
-            "Server docente non raggiungibile";
-
-        MessageBox.Show(
-            this,
-            "Il server non ha risposto entro il tempo previsto.\n\n" +
-            "Nessun nuovo esercizio è stato confermato come inviato.",
-            "Invio interrotto",
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning
-        );
-    }
-    catch (Exception ex)
-    {
-        StatusText.Text = "Invio fallito";
-
-        MessageBox.Show(
-            this,
-            BuildNetworkError(ex),
-            "Impossibile inviare il compito",
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning
-        );
-    }
-}   
 
     private bool ValidateSubmission(out int registerNumber, out int exerciseNumber)
     {
@@ -1489,30 +853,85 @@ private int CountSavedExercisesForCurrentSession()
         return true;
     }
 
-    private void PreviousExercise_Click(object sender, RoutedEventArgs e) => SwitchExercise(-1);
-    private void NextExercise_Click(object sender, RoutedEventArgs e) => SwitchExercise(1);
+    private void PreviousExercise_Click(object sender, RoutedEventArgs e) => RequestExerciseSwitch(-1);
+    private void NextExercise_Click(object sender, RoutedEventArgs e) => RequestExerciseSwitch(1);
 
-    private void SwitchExercise(int delta)
+    private void RequestExerciseSwitch(int delta)
     {
-        SaveCurrentExercise();
         int current = GetExerciseNumber();
         int next = Math.Max(1, current + delta);
+        if (next == current) return;
+
+        if (!ConfirmSaveBeforeChangingExercise()) return;
+
         ExerciseBox.Text = next.ToString();
         ActivateExercise(GetTaskType(), next);
         SaveSettings();
     }
 
+    private bool ConfirmSaveBeforeChangingExercise()
+    {
+        if (!_editorDirty)
+        {
+            SaveCurrentExercise();
+            return true;
+        }
+
+        _modalDialogOpen = true;
+        MessageBoxResult result;
+        try
+        {
+            result = MessageBox.Show(this,
+                $"Vuoi salvare le modifiche dell'esercizio {GetExerciseNumber()} prima di cambiare scheda?\n\nSì = salva e cambia\nNo = scarta le modifiche e cambia\nAnnulla = resta sull'esercizio corrente",
+                "Cambio esercizio", MessageBoxButton.YesNoCancel, MessageBoxImage.Question, MessageBoxResult.Yes);
+        }
+        finally { _modalDialogOpen = false; }
+
+        if (result == MessageBoxResult.Cancel) return false;
+        if (result == MessageBoxResult.Yes) SaveCurrentExercise();
+        else
+        {
+            _activeStartedUtc = DateTime.UtcNow;
+            _editorDirty = false;
+        }
+        return true;
+    }
+
     private void TaskIdentity_LostFocus(object sender, RoutedEventArgs e)
     {
-        SaveCurrentExercise();
+        string requestedKey = BuildExerciseKey(GetTaskType(), GetExerciseNumber());
+        if (_activeKey.Equals(requestedKey, StringComparison.OrdinalIgnoreCase)) return;
+        if (!ConfirmSaveBeforeChangingExercise())
+        {
+            RestoreIdentityFromActiveKey();
+            return;
+        }
         ActivateExercise(GetTaskType(), GetExerciseNumber());
         SaveSettings();
+    }
+
+    private void RestoreIdentityFromActiveKey()
+    {
+        string[] parts = _activeKey.Split('|');
+        if (parts.Length >= 3)
+        {
+            TaskTypeBox.Text = parts[^2];
+            ExerciseBox.Text = parts[^1];
+        }
+    }
+
+    private void ApplySessionCode(string session)
+    {
+        session = (session ?? "").Trim();
+        if (SessionBox.Text.Trim().Equals(session, StringComparison.OrdinalIgnoreCase)) return;
+        SaveCurrentExercise();
+        SessionBox.Text = session;
+        ActivateExercise(GetTaskType(), GetExerciseNumber());
     }
 
     private void ActivateExercise(string type, int number)
     {
         string key = BuildExerciseKey(type, number);
-        if (_activeKey.Equals(key, StringComparison.OrdinalIgnoreCase)) return;
         _activeKey = key;
         if (!_exerciseStates.TryGetValue(key, out ExerciseState? state))
         {
@@ -1521,7 +940,11 @@ private int CountSavedExercisesForCurrentSession()
         }
         _loadingExercise = true;
         Editor.Text = string.IsNullOrWhiteSpace(state.Code) ? DefaultCode : state.Code;
+        OutputBox.Text = string.IsNullOrWhiteSpace(state.CompileOutput)
+            ? "Pronto. Premi «Compila e apri CMD»."
+            : state.CompileOutput + (string.IsNullOrWhiteSpace(state.ProgramOutput) ? "" : Environment.NewLine + Environment.NewLine + state.ProgramOutput);
         _loadingExercise = false;
+        _editorDirty = false;
         _activeStartedUtc = DateTime.UtcNow;
         StatusText.Text = $"Tipologia {type} - esercizio {number}";
         UpdateExerciseClock();
@@ -1534,13 +957,14 @@ private int CountSavedExercisesForCurrentSession()
         state.Code = Editor.Text;
         state.Elapsed += DateTime.UtcNow - _activeStartedUtc;
         _activeStartedUtc = DateTime.UtcNow;
+        _editorDirty = false;
         SaveExerciseStates();
     }
 
     private void Editor_TextChanged(object? sender, EventArgs e)
     {
         if (_loadingExercise || string.IsNullOrWhiteSpace(_activeKey)) return;
-        if (_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state)) state.Code = Editor.Text;
+        _editorDirty = true;
     }
 
     private TimeSpan GetElapsedForActive()
@@ -1553,7 +977,9 @@ private int CountSavedExercisesForCurrentSession()
     private static string FormatDuration(TimeSpan value) => $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}";
     private string GetTaskType() => string.IsNullOrWhiteSpace(TaskTypeBox.Text) ? "A" : TaskTypeBox.Text.Trim();
     private int GetExerciseNumber() => int.TryParse(ExerciseBox.Text.Trim(), out int n) && n > 0 ? n : 1;
-    private string BuildExerciseKey(string type, int number) => $"{SessionBox.Text.Trim().ToUpperInvariant()}|{type.Trim().ToUpperInvariant()}|{number}";
+    private string BuildExercisePrefix(string type) => $"{SessionBox.Text.Trim().ToUpperInvariant()}|{type.Trim().ToUpperInvariant()}|";
+    private string BuildExerciseKey(string type, int number) => BuildExercisePrefix(type) + number;
+    private static int TryGetExerciseNumberFromKey(string key) => int.TryParse(key.Split('|').LastOrDefault(), out int number) ? number : 0;
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -1571,7 +997,10 @@ private int CountSavedExercisesForCurrentSession()
         }
     }
 
-    private void Window_Deactivated(object? sender, EventArgs e) { if (_modalDialogOpen) return; if (_verificationMode) Dispatcher.BeginInvoke(new Action(() => { Topmost = true; Activate(); }), DispatcherPriority.ApplicationIdle);
+    private void Window_Deactivated(object? sender, EventArgs e)
+    {
+        if (_modalDialogOpen) return;
+        if (_verificationMode) Dispatcher.BeginInvoke(new Action(() => { Topmost = true; Activate(); }), DispatcherPriority.ApplicationIdle);
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)
@@ -1686,30 +1115,14 @@ private int CountSavedExercisesForCurrentSession()
 
     private static string Get(JsonElement root, string name, string fallback) => root.TryGetProperty(name, out JsonElement value) ? value.GetString() ?? fallback : fallback;
 
-    private sealed record CompilationResult(
-    bool Success,
-    string CompileOutput,
-    string? ExePath
-);
+    private sealed record CompilationResult(bool Success, string CompileOutput, string? ExePath);
+    private sealed record ExecutionResult(bool Success, string Output, int? ExitCode, bool TimedOut);
 
-private sealed record ExecutionResult(
-    bool Success,
-    string Output,
-    int? ExitCode,
-    bool TimedOut
-);
-
-private sealed record SendChoice(
-    bool ActiveOnly,
-    int FirstExercise,
-    int LastExercise
-);
-
-public sealed class ExerciseState
-{
-    public string Code { get; set; } = DefaultCode;
-    public TimeSpan Elapsed { get; set; } = TimeSpan.Zero;
-    public string CompileOutput { get; set; } = "";
-    public string ProgramOutput { get; set; } = "";
-}
+    public sealed class ExerciseState
+    {
+        public string Code { get; set; } = DefaultCode;
+        public TimeSpan Elapsed { get; set; } = TimeSpan.Zero;
+        public string CompileOutput { get; set; } = "";
+        public string ProgramOutput { get; set; } = "";
+    }
 }

@@ -153,7 +153,7 @@
         <Border Grid.Row="3" Margin="16,10,16,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Background="#132139"><TextBlock Text="OUTPUT COMPILAZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" Margin="13,0" VerticalAlignment="Center"/></Border>
+                <Border Background="#132139"><TextBlock Text="OUTPUT COMPILAZIONE ED ESECUZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" Margin="13,0" VerticalAlignment="Center"/></Border>
                 <TextBox x:Name="OutputBox" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
                          TextWrapping="Wrap" BorderThickness="0" Background="#07101C" Foreground="#E7F4FF" FontFamily="Cascadia Mono, Consolas" Padding="12"/>
             </Grid>
@@ -161,12 +161,11 @@
 
         <Border Grid.Row="4" Background="#0B1729" BorderBrush="#20324C" BorderThickness="0,1,0,0" Margin="0,10,0,0">
             <Grid Margin="16,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <Button x:Name="CompileButton" Content="Compila C++17" Click="Compile_Click" Style="{StaticResource ModernButton}" Background="#116DA8" BorderBrush="#2CA9F4" VerticalAlignment="Center"/>
-                <Button x:Name="RunButton" Grid.Column="1" Content="Compila e apri CMD" Click="Run_Click" Style="{StaticResource ModernButton}" Background="#059669" BorderBrush="#19C790" VerticalAlignment="Center"/>
-                <Button x:Name="SendButton" Grid.Column="2" Content="Invia al docente" Click="Send_Click" Style="{StaticResource ModernButton}" Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
-                <TextBlock x:Name="StatusText" Grid.Column="3" Text="Pronto" Foreground="#A8B5C7" VerticalAlignment="Center" Margin="10,0"/>
-                <Border Grid.Column="4" Background="#102C46" BorderBrush="#1E719C" BorderThickness="1" CornerRadius="8" Padding="12,7">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Button x:Name="RunButton" Grid.Column="0" Content="Compila e apri CMD" Click="Run_Click" Style="{StaticResource ModernButton}" Background="#059669" BorderBrush="#19C790" VerticalAlignment="Center"/>
+                <Button x:Name="SendButton" Grid.Column="1" Content="Invia al docente" Click="Send_Click" Style="{StaticResource ModernButton}" Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
+                <TextBlock x:Name="StatusText" Grid.Column="2" Text="Pronto" Foreground="#A8B5C7" VerticalAlignment="Center" Margin="10,0"/>
+                <Border Grid.Column="3" Background="#102C46" BorderBrush="#1E719C" BorderThickness="1" CornerRadius="8" Padding="12,7">
                     <TextBlock Text="© Alessandro Barazzuol" Foreground="#B7F3FF" VerticalAlignment="Center" FontSize="18" FontWeight="ExtraBold"/>
                 </Border>
             </Grid>

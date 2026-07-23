@@ -1,0 +1,17 @@
+COMPILATORE ALUNNO 1.7.0 - FILE COMPLETI
+
+1. Copia tutto il contenuto di questa cartella dentro la repository locale compilatore.
+2. Conferma Sostituisci i file nella destinazione.
+3. Esegui git add ., commit e push.
+
+Modifiche principali:
+- un solo pulsante Compila e apri CMD;
+- errori GCC completi con main.cpp:riga:colonna;
+- output/esecuzione catturati durante l'invio e in verifica;
+- scelta tramite checkbox degli esercizi salvati da inviare;
+- esercizio attivo selezionato per impostazione predefinita;
+- conferma Salva/Scarta/Annulla quando si cambia esercizio;
+- schede separate per codice sessione, tipologia e numero;
+- controllo server in 2 secondi prima dell'invio;
+- timeout di 4 secondi per ogni consegna;
+- finestre modali compatibili con modalità verifica Topmost.
