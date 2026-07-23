@@ -1,10 +1,9 @@
-﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.6.5"
+#define MyAppName "CV+ Compilatore Alunno"
+#define MyAppVersion "1.6.3"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
 [Setup]
-LicenseFile=CONDIZIONI_USO_PRIVACY.txt
 AppId={{A6C18F0D-6CA6-4D34-9A45-4D3DA754D8C1}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -23,8 +22,8 @@ SolidCompression=yes
 WizardStyle=modern
 WizardSizePercent=110
 SetupIconFile=Assets\app.ico
-WizardImageFile=Assets\wizard_dog.bmp
-WizardSmallImageFile=Assets\wizard_dog_small.bmp
+WizardImageFile=Assets\wizard.bmp
+WizardSmallImageFile=Assets\wizard_small.bmp
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
@@ -56,4 +55,3 @@ begin
   WizardForm.WelcomeLabel1.Caption := 'Benvenuto in CV+ Compilatore Alunno';
   WizardForm.WelcomeLabel2.Caption := 'Il compilatore GCC C++17 è incluso e viene verificato automaticamente durante la build.' + #13#10 + #13#10 + '© Alessandro Barazzuol';
 end;
-
