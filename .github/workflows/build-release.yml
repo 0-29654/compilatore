@@ -1,4 +1,4 @@
-﻿name: Build Compilatore Alunni Release
+name: Build Compilatore Alunni Release
 
 on:
   push:
@@ -39,7 +39,47 @@ jobs:
           New-Item -ItemType Directory -Force .\publish\compiler\ucrt64 | Out-Null
 
           dotnet restore .\CppStudentClient.csproj
-          dotnet publish .\CppStudentClient.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o .\publish
+          dotnet publish .\CppStudentClient.csproj -c Release -r win-x64 --self-contained true -p:SelfContained=true -p:UseAppHost=true -p:PublishSingleFile=false -p:DebugType=None -p:DebugSymbols=false -o .\publish
+
+          # Verifica obbligatoria dell'eseguibile principale.
+          # Una Release non deve essere creata se CppStudentClient.exe manca.
+          $appExe = (Resolve-Path .\publish).Path | Join-Path -ChildPath 'CppStudentClient.exe'
+
+          if (-not (Test-Path $appExe)) {
+            Write-Host 'CppStudentClient.exe non trovato. Contenuto principale di publish:'
+            Get-ChildItem .\publish -File |
+              Sort-Object Name |
+              Format-Table Name, Length -AutoSize |
+              Out-String |
+              Write-Host
+
+            # Recupero prudente: se dotnet ha prodotto un solo eseguibile
+            # applicativo nella radice di publish con un nome diverso,
+            # lo copia con il nome atteso dall'installer.
+            $candidateApps = @(
+              Get-ChildItem .\publish -File -Filter '*.exe' |
+              Where-Object {
+                $_.Name -notin @('test17.exe', 'g++.exe', 'gcc.exe')
+              }
+            )
+
+            if ($candidateApps.Count -eq 1) {
+              Write-Host "Eseguibile applicativo trovato con nome diverso: $($candidateApps[0].FullName)"
+              Copy-Item $candidateApps[0].FullName $appExe -Force
+            }
+          }
+
+          if (-not (Test-Path $appExe)) {
+            throw 'CppStudentClient.exe non prodotto da dotnet publish. Release annullata.'
+          }
+
+          $appExeSize = (Get-Item $appExe).Length
+          if ($appExeSize -lt 50KB) {
+            throw "CppStudentClient.exe anormalmente piccolo: $appExeSize byte"
+          }
+
+          Write-Host "Applicazione prodotta correttamente: $appExe"
+          Write-Host "Dimensione applicazione: $([math]::Round($appExeSize / 1KB, 1)) KB"
 
           $msysRoot = '${{ steps.msys2.outputs.msys2-location }}'
           if ([string]::IsNullOrWhiteSpace($msysRoot)) { throw 'setup-msys2 non ha restituito msys2-location' }
@@ -95,6 +135,18 @@ jobs:
           if (-not (Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
           if (-not (Test-Path $iscc)) { throw 'ISCC.exe non trovato' }
 
+
+          $appExe = '.\publish\CppStudentClient.exe'
+          if (-not (Test-Path $appExe)) {
+            Write-Host 'File presenti nella radice di publish:'
+            Get-ChildItem .\publish -File |
+              Sort-Object Name |
+              Format-Table Name, Length -AutoSize |
+              Out-String |
+              Write-Host
+            throw 'CppStudentClient.exe assente da publish prima di Inno Setup'
+          }
+
           if (-not (Test-Path .\publish\compiler\ucrt64\bin\g++.exe)) {
             throw 'g++.exe assente da publish prima di Inno Setup'
           }
@@ -121,6 +173,24 @@ jobs:
           $p = Start-Process .\installer\CppStudentClient_Setup.exe -ArgumentList $args -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Installazione di verifica fallita: exit code $($p.ExitCode)" }
 
+          $installedApp = Join-Path $verify 'CppStudentClient.exe'
+          if (-not (Test-Path $installedApp)) {
+            Write-Host 'File installati nella cartella di verifica:'
+            Get-ChildItem $verify -Recurse -File |
+              Select-Object FullName, Length |
+              Format-Table -AutoSize |
+              Out-String |
+              Write-Host
+            throw "CppStudentClient.exe assente dopo installazione: $installedApp"
+          }
+
+          $installedAppSize = (Get-Item $installedApp).Length
+          if ($installedAppSize -lt 50KB) {
+            throw "CppStudentClient.exe installato ma anormalmente piccolo: $installedAppSize byte"
+          }
+
+          Write-Host "Eseguibile applicazione verificato dopo installazione: $installedApp"
+
           $gpp = Join-Path $verify 'compiler\ucrt64\bin\g++.exe'
           if (-not (Test-Path $gpp)) { throw "g++.exe assente dopo installazione: $gpp" }
 
@@ -142,6 +212,6 @@ jobs:
         run: |
           $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
           $sha = '${{ github.sha }}'.Substring(0,7)
-          $tag = "compilatore-alunni-1.6.3-$stamp-$sha"
-          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno 1.6.3 - GCC C++17 incluso" --notes "Installer verificato realmente dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+          $tag = "compilatore-alunni-1.7.2-$stamp-$sha"
+          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno 1.7.2 - applicazione e GCC verificati" --notes "Installer verificato: CppStudentClient.exe e GCC presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
 
