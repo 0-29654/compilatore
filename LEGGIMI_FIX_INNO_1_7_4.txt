@@ -1,0 +1,12 @@
+CORREZIONE INNO SETUP 1.7.4
+
+Risolto errore:
+Unknown preprocessor directive alla riga 116 di setup_student.iss.
+
+Causa:
+#13#10 veniva interpretato dal preprocessore Inno Setup.
+
+Correzione:
+Gli a capo ora usano Chr(13) + Chr(10).
+
+Copia tutto nella repository locale, sovrascrivi, commit e push.

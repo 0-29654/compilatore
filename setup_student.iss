@@ -1,5 +1,5 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.7.3"
+#define MyAppVersion "1.7.4"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -113,9 +113,9 @@ begin
 
   WizardForm.WelcomeLabel2.Caption :=
     'Scrivi, compila ed esegui codice C++17 e invia gli esercizi al docente.' +
-    #13#10 + #13#10 +
+    Chr(13) + Chr(10) + Chr(13) + Chr(10) +
     'Il compilatore GCC è incluso e verificato automaticamente.' +
-    #13#10 + #13#10 +
+    Chr(13) + Chr(10) + Chr(13) + Chr(10) +
     '© Alessandro Barazzuol';
 
   WizardForm.WelcomeLabel1.Font.Color := clNavy;
