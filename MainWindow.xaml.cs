@@ -59,15 +59,11 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         ConfigureCppHighlighting();
-        LoadSettings();
-        // IP docente e codice sessione devono essere vuoti ad ogni avvio e vengono ricevuti dal server.
-        ServerBox.Text = "";
-        SessionBox.Text = "";
+        ResetClientStateOnStartup();
         StartTeacherDiscoveryListener();
         Closed += (_, _) => StopTeacherDiscoveryListener();
         if (!File.Exists(BundledCompilerPath))
             OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
-        LoadExerciseStates();
         ActivateExercise(GetTaskType(), GetExerciseNumber());
 
         _clockTimer.Tick += (_, _) => UpdateExerciseClock();
@@ -76,6 +72,26 @@ public partial class MainWindow : Window
         _modeTimer.Start();
 
         Loaded += async (_, _) => await RefreshServerModeAsync(false);
+    }
+
+    private void ResetClientStateOnStartup()
+    {
+        _exerciseStates.Clear();
+        try { if (File.Exists(SettingsPath)) File.Delete(SettingsPath); } catch { }
+        try { if (File.Exists(ExerciseStatePath)) File.Delete(ExerciseStatePath); } catch { }
+
+        StudentIdBox.Text = "1";
+        StudentNameBox.Text = "";
+        ClassBox.Text = "";
+        TaskTypeBox.Text = "";
+        ExerciseBox.Text = "1";
+        ServerBox.Text = "";
+        SessionBox.Text = "";
+        Editor.Text = DefaultCode;
+        HeaderEditor.Text = "";
+        HeaderTab.Visibility = Visibility.Collapsed;
+        OutputBox.Text = "";
+        StatusText.Text = "Pronto - nuova sessione";
     }
 
     private void StartTeacherDiscoveryListener()
@@ -126,9 +142,17 @@ public partial class MainWindow : Window
                 string session = Get(root, "sessionCode", Get(root, "code", Get(root, "session", "")));
                 string mode = Get(root, "mode", Get(root, "sessionMode", "esercitazione"));
                 bool compileAllowed = ReadCompilationAllowed(root);
+                string command = Get(root, "command", "");
 
                 await Dispatcher.InvokeAsync(() =>
                 {
+                    if (command.Equals("closeClients", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _allowClose = true;
+                        ClearLocalVerificationData();
+                        Close();
+                        return;
+                    }
                     ServerBox.Text = $"{ip}:{port}";
                     SetSessionCode(session);
                     ApplySessionMode(mode);
@@ -484,7 +508,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             return;
         }
 
-        CompilationResult compilation = await CompileSourceAsync(Editor.Text, true);
+        CompilationResult compilation = await CompileSourceAsync(Editor.Text, true, HeaderEditor.Text, "esercizio.h");
         _compileOutput = compilation.CompileOutput;
         _exePath = compilation.ExePath;
 
@@ -526,7 +550,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         return result.Success;
     }
 
-    private async Task<CompilationResult> CompileSourceAsync(string sourceCode, bool updateOutputBox)
+    private async Task<CompilationResult> CompileSourceAsync(string sourceCode, bool updateOutputBox, string? headerCode = null, string headerFileName = "esercizio.h")
     {
         if (!_compilationAllowed)
         {
@@ -552,6 +576,11 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             string cpp = Path.Combine(dir, stem + ".cpp");
             string exe = Path.Combine(dir, stem + ".exe");
             File.WriteAllText(cpp, sourceCode, new UTF8Encoding(false));
+            if (!string.IsNullOrWhiteSpace(headerCode))
+            {
+                string safeHeaderName = Path.GetFileName(string.IsNullOrWhiteSpace(headerFileName) ? "esercizio.h" : headerFileName);
+                File.WriteAllText(Path.Combine(dir, safeHeaderName), headerCode, new UTF8Encoding(false));
+            }
 
             string arguments = $"-std=c++17 -Wall -Wextra -Wpedantic -fdiagnostics-color=never -o \"{exe}\" \"{cpp}\"";
             var psi = new ProcessStartInfo(BundledCompilerPath, arguments)
@@ -599,6 +628,10 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                 resultText = "COMPILAZIONE NON RIUSCITA\n\n" + diagnostic;
             }
 
+            string runtimeAnalysis = AnalyzeRuntimeRisks(sourceCode);
+            if (!string.IsNullOrWhiteSpace(runtimeAnalysis))
+                resultText += Environment.NewLine + Environment.NewLine + runtimeAnalysis;
+
             if (updateOutputBox) OutputBox.Text = resultText;
             return new CompilationResult(success, resultText, success ? exe : null);
         }
@@ -608,6 +641,43 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             if (updateOutputBox) OutputBox.Text = error;
             return new CompilationResult(false, error, null);
         }
+    }
+
+    private static string AnalyzeRuntimeRisks(string sourceCode)
+    {
+        var findings = new List<string>();
+        string[] lines = sourceCode.Replace("\r\n", "\n").Split('\n');
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i];
+
+            if (System.Text.RegularExpressions.Regex.IsMatch(
+                    line,
+                    @"(?:/|%)\s*0(?:\D|$)"))
+            {
+                findings.Add($"Riga {i + 1}: divisione o modulo per zero certo.");
+            }
+
+            var loopMatch = System.Text.RegularExpressions.Regex.Match(
+                line,
+                @"for\s*\([^;]*;[^;]*;[^)]*\)");
+            if (loopMatch.Success &&
+                line.Contains("/ i", StringComparison.OrdinalIgnoreCase))
+            {
+                findings.Add($"Riga {i + 1}: controlla che il divisore i non possa valere zero.");
+            }
+
+            if (line.Contains("while(true)", StringComparison.OrdinalIgnoreCase) ||
+                line.Contains("for(;;)", StringComparison.OrdinalIgnoreCase))
+            {
+                findings.Add($"Riga {i + 1}: possibile ciclo infinito.");
+            }
+        }
+
+        return findings.Count == 0
+            ? ""
+            : "ANALISI PREVENTIVA\n" + string.Join(Environment.NewLine, findings.Distinct());
     }
 
     private async Task<ExecutionResult> RunCapturedAsync(string exePath, int timeoutSeconds)
@@ -931,7 +1001,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                 { failed.Add(exerciseNumber); continue; }
 
                 StatusText.Text = $"Compilazione esercizio {exerciseNumber}...";
-                CompilationResult compilation = await CompileSourceAsync(state.Code, exerciseNumber == activeExercise);
+                CompilationResult compilation = await CompileSourceAsync(state.Code, exerciseNumber == activeExercise, state.HeaderCode, state.HeaderFileName);
                 ExecutionResult execution = compilation.Success && !string.IsNullOrWhiteSpace(compilation.ExePath)
                     ? await RunCapturedAsync(compilation.ExePath, 5)
                     : new ExecutionResult(false, "Programma non eseguito perché la compilazione non è riuscita.", null, false);
@@ -981,6 +1051,9 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                     exerciseTimes = timings,
 
                     code = state.Code,
+                    headerFileName = state.HeaderFileName,
+                    headerCode = state.HeaderCode,
+                    hasHeader = !string.IsNullOrWhiteSpace(state.HeaderCode),
                     compilationSucceeded = compilation.Success,
                     compileOutput = compilation.CompileOutput,
                     executionSucceeded = execution.Success,
@@ -1139,6 +1212,46 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         return true;
     }
 
+    private const string DefaultHeaderCode =
+        "#ifndef ESERCIZIO_H\n#define ESERCIZIO_H\n\n// Dichiarazioni e funzioni dell'esercizio\n\n#endif // ESERCIZIO_H\n";
+
+    private void AddHeader_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state))
+            return;
+
+        if (string.IsNullOrWhiteSpace(state.HeaderCode))
+            state.HeaderCode = DefaultHeaderCode;
+
+        HeaderTab.Visibility = Visibility.Visible;
+        HeaderEditor.Text = state.HeaderCode;
+        HeaderTab.IsSelected = true;
+
+        if (!Editor.Text.Contains("#include \"esercizio.h\"", StringComparison.Ordinal))
+        {
+            MessageBoxResult addInclude = ShowVerificationSafeMessage(
+                "Vuoi aggiungere automaticamente #include \"esercizio.h\" nel main.cpp?",
+                "Collega header al main",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question,
+                MessageBoxResult.Yes);
+
+            if (addInclude == MessageBoxResult.Yes)
+                Editor.Text = "#include \"esercizio.h\"\n" + Editor.Text;
+        }
+
+        SaveCurrentExercise();
+    }
+
+    private void HeaderEditor_TextChanged(object? sender, EventArgs e)
+    {
+        if (_loadingExercise || string.IsNullOrWhiteSpace(_activeKey))
+            return;
+
+        if (_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state))
+            state.HeaderCode = HeaderEditor.Text;
+    }
+
     private void PreviousExercise_Click(object sender, RoutedEventArgs e) => SwitchExercise(-1);
     private void NextExercise_Click(object sender, RoutedEventArgs e) => SwitchExercise(1);
 
@@ -1218,6 +1331,8 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         }
         _loadingExercise = true;
         Editor.Text = string.IsNullOrWhiteSpace(state.Code) ? DefaultCode : state.Code;
+        HeaderEditor.Text = state.HeaderCode ?? "";
+        HeaderTab.Visibility = string.IsNullOrWhiteSpace(state.HeaderCode) ? Visibility.Collapsed : Visibility.Visible;
         _loadingExercise = false;
         _activeStartedUtc = DateTime.UtcNow;
         StatusText.Text = $"Tipologia {type} - esercizio {number}";
@@ -1229,6 +1344,8 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         if (string.IsNullOrWhiteSpace(_activeKey)) return;
         if (!_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state)) state = _exerciseStates[_activeKey] = new ExerciseState();
         state.Code = Editor.Text;
+        state.HeaderCode = HeaderEditor.Text;
+        state.HeaderFileName = "esercizio.h";
         state.Elapsed += DateTime.UtcNow - _activeStartedUtc;
         _activeStartedUtc = DateTime.UtcNow;
         SaveExerciseStates();
@@ -1410,5 +1527,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         public TimeSpan Elapsed { get; set; } = TimeSpan.Zero;
         public string CompileOutput { get; set; } = "";
         public string ProgramOutput { get; set; } = "";
+        public string HeaderFileName { get; set; } = "esercizio.h";
+        public string HeaderCode { get; set; } = "";
     }
 }
