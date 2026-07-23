@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>CppStudentClient</AssemblyName>
     <RootNamespace>CppStudentClient</RootNamespace>
-    <Version>1.9.2</Version>
+    <Version>1.9.3</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Product>CV+ Compilatore Alunno</Product>
     <Company>Alessandro Barazzuol</Company>

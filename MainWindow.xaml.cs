@@ -914,7 +914,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             }
 
             string arguments =
-                $"-std=c++17 -Wall -Wextra -Wpedantic  -static-libgcc -static-libstdc++" +
+                $"-std=c++17 -Wall -Wextra -Wpedantic " +
                 $"-fdiagnostics-color=never -I\"{dir}\" " +
                 $"-o \"{exe}\" \"{cpp}\"";
             var psi = new ProcessStartInfo(BundledCompilerPath, arguments)
@@ -1272,7 +1272,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                 );
 
             request.Headers.UserAgent.ParseAdd(
-                "CVPlusCompilatoreAlunno/1.9.0"
+                "CVPlusCompilatoreAlunno/1.9.3"
             );
 
             using HttpResponseMessage response =
@@ -1395,33 +1395,93 @@ private async void Run_Click(object sender, RoutedEventArgs e)
                     ".exe"
                 );
 
-            using HttpResponseMessage download =
-                await _http.GetAsync(
-                    downloadUrl,
-                    HttpCompletionOption.ResponseHeadersRead
+            using (
+                HttpResponseMessage download =
+                    await _http.GetAsync(
+                        downloadUrl,
+                        HttpCompletionOption.ResponseHeadersRead
+                    ))
+            {
+                download.EnsureSuccessStatusCode();
+
+                await using Stream source =
+                    await download.Content.ReadAsStreamAsync();
+
+                await using (
+                    FileStream destination =
+                        new FileStream(
+                            installerPath,
+                            FileMode.Create,
+                            FileAccess.Write,
+                            FileShare.None))
+                {
+                    await source.CopyToAsync(destination);
+                    await destination.FlushAsync();
+                }
+            }
+
+            if (!File.Exists(installerPath) ||
+                new FileInfo(installerPath).Length < 1024 * 1024)
+            {
+                throw new InvalidOperationException(
+                    "Il file di aggiornamento scaricato è incompleto."
+                );
+            }
+
+            StatusText.Text =
+                "Installazione automatica dell'aggiornamento...";
+
+            string updaterScript =
+                Path.Combine(
+                    Path.GetTempPath(),
+                    "CVPlus_Aggiorna_" +
+                    Guid.NewGuid().ToString("N") +
+                    ".cmd"
                 );
 
-            download.EnsureSuccessStatusCode();
+            int currentProcessId =
+                Environment.ProcessId;
 
-            await using Stream source =
-                await download.Content.ReadAsStreamAsync();
+            string script =
+                "@echo off\r\n" +
+                "setlocal\r\n" +
+                $"set \"INSTALLER={installerPath}\"\r\n" +
+                $"set \"APP_PID={currentProcessId}\"\r\n" +
+                ":WAIT_APP\r\n" +
+                "tasklist /FI \"PID eq %APP_PID%\" 2>NUL | find \"%APP_PID%\" >NUL\r\n" +
+                "if not errorlevel 1 (\r\n" +
+                "  timeout /t 1 /nobreak >NUL\r\n" +
+                "  goto WAIT_APP\r\n" +
+                ")\r\n" +
+                "timeout /t 1 /nobreak >NUL\r\n" +
+                "start \"\" /wait \"%INSTALLER%\" " +
+                "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART " +
+                "/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RESTARTAPPLICATIONS\r\n" +
+                "set \"SETUP_EXIT=%ERRORLEVEL%\"\r\n" +
+                "del /f /q \"%INSTALLER%\" >NUL 2>&1\r\n" +
+                "del /f /q \"%~f0\" >NUL 2>&1\r\n" +
+                "exit /b %SETUP_EXIT%\r\n";
 
-            await using FileStream destination =
-                File.Create(installerPath);
-
-            await source.CopyToAsync(destination);
-
-            StatusText.Text = "Avvio installer...";
+            File.WriteAllText(
+                updaterScript,
+                script,
+                Encoding.Default
+            );
 
             Process.Start(
-                new ProcessStartInfo(installerPath)
+                new ProcessStartInfo(
+                    "cmd.exe",
+                    $"/c start \"\" /min \"{updaterScript}\""
+                )
                 {
-                    UseShellExecute = true
+                    UseShellExecute = true,
+                    WindowStyle =
+                        ProcessWindowStyle.Hidden
                 }
             );
 
             _allowClose = true;
-            Close();
+            Application.Current.Shutdown();
         }
         catch (Exception ex)
         {

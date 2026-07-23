@@ -1,0 +1,21 @@
+CORREZIONE COMPILATORE 1.9.3
+
+COMPILAZIONE
+- rimosse completamente:
+  -static-libgcc
+  -static-libstdc++
+- ripristinato il comando GCC:
+  -std=c++17 -Wall -Wextra -Wpedantic
+  -fdiagnostics-color=never
+- corretto il problema dell'opzione concatenata:
+  -static-libstdc++-fdiagnostics-color=never
+
+AGGIORNAMENTO AUTOMATICO
+- il file installer viene chiuso e svuotato prima dell'avvio;
+- viene verificato che il download sia completo;
+- uno script attende la chiusura del compilatore;
+- l'installer parte automaticamente in modalità silenziosa;
+- al termine viene eliminato il file temporaneo;
+- il programma viene riavviato tramite RESTARTAPPLICATIONS.
+
+Aggiornare soltanto la repository compilatore.
