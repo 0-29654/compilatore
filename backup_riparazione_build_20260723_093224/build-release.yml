@@ -1,4 +1,4 @@
-﻿name: Build Compilatore Alunni Release
+name: Build Compilatore Alunni Release
 
 on:
   push:
@@ -105,8 +105,8 @@ jobs:
           $setup = '.\installer\CppStudentClient_Setup.exe'
           if (-not (Test-Path $setup)) { throw 'Installer non creato' }
           $setupSize = (Get-Item $setup).Length
-          if ($setupSize -lt 40MB) {
-            throw "Installer anormalmente piccolo: $([math]::Round($setupSize/1MB,1)) MB. GCC non incluso."
+          if ($setupSize -lt 70MB) {
+            throw "Installer troppo piccolo: $([math]::Round($setupSize/1MB,1)) MB. GCC non incluso."
           }
 
       - name: Verifica realmente l'installer prodotto
@@ -144,4 +144,3 @@ jobs:
           $sha = '${{ github.sha }}'.Substring(0,7)
           $tag = "compilatore-alunni-1.6.3-$stamp-$sha"
           gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno 1.6.3 - GCC C++17 incluso" --notes "Installer verificato realmente dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
-

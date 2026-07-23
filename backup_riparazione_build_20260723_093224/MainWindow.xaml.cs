@@ -1036,5 +1036,8 @@ public sealed class ExerciseState
     public TimeSpan Elapsed { get; set; } = TimeSpan.Zero;
     public string CompileOutput { get; set; } = "";
     public string ProgramOutput { get; set; } = "";
+} = DefaultCode;
+        public TimeSpan Elapsed { get; set; } = TimeSpan.Zero;
+    }
 }
-}
+
