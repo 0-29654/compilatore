@@ -1,0 +1,18 @@
+CORREZIONE 1.7.7 - FINESTRA FINALE BLOCCATA IN MODALITÀ VERIFICA
+
+Problema risolto:
+Dopo un invio riuscito, il popup “Consegna completata” restava visibile anche
+premendo OK. La finestra principale Topmost si riprendeva il focus.
+
+Correzione:
+- aggiunta una funzione unica ShowVerificationSafeMessage;
+- sospensione temporanea di Topmost;
+- _modalDialogOpen resta attivo per tutta la durata del messaggio;
+- ripristino del tutto schermo soltanto dopo la chiusura;
+- applicazione della stessa protezione anche a:
+  * consegna parziale;
+  * server non raggiungibile;
+  * errore di invio.
+
+Dopo aver premuto OK in modalità verifica, il programma può completare la
+procedura e chiudersi correttamente.

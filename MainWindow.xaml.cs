@@ -1033,22 +1033,88 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             if (failed.Count > 0)
             {
                 StatusText.Text = $"Inviati {sent}; non inviati {failed.Count}";
-                MessageBox.Show(this, $"Invio parziale.\n\nInviati: {sent}\nNon inviati: {string.Join(", ", failed)}\n\nLa risposta dettagliata del server è visibile nella casella Compilazione ed esecuzione.", "Consegna parziale", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowVerificationSafeMessage(
+                    $"Invio parziale.\n\n" +
+                    $"Inviati: {sent}\n" +
+                    $"Non inviati: {string.Join(", ", failed)}\n\n" +
+                    "La risposta dettagliata del server è visibile nella casella Compilazione ed esecuzione.",
+                    "Consegna parziale",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.OK
+                );
                 return;
             }
             StatusText.Text = "Consegna completata: " + DateTime.Now.ToString("HH:mm:ss");
-            MessageBox.Show(this, $"Esercizi inviati correttamente: {listText}", "Consegna completata", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowVerificationSafeMessage(
+                $"Esercizi inviati correttamente: {listText}",
+                "Consegna completata",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information,
+                MessageBoxResult.OK
+            );
             if (_verificationMode) { ClearLocalVerificationData(); _allowClose = true; Close(); }
         }
         catch (OperationCanceledException)
         {
             StatusText.Text = "Server docente non raggiungibile";
-            MessageBox.Show(this, "Il server non ha risposto. L'invio non è stato confermato.", "Invio interrotto", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowVerificationSafeMessage(
+                "Il server non ha risposto. L'invio non è stato confermato.",
+                "Invio interrotto",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                MessageBoxResult.OK
+            );
         }
         catch (Exception ex)
         {
             StatusText.Text = "Invio fallito";
-            MessageBox.Show(this, BuildNetworkError(ex), "Impossibile inviare il compito", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowVerificationSafeMessage(
+                BuildNetworkError(ex),
+                "Impossibile inviare il compito",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                MessageBoxResult.OK
+            );
+        }
+    }
+
+    private MessageBoxResult ShowVerificationSafeMessage(
+        string message,
+        string title,
+        MessageBoxButton buttons,
+        MessageBoxImage icon,
+        MessageBoxResult defaultResult = MessageBoxResult.None)
+    {
+        _modalDialogOpen = true;
+        bool oldTopmost = Topmost;
+
+        try
+        {
+            // In modalità verifica la finestra principale è Topmost e tende
+            // a riprendersi il focus. La sospendiamo finché il popup è aperto.
+            Topmost = false;
+
+            return MessageBox.Show(
+                this,
+                message,
+                title,
+                buttons,
+                icon,
+                defaultResult
+            );
+        }
+        finally
+        {
+            Topmost = oldTopmost;
+            _modalDialogOpen = false;
+
+            if (_verificationMode && IsVisible)
+            {
+                WindowState = WindowState.Maximized;
+                Activate();
+                Focus();
+            }
         }
     }
 

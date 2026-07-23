@@ -216,6 +216,6 @@ jobs:
         run: |
           $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
           $sha = '${{ github.sha }}'.Substring(0,7)
-          $tag = "compilatore-alunni-1.7.6-$stamp-$sha"
-          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno 1.7.6 - installer compatibile e verificato" --notes "Installer 1.7.6 verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+          $tag = "compilatore-alunni-1.7.7-$stamp-$sha"
+          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno 1.7.7 - installer compatibile e verificato" --notes "Installer 1.7.7 verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
 
