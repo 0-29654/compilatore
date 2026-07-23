@@ -1,0 +1,21 @@
+CORREZIONE COMPILATORE 1.8.6
+
+Errore risolto:
+setup_student.iss - Unknown identifier 'SURFACE'.
+
+InstallingPage non espone una proprietà Surface.
+Sono state applicate queste sostituzioni:
+
+PromoImage.Parent := WizardForm.InstallingPage;
+AvailableWidth := WizardForm.InstallingPage.Width;
+
+Restano invariati:
+- animazione C++ durante l'installazione;
+- overlay interni in modalità verifica;
+- editor main.cpp e file .h;
+- rinomina dell'header;
+- invio al docente;
+- tutte le modifiche client precedenti.
+
+Copia tutto il contenuto nella repository locale compilatore,
+sovrascrivi e fai commit + push.

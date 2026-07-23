@@ -1,5 +1,5 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
-#define MyAppVersion "1.8.5"
+#define MyAppVersion "1.8.6"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
@@ -94,7 +94,7 @@ procedure PositionPromoOnInstallingPage;
 var
   AvailableWidth: Integer;
 begin
-  AvailableWidth := WizardForm.InstallingPage.Surface.Width;
+  AvailableWidth := WizardForm.InstallingPage.Width;
 
   PromoImage.Left :=
     (AvailableWidth - PromoImage.Width) div 2;
@@ -150,7 +150,7 @@ begin
     ExtractTemporaryFile(PromoFrameName(I));
 
   PromoImage := TBitmapImage.Create(WizardForm);
-  PromoImage.Parent := WizardForm.InstallingPage.Surface;
+  PromoImage.Parent := WizardForm.InstallingPage;
   PromoImage.Width := ScaleX(390);
   PromoImage.Height := ScaleY(165);
   PromoImage.Stretch := True;
