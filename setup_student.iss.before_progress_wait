@@ -23,8 +23,8 @@ SolidCompression=yes
 WizardStyle=modern
 WizardSizePercent=120
 SetupIconFile=Assets\app.ico
-WizardImageFile=Assets\wizard.bmp
-WizardSmallImageFile=Assets\wizard_small.bmp
+WizardImageFile=Assets\wizard_wave.bmp
+WizardSmallImageFile=Assets\wizard_wave_small.bmp
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
@@ -44,6 +44,30 @@ Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescr
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Assets\A.png"; DestDir: "{app}\Assets"; Flags: ignoreversion
 Source: "Assets\installing_a.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_00.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_01.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_02.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_03.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_04.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_05.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_06.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_07.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_08.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_09.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_10.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_11.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_12.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_13.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_14.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_15.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_16.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_17.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_18.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_19.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_20.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_21.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_22.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_23.bmp"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
@@ -54,92 +78,74 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: now
 
 [Code]
 var
-  WaitForm: TSetupForm;
-  WaitProgress: TNewProgressBar;
-  WaitTitle: TNewStaticText;
-  WaitMessage: TNewStaticText;
+  StartupForm: TSetupForm;
+  StartupImage: TBitmapImage;
+  StartupFrame: Integer;
   InstallImage: TBitmapImage;
 
-procedure ShowPreparationProgress;
+procedure CreateStartupForm;
 var
-  Cycle: Integer;
-  Value: Integer;
-  Direction: Integer;
+  I: Integer;
 begin
-  { Questa procedura viene chiamata da InitializeWizard: a questo punto
-    la lingua è già stata scelta, mentre la pagina della licenza non è
-    ancora comparsa. }
-  WaitForm := CreateCustomForm(ScaleX(500), ScaleY(170), False, False);
-  WaitForm.Caption := 'CV+ Compilatore Alunno';
-  WaitForm.Position := poScreenCenter;
-  WaitForm.BorderStyle := bsDialog;
-  WaitForm.Color := clWhite;
+  { Viene eseguito da InitializeWizard, quindi soltanto DOPO
+    che l'utente ha scelto la lingua dell'installazione. }
+  for I := 0 to 23 do
+    ExtractTemporaryFile(Format('startup_wave_%.2d.bmp', [I]));
 
-  WaitTitle := TNewStaticText.Create(WaitForm);
-  WaitTitle.Parent := WaitForm;
-  WaitTitle.Left := ScaleX(28);
-  WaitTitle.Top := ScaleY(24);
-  WaitTitle.Width := ScaleX(440);
-  WaitTitle.Height := ScaleY(28);
-  WaitTitle.Caption := 'Preparazione dell''installazione';
-  WaitTitle.Font.Size := 13;
-  WaitTitle.Font.Style := [fsBold];
-  WaitTitle.Font.Color := clNavy;
+  StartupForm := CreateCustomForm(ScaleX(760), ScaleY(440), False, False);
+  StartupForm.Caption := 'CV+ Compilatore Alunno';
+  StartupForm.Position := poScreenCenter;
+  StartupForm.BorderStyle := bsNone;
+  StartupForm.Color := clWhite;
 
-  WaitMessage := TNewStaticText.Create(WaitForm);
-  WaitMessage.Parent := WaitForm;
-  WaitMessage.Left := ScaleX(28);
-  WaitMessage.Top := ScaleY(59);
-  WaitMessage.Width := ScaleX(440);
-  WaitMessage.Height := ScaleY(22);
-  WaitMessage.Caption := 'Attendere l''apertura delle condizioni d''uso e privacy...';
-  WaitMessage.Font.Size := 9;
+  StartupImage := TBitmapImage.Create(StartupForm);
+  StartupImage.Parent := StartupForm;
+  StartupImage.Left := ScaleX(10);
+  StartupImage.Top := ScaleY(10);
+  StartupImage.Width := ScaleX(740);
+  StartupImage.Height := ScaleY(420);
+  StartupImage.Stretch := True;
+  StartupImage.Center := True;
+  StartupImage.Bitmap.LoadFromFile(
+    ExpandConstant('{tmp}\startup_wave_00.bmp'));
 
-  WaitProgress := TNewProgressBar.Create(WaitForm);
-  WaitProgress.Parent := WaitForm;
-  WaitProgress.Left := ScaleX(28);
-  WaitProgress.Top := ScaleY(98);
-  WaitProgress.Width := ScaleX(440);
-  WaitProgress.Height := ScaleY(18);
-  WaitProgress.Min := 0;
-  WaitProgress.Max := 100;
-  WaitProgress.Position := 0;
-  WaitProgress.Smooth := True;
+  StartupFrame := 0;
+  StartupForm.Show;
+  StartupForm.BringToFront;
+  StartupForm.Update;
+end;
 
-  WaitForm.Show;
-  WaitForm.BringToFront;
-  WaitForm.Update;
-
-  { Barra blu che continua ad andare avanti e indietro. La durata di
-    circa 5,5 secondi copre l'attesa iniziale; appena termina, la form
-    viene chiusa e Inno Setup mostra immediatamente la pagina licenza. }
-  Value := 0;
-  Direction := 1;
-  for Cycle := 0 to 219 do
+procedure AnimateStartupUntilLicenseIsReady;
+var
+  I: Integer;
+  FrameFile: String;
+begin
+  { Mantiene l'animazione visibile per circa 5,8 secondi.
+    In questo intervallo il setup ha già acquisito la lingua,
+    mentre la finestra delle condizioni non è ancora mostrata. }
+  for I := 0 to 47 do
   begin
-    Value := Value + (Direction * 2);
-    if Value >= 100 then
-    begin
-      Value := 100;
-      Direction := -1;
-    end
-    else if Value <= 0 then
-    begin
-      Value := 0;
-      Direction := 1;
-    end;
+    StartupFrame := I mod 24;
+    FrameFile := ExpandConstant(
+      Format('{tmp}\startup_wave_%.2d.bmp', [StartupFrame]));
 
-    WaitProgress.Position := Value;
-    WaitForm.Update;
-    Sleep(25);
+    if FileExists(FrameFile) then
+      StartupImage.Bitmap.LoadFromFile(FrameFile);
+
+    StartupForm.Update;
+    Sleep(120);
   end;
+end;
 
-  WaitForm.Hide;
-  WaitForm.Free;
-  WaitForm := nil;
-  WaitProgress := nil;
-  WaitTitle := nil;
-  WaitMessage := nil;
+procedure CloseStartupForm;
+begin
+  if StartupForm <> nil then
+  begin
+    StartupForm.Hide;
+    StartupForm.Free;
+    StartupForm := nil;
+    StartupImage := nil;
+  end;
 end;
 
 procedure PositionInstallImage;
@@ -196,16 +202,22 @@ begin
 
   PositionInstallImage;
 
-  { Dopo la scelta della lingua, mostra soltanto la barra di attesa.
-    Quando la procedura termina, InitializeWizard restituisce il controllo
-    a Inno Setup e si apre subito la pagina delle condizioni d'uso. }
-  ShowPreparationProgress;
+  { Le onde partono adesso: la scelta della lingua è già terminata. }
+  CreateStartupForm;
+  AnimateStartupUntilLicenseIsReady;
+
+  { Non chiudiamo qui la schermata: resta visibile fino a quando
+    Inno Setup apre davvero la pagina delle condizioni d'uso.
+    CurPageChanged(wpLicense) la chiude in quel preciso momento. }
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = wpLicense then
+  begin
+    CloseStartupForm;
     WizardForm.LicenseAcceptedRadio.Checked := True;
+  end;
 
   if (CurPageID = wpSelectTasks) and
      (WizardForm.TasksList.Items.Count > 0) then
@@ -219,10 +231,5 @@ end;
 
 procedure DeinitializeSetup;
 begin
-  if WaitForm <> nil then
-  begin
-    WaitForm.Hide;
-    WaitForm.Free;
-    WaitForm := nil;
-  end;
+  CloseStartupForm;
 end;

@@ -1,0 +1,11 @@
+MODIFICA MIRATA INSTALLER
+
+- Rimosse completamente le immagini del cane e le onde animate.
+- Dopo la scelta della lingua compare una finestra bianca con una barra blu
+  che va avanti e indietro.
+- La finestra resta visibile durante l'attesa iniziale.
+- Al termine scompare e si apre immediatamente la pagina delle condizioni
+  d'uso, copyright e privacy.
+- Nessuna altra parte del programma è stata modificata.
+
+File modificato: setup_student.iss
