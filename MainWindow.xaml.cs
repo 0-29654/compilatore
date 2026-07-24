@@ -74,12 +74,23 @@ public partial class MainWindow : Window
         _modeTimer.Tick += async (_, _) => await RefreshServerModeAsync(false);
         _modeTimer.Start();
 
+        StudentNameBox.TextChanged += (_, _) => UpdateWindowTitle();
+
         Loaded += async (_, _) =>
         {
             UpdateLocalIpText();
             UpdateTaskSummary();
+            UpdateWindowTitle();
             await RefreshServerModeAsync(false);
         };
+    }
+
+    private void UpdateWindowTitle()
+    {
+        string studentName = StudentNameBox.Text.Trim();
+        Title = string.IsNullOrWhiteSpace(studentName)
+            ? "CV+ Compilatore Alunno"
+            : $"CV+ Compilatore Alunno: {studentName}";
     }
 
     private void UpdateLocalIpText()
@@ -121,6 +132,7 @@ public partial class MainWindow : Window
         OutputBox.Text = "";
         StatusText.Text = "Pronto - nuova sessione";
         UpdateTaskSummary();
+        UpdateWindowTitle();
     }
 
     private void StartTeacherDiscoveryListener()
@@ -743,6 +755,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         if (!compilation.Success || string.IsNullOrWhiteSpace(compilation.ExePath))
         {
             SaveCurrentExercise();
+            await ShowCompilationErrorConsoleAsync(compilation.CompileOutput);
             return;
         }
 
@@ -758,15 +771,92 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         string bat = Path.Combine(Path.GetTempPath(), "cppstudent_run_" + Guid.NewGuid().ToString("N") + ".bat");
         File.WriteAllText(bat,
             $"@echo off\r\n" +
+            "chcp 65001 >nul\r\n" +
+            "color 0A\r\n" +
+            "title CV+ Microsoft Output - Modalita esercitazione\r\n" +
+            "echo ================================================================\r\n" +
+            "echo               CV+ MICROSOFT OUTPUT - ESERCITAZIONE\r\n" +
+            "echo                 Copyright Alessandro Barazzuol\r\n" +
+            "echo ================================================================\r\n" +
+            "echo.\r\n" +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
             $"\"{compilation.ExePath}\"\r\n" +
             "echo.\r\n" +
+            "echo ================================================================\r\n" +
             "echo Programma terminato.\r\n" +
             "pause\r\n",
             Encoding.Default);
         Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{bat}\"") { UseShellExecute = true });
         _programOutput = "Esecuzione aperta nella finestra CMD.";
         SaveCurrentExerciseResult(compilation.CompileOutput, _programOutput);
+    }
+
+    private async Task ShowCompilationErrorConsoleAsync(string compileOutput)
+    {
+        string modeName = _verificationMode ? "VERIFICA" : "ESERCITAZIONE";
+        string token = Guid.NewGuid().ToString("N");
+        string outputFile = Path.Combine(Path.GetTempPath(), $"cppstudent_compile_error_{token}.txt");
+        string bat = Path.Combine(Path.GetTempPath(), $"cppstudent_compile_error_{token}.bat");
+
+        File.WriteAllText(outputFile, compileOutput, new UTF8Encoding(false));
+        File.WriteAllText(
+            bat,
+            "@echo off\r\n" +
+            "chcp 65001 >nul\r\n" +
+            "color 0A\r\n" +
+            $"title CV+ Microsoft Output - Modalita {modeName.ToLowerInvariant()}\r\n" +
+            "echo ================================================================\r\n" +
+            $"echo          CV+ MICROSOFT OUTPUT - {modeName}\r\n" +
+            "echo             Copyright Alessandro Barazzuol\r\n" +
+            "echo ================================================================\r\n" +
+            "echo.\r\n" +
+            "echo ERRORE DI COMPILAZIONE - CODICE DI USCITA DIVERSO DA ZERO\r\n" +
+            "echo.\r\n" +
+            $"type \"{outputFile}\"\r\n" +
+            "echo.\r\n" +
+            "echo ================================================================\r\n" +
+            "echo Premi un tasto per chiudere.\r\n" +
+            "pause >nul\r\n",
+            Encoding.Default
+        );
+
+        _modalDialogOpen = true;
+        bool oldTopmost = Topmost;
+        if (_verificationMode)
+            Topmost = false;
+
+        try
+        {
+            var startInfo = new ProcessStartInfo("cmd.exe", $"/d /c \"{bat}\"")
+            {
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Normal
+            };
+
+            using Process? console = Process.Start(startInfo);
+            if (console != null)
+                await console.WaitForExitAsync();
+        }
+        finally
+        {
+            try { File.Delete(bat); } catch { }
+            try { File.Delete(outputFile); } catch { }
+            _modalDialogOpen = false;
+
+            if (_verificationMode)
+            {
+                Topmost = true;
+                WindowStyle = WindowStyle.None;
+                ResizeMode = ResizeMode.NoResize;
+                WindowState = WindowState.Maximized;
+                Activate();
+                Focus();
+            }
+            else
+            {
+                Topmost = oldTopmost;
+            }
+        }
     }
 
     private async Task RunInVerificationConsoleAsync(string exePath, string compileOutput)
@@ -779,10 +869,18 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         File.WriteAllText(
             bat,
             "@echo off\r\n" +
-            "title CV+ - Esecuzione C++17 in modalita verifica\r\n" +
+            "chcp 65001 >nul\r\n" +
+            "color 0A\r\n" +
+            "title CV+ Microsoft Output - Modalita verifica\r\n" +
+            "echo ================================================================\r\n" +
+            "echo                 CV+ MICROSOFT OUTPUT - VERIFICA\r\n" +
+            "echo                 Copyright Alessandro Barazzuol\r\n" +
+            "echo ================================================================\r\n" +
+            "echo.\r\n" +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
             $"\"{exePath}\"\r\n" +
             "echo.\r\n" +
+            "echo ================================================================\r\n" +
             "echo Programma terminato. Premi un tasto per chiudere.\r\n" +
             "pause >nul\r\n",
             Encoding.Default

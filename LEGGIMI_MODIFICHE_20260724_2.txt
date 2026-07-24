@@ -1,0 +1,7 @@
+MODIFICHE MIRATE RICHIESTE
+
+- Eliminazione del file .h: il main.cpp viene ripristinato con il codice C++ predefinito (#include <iostream>, using namespace std, int main e return 0).
+- Titolo finestra dinamico: se NOME E COGNOME è compilato, il titolo diventa "CV+ Compilatore Alunno: Nome Cognome".
+- Se la compilazione fallisce (codice di uscita diverso da zero), l'errore viene mostrato anche in una finestra CMD.
+- CMD con testo verde, intestazione distinta per modalità ESERCITAZIONE/VERIFICA e copyright Alessandro Barazzuol.
+- Nessun'altra funzione è stata intenzionalmente modificata.
