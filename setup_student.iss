@@ -104,7 +104,6 @@ begin
   WaitProgress.Min := 0;
   WaitProgress.Max := 100;
   WaitProgress.Position := 0;
-  WaitProgress.Smooth := True;
 
   WaitForm.Show;
   WaitForm.BringToFront;
