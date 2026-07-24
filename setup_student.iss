@@ -43,6 +43,18 @@ Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescr
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Assets\A.png"; DestDir: "{app}\Assets"; Flags: ignoreversion
 Source: "Assets\installing_a.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_00.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_01.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_02.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_03.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_04.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_05.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_06.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_07.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_08.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_09.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_10.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_11.bmp"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
@@ -54,12 +66,87 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: now
 [Code]
 var
   StartupForm: TSetupForm;
-  StartupLabel: TNewStaticText;
-  StartupSubLabel: TNewStaticText;
-  StartupProgress: TNewProgressBar;
-
-var
+  StartupImage: TBitmapImage;
+  StartupTimerId: LongWord;
+  StartupFrame: Integer;
   InstallImage: TBitmapImage;
+
+function SetTimer(hWnd: HWND; nIDEvent: LongWord; uElapse: LongWord;
+  lpTimerFunc: NativeInt): LongWord;
+  external 'SetTimer@user32.dll stdcall';
+
+function KillTimer(hWnd: HWND; uIDEvent: LongWord): Boolean;
+  external 'KillTimer@user32.dll stdcall';
+
+procedure StartupTimerProc(hWnd: HWND; uMsg: LongWord;
+  idEvent: LongWord; dwTime: LongWord);
+var
+  FrameFile: String;
+begin
+  if (StartupForm = nil) or (StartupImage = nil) then
+    Exit;
+
+  StartupFrame := (StartupFrame + 1) mod 12;
+  FrameFile := ExpandConstant(
+    Format('{tmp}\startup_wave_%.2d.bmp', [StartupFrame]));
+
+  if FileExists(FrameFile) then
+  begin
+    StartupImage.Bitmap.LoadFromFile(FrameFile);
+    StartupForm.Update;
+  end;
+end;
+
+function InitializeSetup(): Boolean;
+var
+  I: Integer;
+begin
+  Result := True;
+
+  for I := 0 to 11 do
+    ExtractTemporaryFile(Format('startup_wave_%.2d.bmp', [I]));
+
+  StartupForm := CreateCustomForm(ScaleX(390), ScaleY(450), False, False);
+  StartupForm.Caption := 'CV+ Compilatore Alunno';
+  StartupForm.Position := poScreenCenter;
+  StartupForm.BorderStyle := bsNone;
+  StartupForm.Color := clWhite;
+
+  StartupImage := TBitmapImage.Create(StartupForm);
+  StartupImage.Parent := StartupForm;
+  StartupImage.Left := ScaleX(15);
+  StartupImage.Top := ScaleY(15);
+  StartupImage.Width := ScaleX(360);
+  StartupImage.Height := ScaleY(420);
+  StartupImage.Stretch := True;
+  StartupImage.Center := True;
+  StartupImage.Bitmap.LoadFromFile(
+    ExpandConstant('{tmp}\startup_wave_00.bmp'));
+
+  StartupFrame := 0;
+  StartupForm.Show;
+  StartupForm.Update;
+
+  StartupTimerId := SetTimer(0, 0, 90, CreateCallback(@StartupTimerProc));
+end;
+
+procedure CloseStartupForm;
+begin
+  if StartupTimerId <> 0 then
+  begin
+    KillTimer(0, StartupTimerId);
+    StartupTimerId := 0;
+  end;
+
+  if StartupForm <> nil then
+  begin
+    StartupForm.Close;
+    StartupForm.Free;
+    StartupForm := nil;
+    StartupImage := nil;
+  end;
+end;
+
 
 procedure PositionInstallImage;
 begin
@@ -70,72 +157,6 @@ begin
     WizardForm.ProgressGauge.Top +
     WizardForm.ProgressGauge.Height +
     ScaleY(10);
-end;
-
-function InitializeSetup(): Boolean;
-begin
-  Result := True;
-
-  StartupForm :=
-    CreateCustomForm(
-      ScaleX(440),
-      ScaleY(160),
-      False,
-      False
-    );
-
-  StartupForm.Caption := 'CV+ Compilatore Alunno';
-  StartupForm.Position := poScreenCenter;
-  StartupForm.BorderStyle := bsDialog;
-  StartupForm.Color := clWhite;
-
-  StartupLabel := TNewStaticText.Create(StartupForm);
-  StartupLabel.Parent := StartupForm;
-  StartupLabel.Caption := 'Preparazione installazione...';
-  StartupLabel.Left := ScaleX(26);
-  StartupLabel.Top := ScaleY(24);
-  StartupLabel.Width := ScaleX(390);
-  StartupLabel.Height := ScaleY(32);
-  StartupLabel.Font.Size := 14;
-  StartupLabel.Font.Style := [fsBold];
-  StartupLabel.Font.Color := clNavy;
-
-  StartupSubLabel := TNewStaticText.Create(StartupForm);
-  StartupSubLabel.Parent := StartupForm;
-  StartupSubLabel.Caption :=
-    'Caricamento dei componenti. Attendi qualche secondo.';
-  StartupSubLabel.Left := ScaleX(26);
-  StartupSubLabel.Top := ScaleY(66);
-  StartupSubLabel.Width := ScaleX(390);
-  StartupSubLabel.Height := ScaleY(24);
-  StartupSubLabel.Font.Size := 9;
-  StartupSubLabel.Font.Color := clGray;
-
-  StartupProgress := TNewProgressBar.Create(StartupForm);
-  StartupProgress.Parent := StartupForm;
-  StartupProgress.Left := ScaleX(26);
-  StartupProgress.Top := ScaleY(108);
-  StartupProgress.Width := ScaleX(388);
-  StartupProgress.Height := ScaleY(18);
-  StartupProgress.Min := 0;
-  StartupProgress.Max := 100;
-  StartupProgress.Position := 45;
-
-  StartupForm.Show;
-  StartupForm.Update;
-end;
-
-procedure CloseStartupForm;
-begin
-  if StartupForm <> nil then
-  begin
-    StartupProgress.Position := 100;
-    StartupForm.Update;
-    Sleep(100);
-    StartupForm.Close;
-    StartupForm.Free;
-    StartupForm := nil;
-  end;
 end;
 
 procedure InitializeWizard;

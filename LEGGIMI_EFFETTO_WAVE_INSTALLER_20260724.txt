@@ -1,0 +1,12 @@
+MODIFICA MIRATA: SCHERMATA DI ATTESA INSTALLER
+
+Sono stati modificati esclusivamente:
+- setup_student.iss
+- Assets/startup_wave_00.bmp ... startup_wave_11.bmp
+
+Comportamento:
+- eliminata la vecchia barra di avanzamento iniziale;
+- durante i secondi di preparazione dell'installer appare l'immagine del cane;
+- l'immagine alterna in modo lieve luminosità e trasparenza apparente con un effetto onda;
+- appena compare la procedura guidata e la pagina delle condizioni d'uso, l'immagine si chiude automaticamente;
+- nessuna modifica al programma client, alla compilazione, al server o alle altre pagine dell'installer.
