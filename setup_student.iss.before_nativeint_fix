@@ -72,7 +72,7 @@ var
   InstallImage: TBitmapImage;
 
 function SetTimer(hWnd: HWND; nIDEvent: LongWord; uElapse: LongWord;
-  lpTimerFunc: LongWord): LongWord;
+  lpTimerFunc: NativeInt): LongWord;
   external 'SetTimer@user32.dll stdcall';
 
 function KillTimer(hWnd: HWND; uIDEvent: LongWord): Boolean;
