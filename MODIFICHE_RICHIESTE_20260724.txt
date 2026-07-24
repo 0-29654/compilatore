@@ -1,0 +1,29 @@
+MODIFICHE MIRATE - 24/07/2026
+
+Sono state mantenute tutte le funzioni esistenti. Sono stati modificati soltanto i punti richiesti.
+
+1. AVVIO
+- Numero registro vuoto.
+- Nome e cognome vuoti.
+- Classe e tipologia restano vuote.
+- Numero esercizio impostato a 1.
+- main.cpp contiene il codice C++ predefinito.
+
+2. ELIMINAZIONE FILE .H
+- Alla conferma di eliminazione del file header, main.cpp viene ripristinato con:
+  #include <iostream>
+  using namespace std;
+  int main() { return 0; }
+
+3. MODALITA VERIFICA
+- Il pulsante Compila ed esegui apre una vera finestra CMD sopra l'applicazione a schermo intero.
+- La console supporta output continuo, input da tastiera e cicli come while(1).
+- La console rimane aperta finché il programma termina o l'utente chiude la finestra.
+- Alla chiusura della console, l'app torna automaticamente in primo piano e resta in modalità verifica.
+
+4. RICERCA AGGIORNAMENTI
+- Corretta la modalità di avvio dello script esterno di aggiornamento.
+- L'app scarica il Setup .exe della release GitHub più recente, avvia lo script, si chiude e consente al setup di sovrascrivere la versione installata.
+
+NOTA KIOSK
+La modalità attuale limita l'interfaccia dell'app (tutto schermo, Topmost, niente chiusura ordinaria). Un'app WPF da sola non può bloccare in modo assoluto Internet, Gestione attività, Ctrl+Alt+Canc o altri strumenti di Windows. Per un blocco realmente amministrato occorrono Windows Assigned Access/AppLocker/criteri di gruppo, configurati dal docente o dall'amministratore del PC.

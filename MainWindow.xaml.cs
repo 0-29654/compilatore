@@ -108,7 +108,7 @@ public partial class MainWindow : Window
         try { if (File.Exists(SettingsPath)) File.Delete(SettingsPath); } catch { }
         try { if (File.Exists(ExerciseStatePath)) File.Delete(ExerciseStatePath); } catch { }
 
-        StudentIdBox.Text = "1";
+        StudentIdBox.Text = "";
         StudentNameBox.Text = "";
         ClassBox.Text = "";
         TaskTypeBox.Text = "";
@@ -748,30 +748,10 @@ private async void Run_Click(object sender, RoutedEventArgs e)
 
         if (_verificationMode)
         {
-            ExecutionResult execution =
-                await RunCapturedAsync(
-                    compilation.ExePath,
-                    30
-                );
-
-            _programOutput = execution.Output;
-
-            OutputBox.Text =
-                compilation.CompileOutput +
-                Environment.NewLine +
-                Environment.NewLine +
-                execution.Output;
-
-            SaveCurrentExerciseResult(
-                compilation.CompileOutput,
-                execution.Output
+            await RunInVerificationConsoleAsync(
+                compilation.ExePath,
+                compilation.CompileOutput
             );
-
-            ShowVerificationTerminal(
-                compilation.CompileOutput,
-                execution
-            );
-
             return;
         }
 
@@ -787,6 +767,76 @@ private async void Run_Click(object sender, RoutedEventArgs e)
         Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{bat}\"") { UseShellExecute = true });
         _programOutput = "Esecuzione aperta nella finestra CMD.";
         SaveCurrentExerciseResult(compilation.CompileOutput, _programOutput);
+    }
+
+    private async Task RunInVerificationConsoleAsync(string exePath, string compileOutput)
+    {
+        string bat = Path.Combine(
+            Path.GetTempPath(),
+            "cppstudent_verify_" + Guid.NewGuid().ToString("N") + ".bat"
+        );
+
+        File.WriteAllText(
+            bat,
+            "@echo off\r\n" +
+            "title CV+ - Esecuzione C++17 in modalita verifica\r\n" +
+            $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
+            $"\"{exePath}\"\r\n" +
+            "echo.\r\n" +
+            "echo Programma terminato. Premi un tasto per chiudere.\r\n" +
+            "pause >nul\r\n",
+            Encoding.Default
+        );
+
+        _modalDialogOpen = true;
+        bool oldTopmost = Topmost;
+        Topmost = false;
+        StatusText.Text = "Programma in esecuzione nella console";
+        _programOutput = "Esecuzione aperta nella finestra CMD della modalita verifica.";
+        OutputBox.Text = compileOutput + Environment.NewLine + Environment.NewLine + _programOutput;
+        SaveCurrentExerciseResult(compileOutput, _programOutput);
+
+        try
+        {
+            var startInfo = new ProcessStartInfo("cmd.exe", $"/d /c \"{bat}\"")
+            {
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Normal,
+                WorkingDirectory = Path.GetDirectoryName(exePath) ?? Path.GetTempPath()
+            };
+
+            using Process? console = Process.Start(startInfo);
+            if (console == null)
+                throw new InvalidOperationException("Impossibile aprire la finestra CMD.");
+
+            await console.WaitForExitAsync();
+        }
+        catch (Exception ex)
+        {
+            _programOutput = "ERRORE APERTURA CMD\n\n" + ex.Message;
+            OutputBox.Text = compileOutput + Environment.NewLine + Environment.NewLine + _programOutput;
+            SaveCurrentExerciseResult(compileOutput, _programOutput);
+        }
+        finally
+        {
+            try { File.Delete(bat); } catch { }
+            _modalDialogOpen = false;
+
+            if (_verificationMode)
+            {
+                Topmost = true;
+                WindowStyle = WindowStyle.None;
+                ResizeMode = ResizeMode.NoResize;
+                WindowState = WindowState.Maximized;
+                Activate();
+                Focus();
+                StatusText.Text = "Modalita verifica attiva";
+            }
+            else
+            {
+                Topmost = oldTopmost;
+            }
+        }
     }
 
     private async Task<bool> CompileAsync()
@@ -1390,14 +1440,11 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             );
 
             Process.Start(
-                new ProcessStartInfo(
-                    "cmd.exe",
-                    $"/c start \"\" /min \"{updaterScript}\""
-                )
+                new ProcessStartInfo(updaterScript)
                 {
                     UseShellExecute = true,
-                    WindowStyle =
-                        ProcessWindowStyle.Hidden
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    WorkingDirectory = Path.GetTempPath()
                 }
             );
 
