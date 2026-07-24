@@ -23,14 +23,15 @@ SolidCompression=yes
 WizardStyle=modern
 WizardSizePercent=120
 SetupIconFile=Assets\app.ico
-WizardImageFile=Assets\wizard_dog.bmp
-WizardSmallImageFile=Assets\wizard_dog_small.bmp
+WizardImageFile=Assets\wizard_wave.bmp
+WizardSmallImageFile=Assets\wizard_wave_small.bmp
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 CloseApplicationsFilter={#MyAppExeName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 DisableProgramGroupPage=yes
+DisableWelcomePage=yes
 
 [Languages]
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
@@ -55,6 +56,18 @@ Source: "Assets\startup_wave_08.bmp"; Flags: dontcopy
 Source: "Assets\startup_wave_09.bmp"; Flags: dontcopy
 Source: "Assets\startup_wave_10.bmp"; Flags: dontcopy
 Source: "Assets\startup_wave_11.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_12.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_13.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_14.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_15.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_16.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_17.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_18.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_19.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_20.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_21.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_22.bmp"; Flags: dontcopy
+Source: "Assets\startup_wave_23.bmp"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
@@ -76,10 +89,10 @@ var
 begin
   { Viene eseguito da InitializeWizard, quindi soltanto DOPO
     che l'utente ha scelto la lingua dell'installazione. }
-  for I := 0 to 11 do
+  for I := 0 to 23 do
     ExtractTemporaryFile(Format('startup_wave_%.2d.bmp', [I]));
 
-  StartupForm := CreateCustomForm(ScaleX(390), ScaleY(450), False, False);
+  StartupForm := CreateCustomForm(ScaleX(760), ScaleY(440), False, False);
   StartupForm.Caption := 'CV+ Compilatore Alunno';
   StartupForm.Position := poScreenCenter;
   StartupForm.BorderStyle := bsNone;
@@ -87,9 +100,9 @@ begin
 
   StartupImage := TBitmapImage.Create(StartupForm);
   StartupImage.Parent := StartupForm;
-  StartupImage.Left := ScaleX(15);
-  StartupImage.Top := ScaleY(15);
-  StartupImage.Width := ScaleX(360);
+  StartupImage.Left := ScaleX(10);
+  StartupImage.Top := ScaleY(10);
+  StartupImage.Width := ScaleX(740);
   StartupImage.Height := ScaleY(420);
   StartupImage.Stretch := True;
   StartupImage.Center := True;
@@ -107,12 +120,12 @@ var
   I: Integer;
   FrameFile: String;
 begin
-  { Mantiene l'immagine visibile per circa 5,4 secondi.
+  { Mantiene l'animazione visibile per circa 5,8 secondi.
     In questo intervallo il setup ha già acquisito la lingua,
     mentre la finestra delle condizioni non è ancora mostrata. }
-  for I := 0 to 59 do
+  for I := 0 to 47 do
   begin
-    StartupFrame := I mod 12;
+    StartupFrame := I mod 24;
     FrameFile := ExpandConstant(
       Format('{tmp}\startup_wave_%.2d.bmp', [StartupFrame]));
 
@@ -120,7 +133,7 @@ begin
       StartupImage.Bitmap.LoadFromFile(FrameFile);
 
     StartupForm.Update;
-    Sleep(90);
+    Sleep(120);
   end;
 end;
 
@@ -189,13 +202,13 @@ begin
 
   PositionInstallImage;
 
-  { La schermata del cane parte adesso: la scelta della lingua è già terminata. }
+  { Le onde partono adesso: la scelta della lingua è già terminata. }
   CreateStartupForm;
   AnimateStartupUntilLicenseIsReady;
 
-  { La chiudiamo soltanto quando InitializeWizard sta per terminare:
-    subito dopo Inno Setup mostra la pagina delle condizioni d'uso. }
-  CloseStartupForm;
+  { Non chiudiamo qui la schermata: resta visibile fino a quando
+    Inno Setup apre davvero la pagina delle condizioni d'uso.
+    CurPageChanged(wpLicense) la chiude in quel preciso momento. }
 end;
 
 procedure CurPageChanged(CurPageID: Integer);

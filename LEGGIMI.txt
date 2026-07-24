@@ -1,5 +1,3 @@
-Copia APPLICA_PATCH_CLIENT.py nella radice della repository compilatore, poi:
-python3 APPLICA_PATCH_CLIENT.py
-git add MainWindow.xaml.cs
-git commit -m "Corregge output, tipologia e invio multiplo"
-git push
+Sovrascrivere setup_student.iss nella radice della repository.
+Copiare tutti i file BMP della cartella Assets nella cartella Assets della repository.
+La schermata animata compare dopo la scelta della lingua e viene chiusa quando si apre la pagina delle condizioni d'uso.
