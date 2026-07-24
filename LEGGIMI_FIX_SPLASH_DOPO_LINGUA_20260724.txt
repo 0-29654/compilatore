@@ -1,0 +1,6 @@
+MODIFICA MIRATA INSTALLER
+
+- L'immagine del cane viene creata soltanto dopo la scelta della lingua.
+- Rimane visibile e animata per circa 5,4 secondi.
+- Scompare immediatamente prima della visualizzazione della pagina delle condizioni d'uso/privacy.
+- Nessun'altra parte del programma è stata modificata.

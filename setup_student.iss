@@ -67,42 +67,15 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: now
 var
   StartupForm: TSetupForm;
   StartupImage: TBitmapImage;
-  StartupTimerId: LongWord;
   StartupFrame: Integer;
   InstallImage: TBitmapImage;
 
-function SetTimer(hWnd: HWND; nIDEvent: LongWord; uElapse: LongWord;
-  lpTimerFunc: LongWord): LongWord;
-  external 'SetTimer@user32.dll stdcall';
-
-function KillTimer(hWnd: HWND; uIDEvent: LongWord): Boolean;
-  external 'KillTimer@user32.dll stdcall';
-
-procedure StartupTimerProc(hWnd: HWND; uMsg: LongWord;
-  idEvent: LongWord; dwTime: LongWord);
-var
-  FrameFile: String;
-begin
-  if (StartupForm = nil) or (StartupImage = nil) then
-    Exit;
-
-  StartupFrame := (StartupFrame + 1) mod 12;
-  FrameFile := ExpandConstant(
-    Format('{tmp}\startup_wave_%.2d.bmp', [StartupFrame]));
-
-  if FileExists(FrameFile) then
-  begin
-    StartupImage.Bitmap.LoadFromFile(FrameFile);
-    StartupForm.Update;
-  end;
-end;
-
-function InitializeSetup(): Boolean;
+procedure CreateStartupForm;
 var
   I: Integer;
 begin
-  Result := True;
-
+  { Viene eseguito da InitializeWizard, quindi soltanto DOPO
+    che l'utente ha scelto la lingua dell'installazione. }
   for I := 0 to 11 do
     ExtractTemporaryFile(Format('startup_wave_%.2d.bmp', [I]));
 
@@ -125,28 +98,42 @@ begin
 
   StartupFrame := 0;
   StartupForm.Show;
+  StartupForm.BringToFront;
   StartupForm.Update;
+end;
 
-  StartupTimerId := SetTimer(0, 0, 90, CreateCallback(@StartupTimerProc));
+procedure AnimateStartupUntilLicenseIsReady;
+var
+  I: Integer;
+  FrameFile: String;
+begin
+  { Mantiene l'immagine visibile per circa 5,4 secondi.
+    In questo intervallo il setup ha già acquisito la lingua,
+    mentre la finestra delle condizioni non è ancora mostrata. }
+  for I := 0 to 59 do
+  begin
+    StartupFrame := I mod 12;
+    FrameFile := ExpandConstant(
+      Format('{tmp}\startup_wave_%.2d.bmp', [StartupFrame]));
+
+    if FileExists(FrameFile) then
+      StartupImage.Bitmap.LoadFromFile(FrameFile);
+
+    StartupForm.Update;
+    Sleep(90);
+  end;
 end;
 
 procedure CloseStartupForm;
 begin
-  if StartupTimerId <> 0 then
-  begin
-    KillTimer(0, StartupTimerId);
-    StartupTimerId := 0;
-  end;
-
   if StartupForm <> nil then
   begin
-    StartupForm.Close;
+    StartupForm.Hide;
     StartupForm.Free;
     StartupForm := nil;
     StartupImage := nil;
   end;
 end;
-
 
 procedure PositionInstallImage;
 begin
@@ -161,7 +148,6 @@ end;
 
 procedure InitializeWizard;
 begin
-  CloseStartupForm;
   WizardForm.WelcomeLabel1.Caption :=
     'Benvenuto in CV+ Compilatore Alunno';
 
@@ -202,12 +188,23 @@ begin
   );
 
   PositionInstallImage;
+
+  { La schermata del cane parte adesso: la scelta della lingua è già terminata. }
+  CreateStartupForm;
+  AnimateStartupUntilLicenseIsReady;
+
+  { La chiudiamo soltanto quando InitializeWizard sta per terminare:
+    subito dopo Inno Setup mostra la pagina delle condizioni d'uso. }
+  CloseStartupForm;
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = wpLicense then
+  begin
+    CloseStartupForm;
     WizardForm.LicenseAcceptedRadio.Checked := True;
+  end;
 
   if (CurPageID = wpSelectTasks) and
      (WizardForm.TasksList.Items.Count > 0) then
@@ -218,7 +215,6 @@ begin
   if InstallImage.Visible then
     PositionInstallImage;
 end;
-
 
 procedure DeinitializeSetup;
 begin
