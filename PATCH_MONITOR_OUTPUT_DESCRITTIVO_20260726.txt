@@ -1,0 +1,5 @@
+PATCH CLIENT
+- Analisi descrittiva degli errori GCC integrata nell'output inviato.
+- Rilevazione euristica di loop, divisione per zero e assenza di output.
+- Aggiornamento live del codice al server ogni 2 secondi.
+- Compilazione remota su richiesta del docente eseguita sul client.

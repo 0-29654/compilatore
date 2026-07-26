@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -207,15 +207,6 @@ internal static class CppErrorAnalyzer
             if (Regex.IsMatch(line, @"\bcout\s*<<\s*[^;]+$"))
                 warnings.Add($"Riga {lineNumber}: l'istruzione cout sembra incompleta o priva del punto e virgola finale.");
         }
-
-        if (Regex.IsMatch(sourceCode, @"(?:/|%)\s*0(?:\D|$)"))
-            warnings.Add("È presente una divisione o un modulo per zero certo: durante l'esecuzione il programma può terminare in modo anomalo.");
-
-        bool hasVisibleOutput = Regex.IsMatch(sourceCode,
-            @"\b(cout|cerr|clog)\s*<<|\bprintf\s*\(",
-            RegexOptions.IgnoreCase);
-        if (!hasVisibleOutput)
-            warnings.Add("Il programma non contiene istruzioni cout, cerr o printf: può compilare ed eseguire correttamente senza mostrare nulla sullo schermo.");
 
         // Graffe sbilanciate: controllo semplice, ignorando commenti e stringhe in modo prudente.
         int balance = 0;

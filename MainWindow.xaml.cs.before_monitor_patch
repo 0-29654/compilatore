@@ -33,7 +33,6 @@ public partial class MainWindow : Window
 
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer _modeTimer = new() { Interval = TimeSpan.FromSeconds(7) };
-    private readonly DispatcherTimer _liveMonitorTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly Dictionary<string, ExerciseState> _exerciseStates = new(StringComparer.OrdinalIgnoreCase);
 
     private string _compileOutput = "";
@@ -45,8 +44,6 @@ public partial class MainWindow : Window
     private bool _verificationMode;
     private bool _allowClose;
     private bool _serverModeCheckRunning;
-    private bool _liveMonitorSyncRunning;
-    private string _lastRemoteCommandId = "";
     private bool _modalDialogOpen;
     private System.Windows.Controls.Grid? _activeOverlay;
     private bool _compilationAllowed = true;
@@ -67,7 +64,7 @@ public partial class MainWindow : Window
         ConfigureCppHighlighting();
         ResetClientStateOnStartup();
         StartTeacherDiscoveryListener();
-        Closed += (_, _) => { _liveMonitorTimer.Stop(); StopTeacherDiscoveryListener(); };
+        Closed += (_, _) => StopTeacherDiscoveryListener();
         if (!File.Exists(BundledCompilerPath))
             OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
         ActivateExercise(GetTaskType(), GetExerciseNumber());
@@ -76,8 +73,6 @@ public partial class MainWindow : Window
         _clockTimer.Start();
         _modeTimer.Tick += async (_, _) => await RefreshServerModeAsync(false);
         _modeTimer.Start();
-        _liveMonitorTimer.Tick += async (_, _) => await SyncLiveMonitorAsync();
-        _liveMonitorTimer.Start();
 
         StudentNameBox.TextChanged += (_, _) => UpdateWindowTitle();
 
@@ -1040,10 +1035,6 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             if (!string.IsNullOrWhiteSpace(runtimeAnalysis))
                 resultText += Environment.NewLine + Environment.NewLine + runtimeAnalysis;
 
-            string explanatoryAnalysis = CppErrorAnalyzer.Analyze(sourceCode, diagnostic);
-            if (!string.IsNullOrWhiteSpace(explanatoryAnalysis))
-                resultText += Environment.NewLine + Environment.NewLine + explanatoryAnalysis;
-
             if (updateOutputBox) OutputBox.Text = resultText;
             return new CompilationResult(success, resultText, success ? exe : null);
         }
@@ -1153,104 +1144,6 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             state.ProgramOutput = programOutput;
             SaveExerciseStates();
         }
-    }
-
-    private async Task SyncLiveMonitorAsync()
-    {
-        if (_liveMonitorSyncRunning || string.IsNullOrWhiteSpace(ServerBox.Text))
-            return;
-
-        _liveMonitorSyncRunning = true;
-        try
-        {
-            string studentId = StudentIdBox.Text.Trim();
-            string clientIp = GetLocalIpv4Address();
-            string commandUrl = NormalizeServerAddress(ServerBox.Text) +
-                "/client-command?studentId=" + Uri.EscapeDataString(studentId) +
-                "&clientIp=" + Uri.EscapeDataString(clientIp);
-
-            using HttpResponseMessage commandResponse = await _http.GetAsync(commandUrl);
-            if (commandResponse.IsSuccessStatusCode)
-            {
-                string json = await commandResponse.Content.ReadAsStringAsync();
-                using JsonDocument doc = JsonDocument.Parse(json);
-                JsonElement root = doc.RootElement;
-                string commandId = root.TryGetProperty("commandId", out JsonElement idEl)
-                    ? idEl.GetString() ?? "" : "";
-                string action = root.TryGetProperty("action", out JsonElement actionEl)
-                    ? actionEl.GetString() ?? "" : "";
-
-                if (!string.IsNullOrWhiteSpace(commandId) &&
-                    !commandId.Equals(_lastRemoteCommandId, StringComparison.OrdinalIgnoreCase) &&
-                    action.Equals("compile", StringComparison.OrdinalIgnoreCase))
-                {
-                    _lastRemoteCommandId = commandId;
-                    CompilationResult compilation = await CompileSourceAsync(
-                        Editor.Text,
-                        false,
-                        HeaderEditor.Text,
-                        GetCurrentHeaderFileName());
-
-                    ExecutionResult execution = compilation.Success && !string.IsNullOrWhiteSpace(compilation.ExePath)
-                        ? await RunCapturedAsync(compilation.ExePath, 5)
-                        : new ExecutionResult(false,
-                            "Programma non eseguito perché la compilazione non è riuscita.",
-                            null,
-                            false);
-
-                    _compileOutput = compilation.CompileOutput;
-                    _programOutput = execution.Output;
-                    SaveCurrentExerciseResult(_compileOutput, _programOutput);
-                    await PostLiveStateAsync(commandId, "Risposta alla richiesta di compilazione del docente");
-                    return;
-                }
-            }
-
-            await PostLiveStateAsync("", "Aggiornamento automatico");
-        }
-        catch
-        {
-            // Il monitor è una funzione aggiuntiva: un errore di rete non deve disturbare l'alunno.
-        }
-        finally
-        {
-            _liveMonitorSyncRunning = false;
-        }
-    }
-
-    private async Task PostLiveStateAsync(string commandId, string status)
-    {
-        if (string.IsNullOrWhiteSpace(ServerBox.Text))
-            return;
-
-        string clientIp = GetLocalIpv4Address();
-        var payload = new
-        {
-            studentId = StudentIdBox.Text.Trim(),
-            studentName = StudentNameBox.Text.Trim(),
-            className = ClassBox.Text.Trim(),
-            assignmentType = GetTaskType(),
-            exerciseId = GetExerciseNumber().ToString(),
-            sessionCode = SessionBox.Text.Trim(),
-            mode = _verificationMode ? "verifica" : "esercitazione",
-            clientIp,
-            code = Editor.Text,
-            headerFileName = GetCurrentHeaderFileName(),
-            headerCode = HeaderEditor.Text,
-            compileOutput = _compileOutput,
-            programOutput = _programOutput,
-            commandId,
-            status,
-            sentAtUtc = DateTime.UtcNow
-        };
-
-        using var content = new StringContent(
-            JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(4));
-        await _http.PostAsync(
-            NormalizeServerAddress(ServerBox.Text) + "/live",
-            content,
-            timeout.Token);
     }
 
     private async void TestServer_Click(
