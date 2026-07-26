@@ -69,7 +69,7 @@ begin
   { Questa procedura viene chiamata da InitializeWizard: a questo punto
     la lingua è già stata scelta, mentre la pagina della licenza non è
     ancora comparsa. }
-  WaitForm := CreateCustomForm(ScaleX(500), ScaleY(170), False, False);
+  WaitForm := CreateCustomForm(ScaleX(420), ScaleY(145), False, False);
   WaitForm.Caption := 'CV+ Compilatore Alunno';
   WaitForm.Position := poScreenCenter;
   WaitForm.BorderStyle := bsDialog;
@@ -77,9 +77,9 @@ begin
 
   WaitTitle := TNewStaticText.Create(WaitForm);
   WaitTitle.Parent := WaitForm;
-  WaitTitle.Left := ScaleX(28);
-  WaitTitle.Top := ScaleY(24);
-  WaitTitle.Width := ScaleX(440);
+  WaitTitle.Left := ScaleX(30);
+  WaitTitle.Top := ScaleY(18);
+  WaitTitle.Width := ScaleX(360);
   WaitTitle.Height := ScaleY(28);
   WaitTitle.Caption := 'Preparazione dell''installazione';
   WaitTitle.Font.Size := 13;
@@ -88,18 +88,18 @@ begin
 
   WaitMessage := TNewStaticText.Create(WaitForm);
   WaitMessage.Parent := WaitForm;
-  WaitMessage.Left := ScaleX(28);
-  WaitMessage.Top := ScaleY(59);
-  WaitMessage.Width := ScaleX(440);
+  WaitMessage.Left := ScaleX(30);
+  WaitMessage.Top := ScaleY(52);
+  WaitMessage.Width := ScaleX(360);
   WaitMessage.Height := ScaleY(22);
   WaitMessage.Caption := 'Attendere l''apertura delle condizioni d''uso e privacy...';
   WaitMessage.Font.Size := 9;
 
   WaitProgress := TNewProgressBar.Create(WaitForm);
   WaitProgress.Parent := WaitForm;
-  WaitProgress.Left := ScaleX(28);
-  WaitProgress.Top := ScaleY(98);
-  WaitProgress.Width := ScaleX(440);
+  WaitProgress.Left := ScaleX(50);
+  WaitProgress.Top := ScaleY(88);
+  WaitProgress.Width := ScaleX(320);
   WaitProgress.Height := ScaleY(18);
   WaitProgress.Min := 0;
   WaitProgress.Max := 100;

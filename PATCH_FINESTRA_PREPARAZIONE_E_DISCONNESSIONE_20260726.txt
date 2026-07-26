@@ -1,0 +1,6 @@
+MODIFICHE AGGIUNTE
+
+1. Finestra iniziale dell installer ridotta e centrata.
+2. Barra di avanzamento più corta e centrata nella finestra.
+3. Alla chiusura il client comunica immediatamente la disconnessione al server.
+4. Il server rimuove automaticamente dalla Vista alunni i client non aggiornati da 15 secondi, anche in caso di arresto anomalo o rete interrotta.

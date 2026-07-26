@@ -1241,7 +1241,8 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             programOutput = _programOutput,
             commandId,
             status,
-            sentAtUtc = DateTime.UtcNow
+            sentAtUtc = DateTime.UtcNow,
+            isOnline = true
         };
 
         using var content = new StringContent(
@@ -1251,6 +1252,43 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             NormalizeServerAddress(ServerBox.Text) + "/live",
             content,
             timeout.Token);
+    }
+
+    private void NotifyServerClientClosed()
+    {
+        if (string.IsNullOrWhiteSpace(ServerBox.Text))
+            return;
+
+        try
+        {
+            string clientIp = GetLocalIpv4Address();
+            var payload = new
+            {
+                studentId = StudentIdBox.Text.Trim(),
+                studentName = StudentNameBox.Text.Trim(),
+                className = ClassBox.Text.Trim(),
+                assignmentType = GetTaskType(),
+                exerciseId = GetExerciseNumber().ToString(),
+                clientIp,
+                remoteAddress = clientIp,
+                status = "Client chiuso",
+                sentAtUtc = DateTime.UtcNow,
+                isOnline = false
+            };
+
+            using var content = new StringContent(
+                JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            _http.PostAsync(
+                NormalizeServerAddress(ServerBox.Text) + "/live",
+                content,
+                timeout.Token).GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // In chiusura non mostrare errori: il server eliminerà comunque
+            // il client tramite il controllo automatico dell'ultimo aggiornamento.
+        }
     }
 
     private async void TestServer_Click(
@@ -2499,6 +2537,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             Activate();
             return;
         }
+        NotifyServerClientClosed();
         SaveCurrentExercise();
         SaveSettings();
     }
