@@ -745,7 +745,45 @@ public partial class MainWindow : Window
         );
     }
 
-private async void Run_Click(object sender, RoutedEventArgs e)
+    private string BuildConsoleHeader(string modeName)
+    {
+        string localIp = GetLocalIpv4Address();
+        if (string.IsNullOrWhiteSpace(localIp))
+            localIp = "non disponibile";
+
+        string elapsed = FormatDuration(GetElapsedForActive());
+        string taskType = EscapeBatchEcho(GetTaskType());
+        string exercise = GetExerciseNumber().ToString();
+        string safeMode = EscapeBatchEcho(modeName.ToUpperInvariant());
+
+        return
+            "powershell -NoProfile -Command \"Write-Host ('=' * [Console]::WindowWidth)\"\r\n" +
+            $"echo CV+ MICROSOFT OUTPUT - {safeMode}\r\n" +
+            "echo Copyright Alessandro Barazzuol\r\n" +
+            "powershell -NoProfile -Command \"Write-Host ('-' * [Console]::WindowWidth)\"\r\n" +
+            $"echo IP: {EscapeBatchEcho(localIp)}   ^|   Tempo esercizio: {EscapeBatchEcho(elapsed)}\r\n" +
+            $"echo Compilatore: G++ C++17 - MinGW-w64 UCRT64   ^|   Tipologia: {taskType}   ^|   Esercizio: {exercise}\r\n" +
+            "powershell -NoProfile -Command \"Write-Host ('=' * [Console]::WindowWidth)\"\r\n" +
+            "echo.\r\n";
+    }
+
+    private static string BuildConsoleSeparator(char character = '=')
+    {
+        return $"powershell -NoProfile -Command \"Write-Host ('{character}' * [Console]::WindowWidth)\"\r\n";
+    }
+
+    private static string EscapeBatchEcho(string value)
+    {
+        return (value ?? string.Empty)
+            .Replace("^", "^^")
+            .Replace("&", "^&")
+            .Replace("|", "^|")
+            .Replace("<", "^<")
+            .Replace(">", "^>")
+            .Replace("%", "%%");
+    }
+
+    private async void Run_Click(object sender, RoutedEventArgs e)
     {
         if (!_compilationAllowed)
         {
@@ -779,19 +817,19 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             "chcp 65001 >nul\r\n" +
             "color 0A\r\n" +
             "title CV+ Microsoft Output - Modalita esercitazione\r\n" +
-            "echo ================================================================\r\n" +
-            "echo               CV+ MICROSOFT OUTPUT - ESERCITAZIONE\r\n" +
-            "echo                 Copyright Alessandro Barazzuol\r\n" +
-            "echo ================================================================\r\n" +
-            "echo.\r\n" +
+            BuildConsoleHeader("ESERCITAZIONE") +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
             $"\"{compilation.ExePath}\"\r\n" +
             "echo.\r\n" +
-            "echo ================================================================\r\n" +
+            BuildConsoleSeparator() +
             "echo Programma terminato.\r\n" +
             "pause\r\n",
             Encoding.Default);
-        Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{bat}\"") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{bat}\"")
+        {
+            UseShellExecute = true,
+            WindowStyle = ProcessWindowStyle.Maximized
+        });
         _programOutput = "Esecuzione aperta nella finestra CMD.";
         SaveCurrentExerciseResult(compilation.CompileOutput, _programOutput);
     }
@@ -810,16 +848,12 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             "chcp 65001 >nul\r\n" +
             "color 0A\r\n" +
             $"title CV+ Microsoft Output - Modalita {modeName.ToLowerInvariant()}\r\n" +
-            "echo ================================================================\r\n" +
-            $"echo          CV+ MICROSOFT OUTPUT - {modeName}\r\n" +
-            "echo             Copyright Alessandro Barazzuol\r\n" +
-            "echo ================================================================\r\n" +
-            "echo.\r\n" +
+            BuildConsoleHeader(modeName) +
             "echo ERRORE DI COMPILAZIONE - CODICE DI USCITA DIVERSO DA ZERO\r\n" +
             "echo.\r\n" +
             $"type \"{outputFile}\"\r\n" +
             "echo.\r\n" +
-            "echo ================================================================\r\n" +
+            BuildConsoleSeparator() +
             "echo Premi un tasto per chiudere.\r\n" +
             "pause >nul\r\n",
             Encoding.Default
@@ -835,7 +869,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             var startInfo = new ProcessStartInfo("cmd.exe", $"/d /c \"{bat}\"")
             {
                 UseShellExecute = true,
-                WindowStyle = ProcessWindowStyle.Normal
+                WindowStyle = ProcessWindowStyle.Maximized
             };
 
             using Process? console = Process.Start(startInfo);
@@ -877,15 +911,11 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             "chcp 65001 >nul\r\n" +
             "color 0A\r\n" +
             "title CV+ Microsoft Output - Modalita verifica\r\n" +
-            "echo ================================================================\r\n" +
-            "echo                 CV+ MICROSOFT OUTPUT - VERIFICA\r\n" +
-            "echo                 Copyright Alessandro Barazzuol\r\n" +
-            "echo ================================================================\r\n" +
-            "echo.\r\n" +
+            BuildConsoleHeader("VERIFICA") +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
             $"\"{exePath}\"\r\n" +
             "echo.\r\n" +
-            "echo ================================================================\r\n" +
+            BuildConsoleSeparator() +
             "echo Programma terminato. Premi un tasto per chiudere.\r\n" +
             "pause >nul\r\n",
             Encoding.Default
@@ -904,7 +934,7 @@ private async void Run_Click(object sender, RoutedEventArgs e)
             var startInfo = new ProcessStartInfo("cmd.exe", $"/d /c \"{bat}\"")
             {
                 UseShellExecute = true,
-                WindowStyle = ProcessWindowStyle.Normal,
+                WindowStyle = ProcessWindowStyle.Maximized,
                 WorkingDirectory = Path.GetDirectoryName(exePath) ?? Path.GetTempPath()
             };
 

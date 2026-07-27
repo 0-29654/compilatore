@@ -1,0 +1,16 @@
+PATCH CONSOLE CMD MASSIMIZZATA - 27/07/2026
+
+Modifiche applicate esclusivamente alla console di compilazione/esecuzione:
+
+1. La finestra CMD viene aperta massimizzata sia in modalita ESERCITAZIONE sia in modalita VERIFICA.
+2. Le linee verdi di separazione vengono generate in base alla larghezza reale della console e arrivano fino al bordo destro.
+3. L'intestazione mostra in forma compatta:
+   - indirizzo IP locale;
+   - tempo trascorso sull'esercizio;
+   - compilatore G++ C++17 MinGW-w64 UCRT64;
+   - tipologia dell'esercizio;
+   - numero dell'esercizio.
+4. La stessa grafica viene usata anche nella console degli errori di compilazione.
+5. Nessun'altra funzione o interfaccia del programma e stata modificata.
+
+Nota tecnica: non e stato possibile eseguire la compilazione completa nell'ambiente di patch perche il comando dotnet non e installato.
