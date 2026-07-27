@@ -1,0 +1,14 @@
+PATCH BARRA DI PREPARAZIONE INSTALLER - 27/07/2026
+
+File modificato:
+- setup_student.iss
+
+Modifiche:
+- La finestra "Preparazione dell'installazione" compare subito dopo la scelta della lingua.
+- La finestra resta centrata sullo schermo.
+- Dimensioni ridotte da 420x145 a 360x118.
+- Titolo e messaggio riallineati nella finestra più compatta.
+- Barra di avanzamento centrata e larga quasi quanto tutta la finestra, con margini laterali di 18 pixel.
+- Nessuna modifica al resto del programma o alla procedura di installazione.
+
+Per creare l'installer eseguire CREA_INSTALLER.bat su Windows con Inno Setup installato.
