@@ -59,41 +59,67 @@ var
   PreparationText: TNewStaticText;
   InstallImage: TBitmapImage;
 
+const
+  PBM_SETMARQUEE = $040A;
+  GWL_EXSTYLE = -20;
+  WS_EX_LAYERED = $00080000;
+  LWA_ALPHA = $00000002;
+
+function SendMessage(hWnd: HWND; Msg: Cardinal; wParam: Longint; lParam: Longint): Longint;
+  external 'SendMessageW@user32.dll stdcall';
+function GetWindowLong(hWnd: HWND; nIndex: Integer): Longint;
+  external 'GetWindowLongW@user32.dll stdcall';
+function SetWindowLong(hWnd: HWND; nIndex: Integer; dwNewLong: Longint): Longint;
+  external 'SetWindowLongW@user32.dll stdcall';
+function SetLayeredWindowAttributes(hWnd: HWND; crKey: Cardinal; bAlpha: Byte; dwFlags: Cardinal): Boolean;
+  external 'SetLayeredWindowAttributes@user32.dll stdcall';
+
 procedure ShowPreparationWindow;
+var
+  ExStyle: Longint;
 begin
   if PreparationForm <> nil then
     exit;
 
-  { Prima operazione eseguita immediatamente dopo la scelta della lingua. }
-  PreparationForm := CreateCustomForm(ScaleX(380), ScaleY(72), False, False);
+  { Mostrata come prima operazione subito dopo la scelta della lingua. }
+  PreparationForm := CreateCustomForm(ScaleX(350), ScaleY(62), False, False);
   PreparationForm.Position := poScreenCenter;
   PreparationForm.BorderStyle := bsNone;
-  PreparationForm.Color := $00F7F7F7;
+  PreparationForm.Color := $00F4F4F4;
+  PreparationForm.ClientWidth := ScaleX(350);
+  PreparationForm.ClientHeight := ScaleY(62);
+
+  { Leggera trasparenza dell'intera finestrella. }
+  ExStyle := GetWindowLong(PreparationForm.Handle, GWL_EXSTYLE);
+  SetWindowLong(PreparationForm.Handle, GWL_EXSTYLE, ExStyle or WS_EX_LAYERED);
+  SetLayeredWindowAttributes(PreparationForm.Handle, 0, 238, LWA_ALPHA);
 
   PreparationText := TNewStaticText.Create(PreparationForm);
   PreparationText.Parent := PreparationForm;
   PreparationText.Left := ScaleX(10);
-  PreparationText.Top := ScaleY(8);
-  PreparationText.Width := ScaleX(360);
-  PreparationText.Height := ScaleY(22);
+  PreparationText.Top := ScaleY(7);
+  PreparationText.Width := ScaleX(330);
+  PreparationText.Height := ScaleY(18);
   PreparationText.Caption := 'Attendere - preparazione dell''installazione...';
   PreparationText.Font.Name := 'Segoe UI';
   PreparationText.Font.Size := 9;
   PreparationText.Font.Style := [fsBold];
-  PreparationText.Font.Color := $00484848;
+  PreparationText.Font.Color := $003C3C3C;
 
-  { La barra occupa quasi tutta la piccola finestra e scorre continuamente. }
   PreparationProgress := TNewProgressBar.Create(PreparationForm);
   PreparationProgress.Parent := PreparationForm;
   PreparationProgress.Left := ScaleX(10);
-  PreparationProgress.Top := ScaleY(36);
-  PreparationProgress.Width := ScaleX(360);
-  PreparationProgress.Height := ScaleY(22);
+  PreparationProgress.Top := ScaleY(31);
+  PreparationProgress.Width := ScaleX(330);
+  PreparationProgress.Height := ScaleY(18);
   PreparationProgress.Style := npbstMarquee;
 
   PreparationForm.Show;
   PreparationForm.BringToFront;
   PreparationForm.Update;
+
+  { Avvia esplicitamente il movimento avanti/indietro della barra. }
+  SendMessage(PreparationProgress.Handle, PBM_SETMARQUEE, 1, 24);
 end;
 
 procedure HidePreparationWindow;
