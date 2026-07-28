@@ -1,0 +1,12 @@
+CORREZIONE BUILD macOS Apple Silicon
+
+Corretto errore CS0117 in MainWindow.axaml.cs:
+- rimosse le proprietà non esistenti HorizontalScrollBarVisibility e VerticalScrollBarVisibility dall'inizializzatore TextBox;
+- applicate come proprietà attached tramite ScrollViewer.SetHorizontalScrollBarVisibility e ScrollViewer.SetVerticalScrollBarVisibility.
+
+Corretto anche MainWindow.axaml usando:
+- ScrollViewer.HorizontalScrollBarVisibility
+- ScrollViewer.VerticalScrollBarVisibility
+
+Per compilare:
+./build-mac-arm64.sh

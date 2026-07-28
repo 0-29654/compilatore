@@ -1,0 +1,49 @@
+name: Build macOS Apple Silicon DMG
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'CVPlus.Mac/**'
+      - 'build-mac-arm64.sh'
+      - '.github/workflows/build-macos-arm64.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build app and DMG
+        run: |
+          chmod +x build-mac-arm64.sh
+          ./build-mac-arm64.sh
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CVPlus-macOS-AppleSilicon-DMG
+          path: CVPlus-Compilatore-Alunno-macOS-AppleSilicon.dmg
+          if-no-files-found: error
+
+      - name: Publish GitHub Release on manual run
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: macos-arm64-build-${{ github.run_number }}
+        run: |
+          gh release create "$TAG_NAME" \
+            "CVPlus-Compilatore-Alunno-macOS-AppleSilicon.dmg" \
+            --title "CV+ Compilatore Alunno macOS Apple Silicon - build ${{ github.run_number }}" \
+            --notes "Build automatica per macOS Apple Silicon. File DMG non firmato e non notarizzato." \
+            --prerelease
