@@ -131,6 +131,7 @@ public partial class MainWindow : Window
         ExerciseBox.Text = "1";
         ServerBox.Text = "";
         SessionBox.Text = "";
+        SetTeacherConnectionFieldsLocked(false);
         Editor.Text = DefaultCode;
         HeaderEditor.Text = "";
         HeaderTab.Visibility = Visibility.Collapsed;
@@ -188,6 +189,7 @@ public partial class MainWindow : Window
                 string session = Get(root, "sessionCode", Get(root, "code", Get(root, "session", "")));
                 string mode = Get(root, "mode", Get(root, "sessionMode", "esercitazione"));
                 bool compileAllowed = ReadCompilationAllowed(root);
+                bool headerManagementAllowed = ReadHeaderManagementAllowed(root);
                 string command = Get(root, "command", "");
 
                 await Dispatcher.InvokeAsync(() =>
@@ -201,8 +203,10 @@ public partial class MainWindow : Window
                     }
                     ServerBox.Text = $"{ip}:{port}";
                     SetSessionCode(session);
+                    SetTeacherConnectionFieldsLocked(true);
                     ApplySessionMode(mode);
                     ApplyCompilationPermission(compileAllowed);
+                    ApplyHeaderManagementPermission(headerManagementAllowed);
                     StatusText.Text = $"Docente rilevato: {ip}:{port}";
                 });
             }
@@ -215,6 +219,35 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private void SetTeacherConnectionFieldsLocked(bool locked)
+    {
+        // I valori ricevuti automaticamente dal programma docente restano visibili,
+        // ma l'alunno non può modificarli accidentalmente o manualmente.
+        ServerBox.IsReadOnly = locked;
+        SessionBox.IsReadOnly = locked;
+        ServerBox.IsTabStop = !locked;
+        SessionBox.IsTabStop = !locked;
+        ServerBox.Focusable = !locked;
+        SessionBox.Focusable = !locked;
+
+        string background = locked ? "#162235" : "#0A1526";
+        string border = locked ? "#40516A" : "#2A3A52";
+        string foreground = locked ? "#B9C7D8" : "#F5F8FC";
+
+        ServerBox.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(background)!;
+        SessionBox.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(background)!;
+        ServerBox.BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(border)!;
+        SessionBox.BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(border)!;
+        ServerBox.Foreground = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(foreground)!;
+        SessionBox.Foreground = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(foreground)!;
+
+        string? tooltip = locked
+            ? "Valore ricevuto automaticamente dal programma docente e non modificabile."
+            : null;
+        ServerBox.ToolTip = tooltip;
+        SessionBox.ToolTip = tooltip;
+    }
 
     private void SetSessionCode(string newSession)
     {
@@ -603,17 +636,6 @@ public partial class MainWindow : Window
             FontWeight = FontWeights.Bold
         };
 
-        var compileButton = new System.Windows.Controls.Button
-        {
-            Content = "Compila ed esegui",
-            MinWidth = 170,
-            Padding = new Thickness(18, 10, 18, 10),
-            Margin = new Thickness(6),
-            Background = new SolidColorBrush(Color.FromRgb(22, 163, 74)),
-            Foreground = Brushes.White,
-            FontWeight = FontWeights.Bold
-        };
-
         void ApplyChanges()
         {
             sourceEditor.Text = popupEditor.Text;
@@ -623,63 +645,10 @@ public partial class MainWindow : Window
 
         applyButton.Click += (_, _) => ApplyChanges();
 
-        compileButton.Click += async (_, _) =>
-        {
-            ApplyChanges();
-
-            if (!_compilationAllowed)
-            {
-                OutputBox.Text =
-                    "La compilazione è stata inibita dal docente.";
-                return;
-            }
-
-            CompilationResult compilation =
-                await CompileSourceAsync(
-                    Editor.Text,
-                    true,
-                    HeaderEditor.Text,
-                    GetCurrentHeaderFileName()
-                );
-
-            _compileOutput = compilation.CompileOutput;
-            _exePath = compilation.ExePath;
-
-            if (compilation.Success &&
-                !string.IsNullOrWhiteSpace(compilation.ExePath))
-            {
-                ExecutionResult execution =
-                    await RunCapturedAsync(compilation.ExePath, 5);
-
-                _programOutput = execution.Output;
-                OutputBox.Text =
-                    compilation.CompileOutput +
-                    Environment.NewLine +
-                    Environment.NewLine +
-                    execution.Output;
-
-                SaveCurrentExerciseResult(
-                    compilation.CompileOutput,
-                    execution.Output
-                );
-            }
-            else
-            {
-                SaveCurrentExerciseResult(
-                    compilation.CompileOutput,
-                    ""
-                );
-            }
-
-            StatusText.Text = compilation.Success
-                ? "Compilazione completata"
-                : "Compilazione non riuscita: controlla l'output";
-        };
-
         ShowFullscreenOverlay(
             $"{displayName} — Tipologia {GetTaskType()} — Esercizio {GetExerciseNumber()} — C++17",
             popupEditor,
-            new[] { applyButton, compileButton },
+            new[] { applyButton },
             ApplyChanges
         );
     }
@@ -820,7 +789,7 @@ public partial class MainWindow : Window
             BuildConsoleHeader("ESERCITAZIONE") +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
             "color 0F\r\n" +
-            $"\"{compilation.ExePath}\"\r\n" +
+            "powershell -NoProfile -Command \"$Host.UI.RawUI.ForegroundColor = 'White'; & '" + compilation.ExePath.Replace("'", "''") + "'; exit $LASTEXITCODE\"\r\n" +
             "color 0A\r\n" +
             "echo.\r\n" +
             BuildConsoleSeparator() +
@@ -916,7 +885,7 @@ public partial class MainWindow : Window
             BuildConsoleHeader("VERIFICA") +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
             "color 0F\r\n" +
-            $"\"{exePath}\"\r\n" +
+            "powershell -NoProfile -Command \"$Host.UI.RawUI.ForegroundColor = 'White'; & '" + exePath.Replace("'", "''") + "'; exit $LASTEXITCODE\"\r\n" +
             "color 0A\r\n" +
             "echo.\r\n" +
             BuildConsoleSeparator() +
@@ -1429,21 +1398,61 @@ public partial class MainWindow : Window
             else if (root.TryGetProperty("sessionMode", out JsonElement smEl)) mode = smEl.GetString() ?? mode;
             if (root.TryGetProperty("taskType", out JsonElement typeEl) && !string.IsNullOrWhiteSpace(typeEl.GetString()))
                 TaskTypeBox.Text = typeEl.GetString()!;
+            bool teacherConnectionReceived = false;
             string serverIp = Get(root, "serverIp", "");
             if (!string.IsNullOrWhiteSpace(serverIp))
             {
                 int serverPort = root.TryGetProperty("serverPort", out JsonElement portEl) && portEl.TryGetInt32(out int parsedPort) ? parsedPort : 5050;
                 ServerBox.Text = $"{serverIp}:{serverPort}";
+                teacherConnectionReceived = true;
             }
             string receivedSession = Get(root, "sessionCode", Get(root, "code", Get(root, "session", "")));
-            if (!string.IsNullOrWhiteSpace(receivedSession)) SetSessionCode(receivedSession);
+            if (!string.IsNullOrWhiteSpace(receivedSession))
+            {
+                SetSessionCode(receivedSession);
+                teacherConnectionReceived = true;
+            }
+            if (teacherConnectionReceived) SetTeacherConnectionFieldsLocked(true);
             ApplyCompilationPermission(ReadCompilationAllowed(root));
+            ApplyHeaderManagementPermission(ReadHeaderManagementAllowed(root));
         }
         catch
         {
             if (body.Contains("verifica", StringComparison.OrdinalIgnoreCase)) mode = "verifica";
         }
         ApplySessionMode(mode);
+    }
+
+    private static bool ReadHeaderManagementAllowed(JsonElement root)
+    {
+        if (root.TryGetProperty("allowHeaderFileManagement", out JsonElement allow) &&
+            (allow.ValueKind == JsonValueKind.True || allow.ValueKind == JsonValueKind.False))
+            return allow.GetBoolean();
+
+        if (root.TryGetProperty("headerFileManagementEnabled", out JsonElement enabled) &&
+            (enabled.ValueKind == JsonValueKind.True || enabled.ValueKind == JsonValueKind.False))
+            return enabled.GetBoolean();
+
+        if (root.TryGetProperty("disableHeaderFileManagement", out JsonElement disabled) &&
+            (disabled.ValueKind == JsonValueKind.True || disabled.ValueKind == JsonValueKind.False))
+            return !disabled.GetBoolean();
+
+        // Compatibilità con server precedenti: senza il nuovo comando i pulsanti restano disponibili.
+        return true;
+    }
+
+    private void ApplyHeaderManagementPermission(bool allowed)
+    {
+        AddHeaderButton.IsEnabled = allowed;
+        RenameHeaderButton.IsEnabled = allowed;
+        DeleteHeaderButton.IsEnabled = allowed;
+
+        string? tooltip = allowed
+            ? null
+            : "Gestione dei file header disabilitata dal docente.";
+        AddHeaderButton.ToolTip = tooltip;
+        RenameHeaderButton.ToolTip = tooltip;
+        DeleteHeaderButton.ToolTip = tooltip;
     }
 
     private void ApplySessionMode(string mode)

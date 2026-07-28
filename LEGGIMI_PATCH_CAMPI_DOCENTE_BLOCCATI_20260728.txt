@@ -1,0 +1,14 @@
+PATCH AGGIUNTIVA – CAMPI DOCENTE BLOCCATI
+
+Modifica applicata a MainWindow.xaml.cs.
+
+Quando il client riceve automaticamente dal programma docente:
+- indirizzo IP;
+- porta;
+- codice sessione;
+
+i campi IP DOCENTE : PORTA e CODICE SESSIONE diventano di sola lettura e non possono più essere modificati dall’alunno.
+
+I valori restano ben visibili, con aspetto leggermente disattivato. Il programma docente può comunque aggiornarli automaticamente tramite i successivi messaggi di rete.
+
+Prima della ricezione automatica i campi restano disponibili, così è ancora possibile inserirli manualmente qualora il rilevamento automatico non sia disponibile.

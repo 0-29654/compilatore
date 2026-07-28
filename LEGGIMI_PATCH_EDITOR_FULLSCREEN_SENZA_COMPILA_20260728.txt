@@ -1,0 +1,12 @@
+PATCH EDITOR C++ A TUTTO SCHERMO - 28/07/2026
+
+Modifica applicata all'ultima patch, mantenendo:
+- barra di preparazione installer immediata;
+- output del programma in bianco e intestazioni in verde;
+- campi IP docente, porta e codice sessione bloccati quando ricevuti automaticamente.
+
+Nuova modifica:
+- rimosso il pulsante "Compila ed esegui" dalla finestra aperta con Shift+Click sull'editor main.cpp/header;
+- resta il pulsante "Applica modifiche";
+- anche chiudendo la finestra o premendo ESC le modifiche vengono applicate automaticamente;
+- il pulsante "Compila ed esegui" resta disponibile soltanto nella schermata principale.

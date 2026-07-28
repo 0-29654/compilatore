@@ -1,4 +1,4 @@
-#define MyAppName "CV+ Compilatore Alunno"
+﻿#define MyAppName "CV+ Compilatore Alunno"
 #define MyAppVersion "1.9.5"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
@@ -44,18 +44,6 @@ Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescr
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Assets\A.png"; DestDir: "{app}\Assets"; Flags: ignoreversion
 Source: "Assets\installing_a.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_00.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_01.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_02.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_03.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_04.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_05.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_06.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_07.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_08.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_09.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_10.bmp"; Flags: dontcopy
-Source: "Assets\cpp_anim_11.bmp"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
@@ -66,98 +54,57 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: now
 
 [Code]
 var
-  SplashForm: TSetupForm;
-  SplashImage: TBitmapImage;
-  SplashProgress: TNewProgressBar;
-  SplashText: TNewStaticText;
+  PreparationForm: TSetupForm;
+  PreparationProgress: TNewProgressBar;
+  PreparationText: TNewStaticText;
   InstallImage: TBitmapImage;
 
-procedure LoadSplashFrame(FrameIndex: Integer);
-var
-  FrameName: String;
+procedure ShowPreparationWindow;
 begin
-  FrameName := Format('cpp_anim_%.2d.bmp', [FrameIndex]);
-  SplashImage.Bitmap.LoadFromFile(ExpandConstant('{tmp}\\') + FrameName);
+  if PreparationForm <> nil then
+    exit;
+
+  { La finestra viene costruita per prima e mostrata immediatamente,
+    prima delle altre operazioni di inizializzazione del wizard. }
+  PreparationForm := CreateCustomForm(ScaleX(430), ScaleY(92), False, False);
+  PreparationForm.Position := poScreenCenter;
+  PreparationForm.BorderStyle := bsNone;
+  PreparationForm.Color := $00F2F2F2;
+
+  PreparationText := TNewStaticText.Create(PreparationForm);
+  PreparationText.Parent := PreparationForm;
+  PreparationText.Left := ScaleX(18);
+  PreparationText.Top := ScaleY(16);
+  PreparationText.Width := ScaleX(394);
+  PreparationText.Height := ScaleY(24);
+  PreparationText.Caption := 'Attendere - preparazione dell''installazione...';
+  PreparationText.Font.Name := 'Segoe UI';
+  PreparationText.Font.Size := 10;
+  PreparationText.Font.Style := [fsBold];
+  PreparationText.Font.Color := $00505050;
+
+  PreparationProgress := TNewProgressBar.Create(PreparationForm);
+  PreparationProgress.Parent := PreparationForm;
+  PreparationProgress.Left := ScaleX(18);
+  PreparationProgress.Top := ScaleY(51);
+  PreparationProgress.Width := ScaleX(394);
+  PreparationProgress.Height := ScaleY(15);
+  PreparationProgress.Style := npbstMarquee;
+
+  PreparationForm.Show;
+  PreparationForm.BringToFront;
+  PreparationForm.Update;
 end;
 
-procedure ShowPreparationSplash;
-var
-  I: Integer;
-  FrameIndex: Integer;
-  ProgressValue: Integer;
+procedure HidePreparationWindow;
 begin
-  { Tutti i fotogrammi vengono estratti subito dopo la scelta della lingua. }
-  for I := 0 to 11 do
-    ExtractTemporaryFile(Format('cpp_anim_%.2d.bmp', [I]));
-
-  SplashForm := CreateCustomForm(ScaleX(570), ScaleY(318), False, False);
-  SplashForm.Position := poScreenCenter;
-  SplashForm.BorderStyle := bsNone;
-  SplashForm.Color := $00130F0B;
-
-  SplashImage := TBitmapImage.Create(SplashForm);
-  SplashImage.Parent := SplashForm;
-  SplashImage.Left := ScaleX(10);
-  SplashImage.Top := ScaleY(10);
-  SplashImage.Width := SplashForm.ClientWidth - ScaleX(20);
-  SplashImage.Height := ScaleY(233);
-  SplashImage.Stretch := True;
-  SplashImage.Center := True;
-  LoadSplashFrame(0);
-
-  SplashText := TNewStaticText.Create(SplashForm);
-  SplashText.Parent := SplashForm;
-  SplashText.Left := ScaleX(16);
-  SplashText.Top := ScaleY(254);
-  SplashText.Width := ScaleX(355);
-  SplashText.Height := ScaleY(24);
-  SplashText.Caption := 'Attendere - preparazione dell''installazione...';
-  SplashText.Font.Name := 'Segoe UI';
-  SplashText.Font.Size := 10;
-  SplashText.Font.Style := [fsBold];
-  SplashText.Font.Color := clWhite;
-
-  SplashProgress := TNewProgressBar.Create(SplashForm);
-  SplashProgress.Parent := SplashForm;
-  SplashProgress.Left := ScaleX(382);
-  SplashProgress.Top := ScaleY(256);
-  SplashProgress.Width := ScaleX(168);
-  SplashProgress.Height := ScaleY(17);
-  SplashProgress.Min := 0;
-  SplashProgress.Max := 100;
-  SplashProgress.Position := 0;
-
-  SplashForm.Show;
-  SplashForm.BringToFront;
-  SplashForm.Update;
-
-  { Animazione visibile fino all'apertura della pagina della licenza. }
-  ProgressValue := 0;
-  for I := 0 to 47 do
+  if PreparationForm <> nil then
   begin
-    FrameIndex := I mod 12;
-    LoadSplashFrame(FrameIndex);
-
-    ProgressValue := ProgressValue + 3;
-    if ProgressValue > 96 then
-      ProgressValue := 18;
-    SplashProgress.Position := ProgressValue;
-
-    SplashForm.Update;
-    Sleep(75);
-  end;
-end;
-
-procedure HidePreparationSplash;
-begin
-  if SplashForm <> nil then
-  begin
-    SplashForm.Hide;
-    SplashForm.Free;
-    SplashForm := nil;
-    SplashImage := nil;
-    SplashProgress := nil;
-    SplashText := nil;
+    PreparationForm.Hide;
+    PreparationForm.Free;
+    PreparationForm := nil;
+    PreparationProgress := nil;
+    PreparationText := nil;
   end;
 end;
 
@@ -174,8 +121,8 @@ end;
 
 procedure InitializeWizard;
 begin
-  { Compare immediatamente dopo la conferma della lingua. }
-  ShowPreparationSplash;
+  { Questa è la prima operazione eseguita dopo la conferma della lingua. }
+  ShowPreparationWindow;
 
   WizardForm.WelcomeLabel1.Caption :=
     'Benvenuto in CV+ Compilatore Alunno';
@@ -217,16 +164,14 @@ begin
   );
 
   PositionInstallImage;
-
-  { La schermata viene rimossa soltanto quando il wizard è pronto. }
-  HidePreparationSplash;
+  { Non chiudere qui: resta visibile fino alla pagina della licenza. }
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = wpLicense then
   begin
-    HidePreparationSplash;
+    HidePreparationWindow;
     WizardForm.LicenseAcceptedRadio.Checked := True;
   end;
 
@@ -242,5 +187,5 @@ end;
 
 procedure DeinitializeSetup;
 begin
-  HidePreparationSplash;
+  HidePreparationWindow;
 end;

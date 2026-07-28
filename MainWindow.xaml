@@ -194,7 +194,7 @@
                         Click="Run_Click" Style="{StaticResource ModernButton}"
                         Background="#059669" BorderBrush="#19C790" VerticalAlignment="Center"/>
 
-                <Button Grid.Column="1" Content="Aggiungi esercizio.h"
+                <Button x:Name="AddHeaderButton" Grid.Column="1" Content="Aggiungi esercizio.h"
                         Click="AddHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#7C3AED" BorderBrush="#9F7AEA" VerticalAlignment="Center"/>
 

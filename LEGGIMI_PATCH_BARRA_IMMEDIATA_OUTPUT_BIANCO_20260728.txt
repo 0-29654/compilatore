@@ -1,0 +1,18 @@
+PATCH: BARRA IMMEDIATA DOPO LA LINGUA + OUTPUT CMD BIANCO
+
+1. INSTALLER
+- Rimossa completamente la precedente animazione/GIF C++.
+- La prima istruzione di InitializeWizard crea e mostra una finestra compatta, senza bordi, subito dopo la conferma della lingua.
+- La finestra contiene solo la scritta “Attendere - preparazione dell’installazione...” e una barra continua animata.
+- La finestra resta visibile fino alla comparsa della pagina delle condizioni d’uso e viene chiusa in CurPageChanged(wpLicense).
+- Nessun ciclo Sleep e nessuna estrazione di fotogrammi prima della visualizzazione: questo elimina il ritardo provocato dalla vecchia animazione.
+
+2. CONSOLE CMD
+- Intestazione, informazioni tecniche, separatori e messaggio finale restano verdi.
+- Il programma C++ viene avviato tramite PowerShell nello stesso terminale impostando esplicitamente ForegroundColor=White.
+- Al termine, il colore torna verde.
+- Applicato sia alla modalità Esercitazione sia alla modalità Verifica.
+
+File modificati:
+- setup_student.iss
+- MainWindow.xaml.cs
