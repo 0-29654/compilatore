@@ -19,7 +19,7 @@
     <Grid Grid.Row="2" ColumnDefinitions="2*,*" ColumnSpacing="10">
       <Grid RowDefinitions="Auto,*,Auto">
         <TextBlock Text="main.cpp  (Shift + clic per editor grande)" FontWeight="SemiBold" Margin="3"/>
-        <TextBox Grid.Row="1" x:Name="Editor" AcceptsReturn="True" AcceptsTab="True" FontFamily="Menlo, monospace" FontSize="14" TextWrapping="NoWrap" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" Background="#101820" Foreground="#EAF2F8" Padding="10"/>
+        <ae:TextEditor Grid.Row="1" x:Name="Editor" FontFamily="Menlo, SFMono-Regular, monospace" FontSize="14" ShowLineNumbers="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#FFFFFF" Foreground="#1F2328"/>
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
           <Button x:Name="CompileButton" Content="Compila ed esegui" Click="Compile_Click"/>
           <Button Content="Invia al docente" Click="Send_Click"/>
@@ -28,7 +28,7 @@
       </Grid>
       <Grid Grid.Column="1" RowDefinitions="Auto,180,Auto,*">
         <Grid ColumnDefinitions="*,Auto"><TextBlock Text="esercizio.h" FontWeight="SemiBold"/><TextBlock Grid.Column="1" x:Name="HeaderLockText" Text="BLOCCATO DAL DOCENTE" Foreground="#B42318" FontSize="11"/></Grid>
-        <TextBox Grid.Row="1" x:Name="HeaderEditor" AcceptsReturn="True" AcceptsTab="True" FontFamily="Menlo, monospace" TextWrapping="NoWrap" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+        <ae:TextEditor Grid.Row="1" x:Name="HeaderEditor" FontFamily="Menlo, SFMono-Regular, monospace" FontSize="13" ShowLineNumbers="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#FFFFFF" Foreground="#1F2328"/>
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="5" Margin="0,6">
           <Button x:Name="AddHeaderButton" Content="Aggiungi .h" IsEnabled="False" Click="AddHeader_Click"/>
           <Button x:Name="RenameHeaderButton" Content="Rinomina .h" IsEnabled="False" Click="RenameHeader_Click"/>
