@@ -1,4 +1,4 @@
-﻿#define MyAppName "CV+ Compilatore Alunno"
+#define MyAppName "CV+ Compilatore Alunno"
 #define MyAppVersion "1.9.5"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
@@ -116,7 +116,6 @@ begin
   SplashText.Font.Size := 10;
   SplashText.Font.Style := [fsBold];
   SplashText.Font.Color := clWhite;
-  SplashText.Transparent := True;
 
   SplashProgress := TNewProgressBar.Create(SplashForm);
   SplashProgress.Parent := SplashForm;
