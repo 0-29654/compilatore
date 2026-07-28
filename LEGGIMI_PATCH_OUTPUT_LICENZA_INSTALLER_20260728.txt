@@ -1,0 +1,6 @@
+PATCH APPLICATA - 28/07/2026
+
+- Il solo output del programma C++ è bianco su nero; intestazione e messaggi restano verdi.
+- Modifica attiva in Esercitazione e Verifica.
+- Condizioni d'uso riscritte e file RTF rigenerato con codifica Unicode.
+- Finestra iniziale ridotta e senza titolo: mostra solo il messaggio di attesa e la barra animata.

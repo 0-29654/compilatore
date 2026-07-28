@@ -66,29 +66,29 @@ var
   Value: Integer;
   Direction: Integer;
 begin
-  { Piccola finestra senza barra del titolo: rimangono visibili soltanto
-    il messaggio di attesa e la barra animata. }
-  WaitForm := CreateCustomForm(ScaleX(390), ScaleY(76), False, False);
+  { Finestra essenziale, piccola e senza barra del titolo. }
+  WaitForm := CreateCustomForm(ScaleX(330), ScaleY(76), False, False);
   WaitForm.Position := poScreenCenter;
   WaitForm.BorderStyle := bsNone;
   WaitForm.Color := clWhite;
 
   WaitMessage := TNewStaticText.Create(WaitForm);
   WaitMessage.Parent := WaitForm;
-  WaitMessage.Left := ScaleX(16);
+  WaitMessage.Left := ScaleX(14);
   WaitMessage.Top := ScaleY(11);
-  WaitMessage.Width := WaitForm.ClientWidth - ScaleX(32);
-  WaitMessage.Height := ScaleY(22);
+  WaitMessage.Width := WaitForm.ClientWidth - ScaleX(28);
+  WaitMessage.Height := ScaleY(20);
   WaitMessage.Caption := 'Attendere: preparazione dell''installazione...';
   WaitMessage.Font.Size := 10;
   WaitMessage.Font.Style := [fsBold];
   WaitMessage.Font.Color := clNavy;
+  WaitMessage.Alignment := taCenter;
 
   WaitProgress := TNewProgressBar.Create(WaitForm);
   WaitProgress.Parent := WaitForm;
-  WaitProgress.Left := ScaleX(16);
+  WaitProgress.Left := ScaleX(14);
   WaitProgress.Top := ScaleY(40);
-  WaitProgress.Width := WaitForm.ClientWidth - ScaleX(32);
+  WaitProgress.Width := WaitForm.ClientWidth - ScaleX(28);
   WaitProgress.Height := ScaleY(18);
   WaitProgress.Min := 0;
   WaitProgress.Max := 100;
@@ -100,7 +100,7 @@ begin
 
   Value := 0;
   Direction := 1;
-  for Cycle := 0 to 179 do
+  for Cycle := 0 to 159 do
   begin
     Value := Value + (Direction * 3);
     if Value >= 100 then
@@ -116,7 +116,7 @@ begin
 
     WaitProgress.Position := Value;
     WaitForm.Update;
-    Sleep(25);
+    Sleep(20);
   end;
 
   WaitForm.Hide;
@@ -154,17 +154,17 @@ begin
   WizardForm.WelcomeLabel1.Font.Style := [fsBold];
 
   WizardForm.LicenseLabel1.Caption :=
-    'Leggi le condizioni d''uso, copyright e privacy.';
+    'Leggi attentamente le condizioni d''uso, copyright e privacy.';
   WizardForm.LicenseLabel1.Font.Color := clNavy;
   WizardForm.LicenseLabel1.Font.Style := [fsBold];
 
   WizardForm.LicenseAcceptedRadio.Caption :=
-    'Accetto integralmente le condizioni d''uso e privacy';
+    'Accetto integralmente le condizioni d''uso, copyright e privacy';
   WizardForm.LicenseAcceptedRadio.Font.Style := [fsBold];
   WizardForm.LicenseAcceptedRadio.Font.Color := clGreen;
 
   WizardForm.LicenseNotAcceptedRadio.Caption :=
-    'Non accetto le condizioni';
+    'Non accetto le condizioni d''uso';
 
   ExtractTemporaryFile('installing_a.bmp');
 
