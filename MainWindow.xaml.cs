@@ -819,7 +819,9 @@ public partial class MainWindow : Window
             "title CV+ Microsoft Output - Modalita esercitazione\r\n" +
             BuildConsoleHeader("ESERCITAZIONE") +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
+            "color 0F\r\n" +
             $"\"{compilation.ExePath}\"\r\n" +
+            "color 0A\r\n" +
             "echo.\r\n" +
             BuildConsoleSeparator() +
             "echo Programma terminato.\r\n" +
@@ -913,7 +915,9 @@ public partial class MainWindow : Window
             "title CV+ Microsoft Output - Modalita verifica\r\n" +
             BuildConsoleHeader("VERIFICA") +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
+            "color 0F\r\n" +
             $"\"{exePath}\"\r\n" +
+            "color 0A\r\n" +
             "echo.\r\n" +
             BuildConsoleSeparator() +
             "echo Programma terminato. Premi un tasto per chiudere.\r\n" +

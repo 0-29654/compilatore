@@ -66,43 +66,30 @@ var
   Value: Integer;
   Direction: Integer;
 begin
-  { Questa procedura viene chiamata da InitializeWizard: a questo punto
-    la lingua è già stata scelta, mentre la pagina della licenza non è
-    ancora comparsa. }
-  { Finestra compatta e centrata: compare immediatamente dopo la scelta lingua. }
-  WaitForm := CreateCustomForm(ScaleX(360), ScaleY(118), False, False);
-  WaitForm.Caption := 'CV+ Compilatore Alunno';
+  { Piccola finestra senza barra del titolo: rimangono visibili soltanto
+    il messaggio di attesa e la barra animata. }
+  WaitForm := CreateCustomForm(ScaleX(390), ScaleY(76), False, False);
   WaitForm.Position := poScreenCenter;
-  WaitForm.BorderStyle := bsDialog;
+  WaitForm.BorderStyle := bsNone;
   WaitForm.Color := clWhite;
-
-  WaitTitle := TNewStaticText.Create(WaitForm);
-  WaitTitle.Parent := WaitForm;
-  WaitTitle.Left := ScaleX(18);
-  WaitTitle.Top := ScaleY(12);
-  WaitTitle.Width := ScaleX(324);
-  WaitTitle.Height := ScaleY(25);
-  WaitTitle.Caption := 'Preparazione dell''installazione';
-  WaitTitle.Font.Size := 13;
-  WaitTitle.Font.Style := [fsBold];
-  WaitTitle.Font.Color := clNavy;
 
   WaitMessage := TNewStaticText.Create(WaitForm);
   WaitMessage.Parent := WaitForm;
-  WaitMessage.Left := ScaleX(18);
-  WaitMessage.Top := ScaleY(42);
-  WaitMessage.Width := ScaleX(324);
-  WaitMessage.Height := ScaleY(20);
-  WaitMessage.Caption := 'Attendere l''apertura delle condizioni d''uso e privacy...';
-  WaitMessage.Font.Size := 9;
+  WaitMessage.Left := ScaleX(16);
+  WaitMessage.Top := ScaleY(11);
+  WaitMessage.Width := WaitForm.ClientWidth - ScaleX(32);
+  WaitMessage.Height := ScaleY(22);
+  WaitMessage.Caption := 'Attendere: preparazione dell''installazione...';
+  WaitMessage.Font.Size := 10;
+  WaitMessage.Font.Style := [fsBold];
+  WaitMessage.Font.Color := clNavy;
 
   WaitProgress := TNewProgressBar.Create(WaitForm);
   WaitProgress.Parent := WaitForm;
-  { La barra usa praticamente tutta la larghezza utile della finestra. }
-  WaitProgress.Left := ScaleX(18);
-  WaitProgress.Top := ScaleY(72);
-  WaitProgress.Width := WaitForm.ClientWidth - ScaleX(36);
-  WaitProgress.Height := ScaleY(20);
+  WaitProgress.Left := ScaleX(16);
+  WaitProgress.Top := ScaleY(40);
+  WaitProgress.Width := WaitForm.ClientWidth - ScaleX(32);
+  WaitProgress.Height := ScaleY(18);
   WaitProgress.Min := 0;
   WaitProgress.Max := 100;
   WaitProgress.Position := 0;
@@ -111,14 +98,11 @@ begin
   WaitForm.BringToFront;
   WaitForm.Update;
 
-  { Barra blu che continua ad andare avanti e indietro. La durata di
-    circa 5,5 secondi copre l'attesa iniziale; appena termina, la form
-    viene chiusa e Inno Setup mostra immediatamente la pagina licenza. }
   Value := 0;
   Direction := 1;
-  for Cycle := 0 to 219 do
+  for Cycle := 0 to 179 do
   begin
-    Value := Value + (Direction * 2);
+    Value := Value + (Direction * 3);
     if Value >= 100 then
     begin
       Value := 100;

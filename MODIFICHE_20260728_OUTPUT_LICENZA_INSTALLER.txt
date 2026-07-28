@@ -1,0 +1,26 @@
+PATCH 28/07/2026 — OUTPUT CMD, LICENZA E FINESTRA DI ATTESA
+
+1. CONSOLE CMD
+- Intestazione, separatori e messaggi finali restano verdi su nero.
+- Il solo output prodotto dal programma C++ viene mostrato in bianco su nero.
+- La modifica vale sia per la modalità Esercitazione sia per la modalità Verifica.
+
+2. CONDIZIONI D'USO E PRIVACY
+- Corrette tutte le lettere accentate mancanti nel file RTF mostrato dall'installer.
+- Migliorata la formulazione dei paragrafi.
+- Aggiornata l'indicazione alla versione 1.9.5 e al 28 luglio 2026.
+- Aggiornato anche il corrispondente file TXT.
+
+3. PREPARAZIONE INSTALLAZIONE
+- Sostituita la finestra grande con un riquadro compatto senza barra del titolo.
+- Visualizzati soltanto il messaggio «Attendere: preparazione dell'installazione...» e la barra animata.
+- Dimensioni ridotte e centratura sullo schermo.
+
+FILE MODIFICATI
+- MainWindow.xaml.cs
+- setup_student.iss
+- CONDIZIONI_USO_PRIVACY.rtf
+- CONDIZIONI_USO_PRIVACY.txt
+
+NOTA DI VERIFICA
+In questo ambiente non era disponibile il comando dotnet, quindi non è stato possibile eseguire una compilazione locale. Le modifiche sono state applicate direttamente ai sorgenti mantenendo la sintassi esistente.
