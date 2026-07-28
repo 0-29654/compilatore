@@ -1,0 +1,11 @@
+PATCH SPLASH ANIMATA DOPO LA SCELTA DELLA LINGUA
+
+- Compare immediatamente dopo la conferma della lingua.
+- Mostra un'animazione C++ su fondo scuro.
+- In basso mostra il testo: "Attendere - preparazione dell'installazione...".
+- A destra è presente una piccola barra di avanzamento animata.
+- La schermata resta visibile durante la preparazione del wizard e scompare appena è pronta la pagina delle condizioni d'uso.
+- La vecchia finestrella bianca con la sola barra è stata eliminata.
+
+File modificato: setup_student.iss
+Risorse utilizzate: Assets/cpp_anim_00.bmp ... cpp_anim_11.bmp
