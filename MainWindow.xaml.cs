@@ -64,6 +64,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // Sicurezza predefinita: la gestione dei file .h resta bloccata finché il server non la abilita.
+        ApplyHeaderManagementPermission(false);
         ConfigureCppHighlighting();
         ResetClientStateOnStartup();
         StartTeacherDiscoveryListener();
@@ -789,7 +791,7 @@ public partial class MainWindow : Window
             BuildConsoleHeader("ESERCITAZIONE") +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
             "color 0F\r\n" +
-            "powershell -NoProfile -Command \"$Host.UI.RawUI.ForegroundColor = 'White'; & '" + compilation.ExePath.Replace("'", "''") + "'; exit $LASTEXITCODE\"\r\n" +
+            $"\"{compilation.ExePath}\"\r\n" +
             "color 0A\r\n" +
             "echo.\r\n" +
             BuildConsoleSeparator() +
@@ -822,7 +824,9 @@ public partial class MainWindow : Window
             BuildConsoleHeader(modeName) +
             "echo ERRORE DI COMPILAZIONE - CODICE DI USCITA DIVERSO DA ZERO\r\n" +
             "echo.\r\n" +
+            "color 0F\r\n" +
             $"type \"{outputFile}\"\r\n" +
+            "color 0A\r\n" +
             "echo.\r\n" +
             BuildConsoleSeparator() +
             "echo Premi un tasto per chiudere.\r\n" +
@@ -885,7 +889,7 @@ public partial class MainWindow : Window
             BuildConsoleHeader("VERIFICA") +
             $"set \"PATH={BundledCompilerBin};%PATH%\"\r\n" +
             "color 0F\r\n" +
-            "powershell -NoProfile -Command \"$Host.UI.RawUI.ForegroundColor = 'White'; & '" + exePath.Replace("'", "''") + "'; exit $LASTEXITCODE\"\r\n" +
+            $"\"{exePath}\"\r\n" +
             "color 0A\r\n" +
             "echo.\r\n" +
             BuildConsoleSeparator() +
@@ -1437,8 +1441,8 @@ public partial class MainWindow : Window
             (disabled.ValueKind == JsonValueKind.True || disabled.ValueKind == JsonValueKind.False))
             return !disabled.GetBoolean();
 
-        // Compatibilità con server precedenti: senza il nuovo comando i pulsanti restano disponibili.
-        return true;
+        // Stato sicuro predefinito: senza un'autorizzazione esplicita del server i pulsanti restano disabilitati.
+        return false;
     }
 
     private void ApplyHeaderManagementPermission(bool allowed)

@@ -194,15 +194,15 @@
                         Click="Run_Click" Style="{StaticResource ModernButton}"
                         Background="#059669" BorderBrush="#19C790" VerticalAlignment="Center"/>
 
-                <Button x:Name="AddHeaderButton" Grid.Column="1" Content="Aggiungi esercizio.h"
+                <Button x:Name="AddHeaderButton" Grid.Column="1" Content="Aggiungi esercizio.h" IsEnabled="False"
                         Click="AddHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#7C3AED" BorderBrush="#9F7AEA" VerticalAlignment="Center"/>
 
-                <Button x:Name="RenameHeaderButton" Grid.Column="2" Content="Rinomina .h"
+                <Button x:Name="RenameHeaderButton" Grid.Column="2" Content="Rinomina .h" IsEnabled="False"
                         Click="RenameHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#9333EA" BorderBrush="#C084FC" VerticalAlignment="Center"/>
 
-                <Button x:Name="DeleteHeaderButton" Grid.Column="3" Content="Elimina .h"
+                <Button x:Name="DeleteHeaderButton" Grid.Column="3" Content="Elimina .h" IsEnabled="False"
                         Click="DeleteHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#B91C1C" BorderBrush="#F87171" VerticalAlignment="Center"/>
 

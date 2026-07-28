@@ -64,31 +64,31 @@ begin
   if PreparationForm <> nil then
     exit;
 
-  { La finestra viene costruita per prima e mostrata immediatamente,
-    prima delle altre operazioni di inizializzazione del wizard. }
-  PreparationForm := CreateCustomForm(ScaleX(430), ScaleY(92), False, False);
+  { Prima operazione eseguita immediatamente dopo la scelta della lingua. }
+  PreparationForm := CreateCustomForm(ScaleX(380), ScaleY(72), False, False);
   PreparationForm.Position := poScreenCenter;
   PreparationForm.BorderStyle := bsNone;
-  PreparationForm.Color := $00F2F2F2;
+  PreparationForm.Color := $00F7F7F7;
 
   PreparationText := TNewStaticText.Create(PreparationForm);
   PreparationText.Parent := PreparationForm;
-  PreparationText.Left := ScaleX(18);
-  PreparationText.Top := ScaleY(16);
-  PreparationText.Width := ScaleX(394);
-  PreparationText.Height := ScaleY(24);
+  PreparationText.Left := ScaleX(10);
+  PreparationText.Top := ScaleY(8);
+  PreparationText.Width := ScaleX(360);
+  PreparationText.Height := ScaleY(22);
   PreparationText.Caption := 'Attendere - preparazione dell''installazione...';
   PreparationText.Font.Name := 'Segoe UI';
-  PreparationText.Font.Size := 10;
+  PreparationText.Font.Size := 9;
   PreparationText.Font.Style := [fsBold];
-  PreparationText.Font.Color := $00505050;
+  PreparationText.Font.Color := $00484848;
 
+  { La barra occupa quasi tutta la piccola finestra e scorre continuamente. }
   PreparationProgress := TNewProgressBar.Create(PreparationForm);
   PreparationProgress.Parent := PreparationForm;
-  PreparationProgress.Left := ScaleX(18);
-  PreparationProgress.Top := ScaleY(51);
-  PreparationProgress.Width := ScaleX(394);
-  PreparationProgress.Height := ScaleY(15);
+  PreparationProgress.Left := ScaleX(10);
+  PreparationProgress.Top := ScaleY(36);
+  PreparationProgress.Width := ScaleX(360);
+  PreparationProgress.Height := ScaleY(22);
   PreparationProgress.Style := npbstMarquee;
 
   PreparationForm.Show;
