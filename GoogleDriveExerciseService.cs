@@ -31,6 +31,7 @@ internal static class GoogleDriveExerciseService
     private const string AppFolderName = "CV+ Compilatore Alunno";
     private const string OAuthFileName = "google_oauth_client.json";
     private static UserCredential? _activeCredential;
+    private static readonly SemaphoreSlim DisconnectGate = new(1, 1);
 
     public static string DriveFolderDisplayName => AppFolderName;
 
@@ -106,25 +107,44 @@ internal static class GoogleDriveExerciseService
 
     public static async Task DisconnectAsync()
     {
+        await DisconnectGate.WaitAsync();
         try
         {
-            if (_activeCredential is not null)
+            UserCredential? credential = _activeCredential;
+            _activeCredential = null;
+
+            if (credential is not null)
             {
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                try { await _activeCredential.RevokeTokenAsync(timeout.Token); }
-                catch { }
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
+                {
+                    await credential.RevokeTokenAsync(timeout.Token);
+                }
+                catch
+                {
+                    // La revoca remota è best-effort: la cache locale viene comunque eliminata.
+                }
             }
+
+            DeleteLocalTokenCache();
         }
         finally
         {
-            _activeCredential = null;
-            string tokenDirectory = GetTokenDirectory();
-            try
-            {
-                if (Directory.Exists(tokenDirectory))
-                    Directory.Delete(tokenDirectory, recursive: true);
-            }
-            catch { }
+            DisconnectGate.Release();
+        }
+    }
+
+    public static void DeleteLocalTokenCache()
+    {
+        string tokenDirectory = GetTokenDirectory();
+        try
+        {
+            if (Directory.Exists(tokenDirectory))
+                Directory.Delete(tokenDirectory, recursive: true);
+        }
+        catch
+        {
+            // Non bloccare l'avvio o la chiusura dell'applicazione.
         }
     }
 

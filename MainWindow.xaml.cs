@@ -30,6 +30,8 @@ namespace CppStudentClient;
 
 public partial class MainWindow : Window
 {
+    private static int _googleDriveExitCleanupStarted;
+
     private readonly HttpClient _http = new(new HttpClientHandler { UseProxy = false, Proxy = null })
     {
         Timeout = TimeSpan.FromSeconds(20)
@@ -70,6 +72,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        // Privacy: nessuna autorizzazione Google persistente tra due sessioni.
+        GoogleDriveExerciseService.DeleteLocalTokenCache();
+        Application.Current.Exit += OnApplicationExitDisconnectGoogleDrive;
         // Sicurezza predefinita: la gestione dei file .h resta bloccata finché il server non la abilita.
         ApplyHeaderManagementPermission(false);
         ConfigureCppHighlighting();
@@ -2764,7 +2770,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
         AddGuideSection(content, "SALVATAGGIO E INVIO");
         AddGuideItem(content, "Invia al docente", "#0E8FE8", "Invia codice, dati dell'alunno, esercizio e risultati al server del docente.");
-        AddGuideItem(content, "Google Drive", "#FFFFFF", "Disponibile solo in modalità esercitazione. Se esiste soltanto main.cpp salva un file .cpp con il nome scelto e aggiunge in testa i dati dell’alunno, data, ora e compilatore. Se esiste anche un file .h salva uno ZIP con il nome scelto. Il file si trova in Il mio Drive → CV+ Compilatore Alunno. Alla chiusura di CV+ l’account viene disconnesso.", "#1F2937");
+        AddGuideItem(content, "Google Drive", "#FFFFFF", "Disponibile solo in modalità esercitazione. Salva main.cpp come .cpp oppure, se è presente un header, crea uno ZIP. Il file si trova in Il mio Drive → CV+ Compilatore Alunno. Alla chiusura CV+ revoca il token dell’app e cancella la cache locale. Il browser può ricordare l’account Google, ma CV+ richiederà una nuova autorizzazione al successivo utilizzo.", "#1F2937");
         AddGuideItem(content, "Test server", "#5B4FE8", "Controlla se il server docente indicato nel campo IP e porta è raggiungibile.");
 
         AddGuideSection(content, "DATI DELL'ESERCIZIO");
@@ -3111,5 +3117,21 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         public string ProgramOutput { get; set; } = "";
         public string HeaderFileName { get; set; } = "esercizio.h";
         public string HeaderCode { get; set; } = "";
+    }
+
+
+    private static void OnApplicationExitDisconnectGoogleDrive(object? sender, ExitEventArgs e)
+    {
+        if (Interlocked.Exchange(ref _googleDriveExitCleanupStarted, 1) != 0)
+            return;
+
+        try
+        {
+            GoogleDriveExerciseService.DisconnectAsync().GetAwaiter().GetResult();
+        }
+        catch
+        {
+            GoogleDriveExerciseService.DeleteLocalTokenCache();
+        }
     }
 }
