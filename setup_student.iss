@@ -1,4 +1,4 @@
-﻿#define MyAppName "CV+ Compilatore Alunno"
+#define MyAppName "CV+ Compilatore Alunno"
 #define MyAppVersion "1.9.5"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
@@ -76,19 +76,20 @@ function SetWindowLong(hWnd: HWND; nIndex: Integer; dwNewLong: Longint): Longint
 function SetLayeredWindowAttributes(hWnd: HWND; crKey: Cardinal; bAlpha: Byte; dwFlags: Cardinal): Boolean;
   external 'SetLayeredWindowAttributes@user32.dll stdcall';
 
-
 procedure PreparationTimerTick(Sender: TObject);
 begin
   if PreparationProgress = nil then
     exit;
 
   PreparationProgress.Position :=
-    PreparationProgress.Position + (PreparationDirection * 2);
+    PreparationProgress.Position + (PreparationDirection * 3);
 
-  if PreparationProgress.Position >= 98 then
+  if PreparationProgress.Position >= 97 then
     PreparationDirection := -1
-  else if PreparationProgress.Position <= 2 then
+  else if PreparationProgress.Position <= 3 then
     PreparationDirection := 1;
+
+  PreparationForm.Update;
 end;
 
 procedure ShowPreparationWindow;
@@ -129,13 +130,10 @@ begin
   PreparationProgress.Top := ScaleY(31);
   PreparationProgress.Width := ScaleX(330);
   PreparationProgress.Height := ScaleY(18);
-  PreparationProgress.Min := 0;
-  PreparationProgress.Max := 100;
-  PreparationProgress.Position := 3;
-  PreparationDirection := 1;
+  PreparationProgress.Style := npbstMarquee;
 
   PreparationTimer := TTimer.Create(PreparationForm);
-  PreparationTimer.Interval := 35;
+  PreparationTimer.Interval := 45;
   PreparationTimer.OnTimer := @PreparationTimerTick;
   PreparationTimer.Enabled := True;
 
@@ -143,6 +141,8 @@ begin
   PreparationForm.BringToFront;
   PreparationForm.Update;
 
+  { Avvia esplicitamente il movimento avanti/indietro della barra. }
+  SendMessage(PreparationProgress.Handle, PBM_SETMARQUEE, 1, 24);
 end;
 
 procedure HidePreparationWindow;
@@ -155,7 +155,6 @@ begin
       PreparationTimer.Free;
       PreparationTimer := nil;
     end;
-
     PreparationForm.Hide;
     PreparationForm.Free;
     PreparationForm := nil;
@@ -179,6 +178,17 @@ procedure InitializeWizard;
 begin
   { Questa è la prima operazione eseguita dopo la conferma della lingua. }
   ShowPreparationWindow;
+
+  { Breve animazione visibile durante la preparazione iniziale.
+    Inno Setup non espone una percentuale reale in questa fase;
+    la barra indica che l''installer sta lavorando. }
+  PreparationTimerTick(nil);
+  Sleep(90);
+  PreparationTimerTick(nil);
+  Sleep(90);
+  PreparationTimerTick(nil);
+  Sleep(90);
+  PreparationTimerTick(nil);
 
   WizardForm.WelcomeLabel1.Caption :=
     'Benvenuto in CV+ Compilatore Alunno';

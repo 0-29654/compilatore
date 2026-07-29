@@ -1,0 +1,25 @@
+PATCH COMPLETA WINDOWS + macOS
+
+1. Ogni push su main/master che modifica file Windows avvia automaticamente "Build Windows Setup automatico".
+2. Ogni push su main/master che modifica macos/** avvia automaticamente "Build macOS DMG automatico".
+3. La Release stabile usa il tag cvplus-latest e contiene:
+   - setup.exe
+   - CVPlus-Windows.zip (cartella Windows)
+   - CVPlus-Compilatore-Alunno-macOS-AppleSilicon.dmg
+   - CVPlus-macOS.zip (cartella MacOS)
+
+GitHub Releases non mostra vere cartelle; per questo le cartelle Windows e MacOS sono dentro i due ZIP.
+
+IMPORTANTE PER macOS
+La semplice firma ad-hoc non basta a evitare sempre il messaggio “Sposta nel Cestino”.
+Per una distribuzione pubblica occorrono firma Developer ID e notarizzazione Apple.
+Configurare in Repository > Settings > Secrets and variables > Actions:
+- MACOS_CERTIFICATE_P12 (certificato .p12 codificato Base64)
+- MACOS_CERTIFICATE_PASSWORD
+- APPLE_ID
+- APPLE_APP_PASSWORD
+- APPLE_TEAM_ID
+
+Il workflow usa automaticamente questi segreti se presenti. Senza segreti crea comunque il DMG, ma macOS può bloccarlo sui computer degli utenti.
+
+Inserire il DMG sorgente da aggiornare in macos/input/ prima del commit e push.
