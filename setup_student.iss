@@ -45,6 +45,7 @@ Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs creat
 Source: "Assets\A.png"; DestDir: "{app}\Assets"; Flags: ignoreversion
 Source: "Assets\installing_a.bmp"; Flags: dontcopy
 Source: "INFORMATIVA_PRIVACY_CVPLUS.txt"; DestDir: "{app}\Documenti"; Flags: ignoreversion
+Source: "INFORMATIVA_PRIVACY_CVPLUS.txt"; Flags: dontcopy
 Source: "CONDIZIONI_UTILIZZO_CVPLUS.txt"; DestDir: "{app}\Documenti"; Flags: ignoreversion
 
 [Icons]
@@ -160,8 +161,9 @@ begin
   PrivacyMemo.WordWrap := True;
   PrivacyMemo.Font.Name := 'Segoe UI';
   PrivacyMemo.Font.Size := 9;
+  ExtractTemporaryFile('INFORMATIVA_PRIVACY_CVPLUS.txt');
   PrivacyMemo.Lines.LoadFromFile(
-    ExpandConstant('{src}\INFORMATIVA_PRIVACY_CVPLUS.txt')
+    ExpandConstant('{tmp}\INFORMATIVA_PRIVACY_CVPLUS.txt')
   );
 
   PrivacyCheck := TNewCheckBox.Create(PrivacyPage);
@@ -209,6 +211,13 @@ begin
   { Questa è la prima operazione eseguita dopo la conferma della lingua. }
   ShowPreparationWindow;
   CreatePrivacyPage;
+
+  { Nelle installazioni automatiche di GitHub Actions non esiste interazione utente. }
+  if WizardSilent then
+  begin
+    PrivacyCheck.Checked := True;
+    WizardForm.LicenseAcceptedRadio.Checked := True;
+  end;
 
   WizardForm.WelcomeLabel1.Caption :=
     'Benvenuto in CV+ Compilatore Alunno';
