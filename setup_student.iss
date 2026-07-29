@@ -4,7 +4,7 @@
 #define MyAppExeName "CppStudentClient.exe"
 
 [Setup]
-LicenseFile=CONDIZIONI_USO_PRIVACY.rtf
+InfoBeforeFile=Informativa_Privacy_CVPlus.rtf
 AppId={{A6C18F0D-6CA6-4D34-9A45-4D3DA754D8C1}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -44,10 +44,12 @@ Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescr
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Assets\A.png"; DestDir: "{app}\Assets"; Flags: ignoreversion
 Source: "Assets\installing_a.bmp"; Flags: dontcopy
+Source: "Documenti\Informativa_Privacy_CVPlus.pdf"; DestDir: "{app}\Documenti"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
 Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName} - Informativa privacy"; Filename: "{app}\Documenti\Informativa_Privacy_CVPlus.pdf"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: nowait postinstall skipifsilent
@@ -58,6 +60,7 @@ var
   PreparationProgress: TNewProgressBar;
   PreparationText: TNewStaticText;
   InstallImage: TBitmapImage;
+  PrivacyReadCheckBox: TNewCheckBox;
 
 const
   PBM_SETMARQUEE = $040A;
@@ -145,6 +148,13 @@ begin
     ScaleY(10);
 end;
 
+
+procedure PrivacyReadCheckBoxClick(Sender: TObject);
+begin
+  if WizardForm.CurPageID = wpInfoBefore then
+    WizardForm.NextButton.Enabled := PrivacyReadCheckBox.Checked;
+end;
+
 procedure InitializeWizard;
 begin
   { Questa è la prima operazione eseguita dopo la conferma della lingua. }
@@ -163,18 +173,17 @@ begin
   WizardForm.WelcomeLabel1.Font.Color := clNavy;
   WizardForm.WelcomeLabel1.Font.Style := [fsBold];
 
-  WizardForm.LicenseLabel1.Caption :=
-    'Leggi attentamente le condizioni d''uso, copyright e privacy.';
-  WizardForm.LicenseLabel1.Font.Color := clNavy;
-  WizardForm.LicenseLabel1.Font.Style := [fsBold];
 
-  WizardForm.LicenseAcceptedRadio.Caption :=
-    'Accetto integralmente le condizioni d''uso, copyright e privacy';
-  WizardForm.LicenseAcceptedRadio.Font.Style := [fsBold];
-  WizardForm.LicenseAcceptedRadio.Font.Color := clGreen;
-
-  WizardForm.LicenseNotAcceptedRadio.Caption :=
-    'Non accetto le condizioni d''uso';
+  PrivacyReadCheckBox := TNewCheckBox.Create(WizardForm);
+  PrivacyReadCheckBox.Parent := WizardForm.InfoBeforePage;
+  PrivacyReadCheckBox.Left := ScaleX(0);
+  PrivacyReadCheckBox.Top := WizardForm.InfoBeforePage.ClientHeight - ScaleY(28);
+  PrivacyReadCheckBox.Width := WizardForm.InfoBeforePage.ClientWidth;
+  PrivacyReadCheckBox.Height := ScaleY(22);
+  PrivacyReadCheckBox.Caption := 'Ho letto l''informativa sulla privacy';
+  PrivacyReadCheckBox.Checked := False;
+  PrivacyReadCheckBox.OnClick := @PrivacyReadCheckBoxClick;
+  PrivacyReadCheckBox.Font.Style := [fsBold];
 
   ExtractTemporaryFile('installing_a.bmp');
 
@@ -195,10 +204,15 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  if CurPageID = wpLicense then
+  if CurPageID = wpInfoBefore then
   begin
     HidePreparationWindow;
-    WizardForm.LicenseAcceptedRadio.Checked := True;
+  end;
+
+
+  if CurPageID = wpInfoBefore then
+  begin
+    WizardForm.NextButton.Enabled := PrivacyReadCheckBox.Checked;
   end;
 
   if (CurPageID = wpSelectTasks) and
@@ -209,6 +223,17 @@ begin
 
   if InstallImage.Visible then
     PositionInstallImage;
+end;
+
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if (CurPageID = wpInfoBefore) and (not PrivacyReadCheckBox.Checked) then
+  begin
+    MsgBox('Per proseguire, conferma di avere letto l''informativa sulla privacy.', mbInformation, MB_OK);
+    Result := False;
+  end;
 end;
 
 procedure DeinitializeSetup;
