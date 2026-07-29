@@ -1,4 +1,4 @@
-﻿using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.CodeCompletion;
@@ -2693,6 +2693,61 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
     }
     private static string FormatDuration(TimeSpan value) => $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}";
     private string GetTaskType() => string.IsNullOrWhiteSpace(TaskTypeBox.Text) ? "A" : TaskTypeBox.Text.Trim();
+    private async void GoogleDrive_Click(object sender, RoutedEventArgs e)
+    {
+        if (!GoogleDriveButton.IsEnabled)
+            return;
+
+        try
+        {
+            GoogleDriveButton.IsEnabled = false;
+            GoogleDriveButton.Content = "Accesso a Google...";
+            StatusText.Text = "Apertura autorizzazione Google Drive...";
+
+            var snapshot = new GoogleDriveExerciseSnapshot(
+                StudentIdBox.Text.Trim(),
+                StudentNameBox.Text.Trim(),
+                ClassBox.Text.Trim(),
+                GetTaskType(),
+                GetExerciseNumber(),
+                Editor.Text,
+                HeaderEditor.Text,
+                GetCurrentHeaderFileName(),
+                _compileOutput,
+                _programOutput,
+                DateTime.Now);
+
+            GoogleDriveSaveResult result = await GoogleDriveExerciseService.SaveExerciseAsync(snapshot);
+            StatusText.Text = "Esercizio salvato su Google Drive";
+            GoogleDriveButton.Content = "Salvato su Drive ✓";
+
+            MessageBox.Show(
+                $"Esercizio salvato nel Google Drive dell'account autorizzato.\n\nFile: {result.FileName}",
+                "Google Drive", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (FileNotFoundException ex)
+        {
+            StatusText.Text = "Configurazione Google Drive mancante";
+            MessageBox.Show(ex.Message, "Google Drive non configurato", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Google.GoogleApiException ex)
+        {
+            StatusText.Text = "Errore Google Drive";
+            MessageBox.Show($"Google Drive ha restituito un errore:\n{ex.Message}", "Google Drive", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Salvataggio su Drive non riuscito";
+            MessageBox.Show($"Impossibile salvare l'esercizio su Google Drive.\n\n{ex.Message}", "Google Drive", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            GoogleDriveButton.IsEnabled = true;
+            if (GoogleDriveButton.Content?.ToString()?.Contains("✓") != true)
+                GoogleDriveButton.Content = "Google Drive";
+        }
+    }
+
     private int GetExerciseNumber() => int.TryParse(ExerciseBox.Text.Trim(), out int n) && n > 0 ? n : 1;
     private string BuildExerciseKey(string type, int number) => $"{SessionBox.Text.Trim().ToUpperInvariant()}|{type.Trim().ToUpperInvariant()}|{number}";
 

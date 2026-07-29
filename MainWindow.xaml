@@ -1,4 +1,4 @@
-﻿<Window x:Class="CppStudentClient.MainWindow"
+<Window x:Class="CppStudentClient.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
@@ -185,6 +185,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="120"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -210,24 +211,29 @@
                         Click="Send_Click" Style="{StaticResource ModernButton}"
                         Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
 
-                <TextBlock x:Name="CurrentTaskSummaryText" Grid.Column="5"
+                <Button x:Name="GoogleDriveButton" Grid.Column="5" Content="Google Drive"
+                        Click="GoogleDrive_Click" Style="{StaticResource ModernButton}"
+                        Background="#FFFFFF" Foreground="#1F2937" BorderBrush="#D1D5DB" VerticalAlignment="Center"
+                        ToolTip="Accedi con il tuo account Google e salva l'esercizio nel tuo Drive"/>
+
+                <TextBlock x:Name="CurrentTaskSummaryText" Grid.Column="6"
                            Text="Tipologia — • esercizio 1" Foreground="#BDD6F3"
                            FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                            Margin="8,0,10,0"/>
 
-                <Button x:Name="TestServerButton" Grid.Column="6" Content="Test server"
+                <Button x:Name="TestServerButton" Grid.Column="7" Content="Test server"
                         Click="TestServer_Click" Style="{StaticResource ModernButton}"
                         Background="#5B4FE8" BorderBrush="#746BFF" VerticalAlignment="Center"/>
 
-                <ProgressBar x:Name="ServerTestProgress" Grid.Column="7"
+                <ProgressBar x:Name="ServerTestProgress" Grid.Column="8"
                              Height="8" Margin="4,0,12,0" IsIndeterminate="True"
                              Visibility="Collapsed" VerticalAlignment="Center"
                              Foreground="#47D7FF" Background="#10243A"/>
 
-                <TextBlock x:Name="StatusText" Grid.Column="8" Text="Pronto"
+                <TextBlock x:Name="StatusText" Grid.Column="9" Text="Pronto"
                            Foreground="#A8B5C7" VerticalAlignment="Center" Margin="8,0"/>
 
-                <Button x:Name="UpdateButton" Grid.Column="9" Content="Ricerca aggiornamenti"
+                <Button x:Name="UpdateButton" Grid.Column="10" Content="Ricerca aggiornamenti"
                         Click="CheckUpdates_Click" Style="{StaticResource ModernButton}"
                         Background="#0F4C75" BorderBrush="#38BDF8" VerticalAlignment="Center"
                         Margin="8,0,0,0"/>
