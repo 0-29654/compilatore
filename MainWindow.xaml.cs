@@ -1478,7 +1478,8 @@ public partial class MainWindow : Window
 
         if (e.Key == Key.Tab && !_completionWindows.ContainsKey(editor))
         {
-            string line = editor.Document.GetLineByOffset(editor.CaretOffset).Text.Trim();
+            var currentLine = editor.Document.GetLineByOffset(editor.CaretOffset);
+string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Trim();
             string? snippet = line switch
             {
                 "for" => "for (int i = 0; i < n; i++)\n{\n    \n}",
