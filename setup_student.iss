@@ -151,7 +151,7 @@ end;
 
 procedure PrivacyReadCheckBoxClick(Sender: TObject);
 begin
-  if WizardForm.CurPageID = wpInfoBefore then
+  if (not WizardSilent) and (WizardForm.CurPageID = wpInfoBefore) then
     WizardForm.NextButton.Enabled := PrivacyReadCheckBox.Checked;
 end;
 
@@ -210,7 +210,7 @@ begin
   end;
 
 
-  if CurPageID = wpInfoBefore then
+  if (CurPageID = wpInfoBefore) and (not WizardSilent) then
   begin
     WizardForm.NextButton.Enabled := PrivacyReadCheckBox.Checked;
   end;
@@ -229,7 +229,7 @@ end;
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
-  if (CurPageID = wpInfoBefore) and (not PrivacyReadCheckBox.Checked) then
+  if (not WizardSilent) and (CurPageID = wpInfoBefore) and (not PrivacyReadCheckBox.Checked) then
   begin
     MsgBox('Per proseguire, conferma di avere letto l''informativa sulla privacy.', mbInformation, MB_OK);
     Result := False;
