@@ -1,5 +1,23 @@
-Copia APPLICA_PATCH_CLIENT.py nella radice della repository compilatore, poi:
-python3 APPLICA_PATCH_CLIENT.py
-git add MainWindow.xaml.cs
-git commit -m "Corregge output, tipologia e invio multiplo"
-git push
+PROBLEMA CORRETTO
+La cartella .github è nascosta su macOS: trascinando a mano i file della vecchia patch spesso non veniva copiata. Per questo GitHub continuava a mostrare soltanto il vecchio workflow manuale.
+
+APPLICAZIONE SU MAC
+1. Estrai questo ZIP.
+2. Fai doppio clic su APPLICA_PATCH_MAC.command.
+3. Trascina nel Terminale la cartella locale della repository.
+4. Premi Invio.
+5. Esegui git add -A, commit e push.
+
+RISULTATO
+- Modifiche Windows: parte Build Windows Setup automatico.
+- Modifiche dentro macos/: parte Build macOS DMG automatico.
+- Gli asset della release sono setup.exe/CVPlus-Windows.zip e DMG/CVPlus-macOS.zip.
+
+MACOS
+Un DMG scaricato da Internet non può essere reso affidabile solo togliendo la quarantena. Per non pubblicare ancora un'immagine che macOS manda nel Cestino, il workflow Mac richiede firma Developer ID e notarizzazione Apple e fallisce se i secrets non sono configurati.
+Secrets richiesti:
+MACOS_CERTIFICATE_P12
+MACOS_CERTIFICATE_PASSWORD
+APPLE_ID
+APPLE_APP_PASSWORD
+APPLE_TEAM_ID
