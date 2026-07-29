@@ -1,0 +1,80 @@
+name: Pulisci build vecchie
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 2 * * *'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - '.github/workflows/pulisci-build-vecchie.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: pulizia-build-vecchie
+  cancel-in-progress: false
+
+jobs:
+  pulizia:
+    name: Elimina esecuzioni precedenti a ieri
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Calcola data limite italiana
+        id: cutoff
+        shell: bash
+        run: |
+          CUTOFF=$(python3 - <<'PY'
+          from datetime import datetime, time, timedelta, timezone
+          from zoneinfo import ZoneInfo
+
+          roma = ZoneInfo("Europe/Rome")
+          oggi = datetime.now(roma).date()
+          ieri = oggi - timedelta(days=1)
+          limite_locale = datetime.combine(ieri, time.min, tzinfo=roma)
+          print(limite_locale.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"))
+          PY
+          )
+          echo "cutoff=$CUTOFF" >> "$GITHUB_OUTPUT"
+          echo "Saranno mantenute tutte le build create da $CUTOFF in poi (ieri e oggi, ora italiana)."
+
+      - name: Elimina le vecchie workflow run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CUTOFF: ${{ steps.cutoff.outputs.cutoff }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Data limite UTC: $CUTOFF"
+
+          IDS=$(gh api --paginate \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" \
+            --jq ".workflow_runs[] | select(.created_at < \"$CUTOFF\") | .id")
+
+          if [ -z "$IDS" ]; then
+            echo "Nessuna vecchia build da eliminare."
+            exit 0
+          fi
+
+          COUNT=0
+          while IFS= read -r RUN_ID; do
+            [ -z "$RUN_ID" ] && continue
+            echo "Elimino workflow run $RUN_ID"
+            gh api --method DELETE \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID"
+            COUNT=$((COUNT + 1))
+          done <<< "$IDS"
+
+          echo "Pulizia completata: eliminate $COUNT build vecchie."
