@@ -1,23 +1,18 @@
-PROBLEMA CORRETTO
-La cartella .github è nascosta su macOS: trascinando a mano i file della vecchia patch spesso non veniva copiata. Per questo GitHub continuava a mostrare soltanto il vecchio workflow manuale.
+PATCH INSTALLER MODERNO INNO SETUP - SOLO WINDOWS
 
-APPLICAZIONE SU MAC
-1. Estrai questo ZIP.
-2. Fai doppio clic su APPLICA_PATCH_MAC.command.
-3. Trascina nel Terminale la cartella locale della repository.
-4. Premi Invio.
-5. Esegui git add -A, commit e push.
+Modifiche:
+- schermata iniziale più moderna con logo grande;
+- finestra di preparazione compatta, centrata e con angoli arrotondati;
+- barra animata con timer nativo di Windows;
+- stile Segoe UI, pulsanti più larghi e layout pulito;
+- immagine grande durante l'installazione mantenuta;
+- nessuna modifica al programma C# o al workflow Windows.
 
-RISULTATO
-- Modifiche Windows: parte Build Windows Setup automatico.
-- Modifiche dentro macos/: parte Build macOS DMG automatico.
-- Gli asset della release sono setup.exe/CVPlus-Windows.zip e DMG/CVPlus-macOS.zip.
-
-MACOS
-Un DMG scaricato da Internet non può essere reso affidabile solo togliendo la quarantena. Per non pubblicare ancora un'immagine che macOS manda nel Cestino, il workflow Mac richiede firma Developer ID e notarizzazione Apple e fallisce se i secrets non sono configurati.
-Secrets richiesti:
-MACOS_CERTIFICATE_P12
-MACOS_CERTIFICATE_PASSWORD
-APPLE_ID
-APPLE_APP_PASSWORD
-APPLE_TEAM_ID
+Applicazione sul Mac:
+1. Estrai lo ZIP.
+2. Clic destro su APPLICA_PATCH_INNO_MAC.command > Apri.
+3. Trascina la cartella locale della repository nel Terminale e premi Invio.
+4. Esegui nella repository:
+   git add -A
+   git commit -m "Installer Inno moderno con barra animata"
+   git push
