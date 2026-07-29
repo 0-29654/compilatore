@@ -1,4 +1,4 @@
-#define MyAppName "CV+ Compilatore Alunno"
+﻿#define MyAppName "CV+ Compilatore Alunno"
 #define MyAppVersion "1.9.5"
 #define MyAppPublisher "Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
@@ -57,8 +57,6 @@ var
   PreparationForm: TSetupForm;
   PreparationProgress: TNewProgressBar;
   PreparationText: TNewStaticText;
-  PreparationTimer: TTimer;
-  PreparationDirection: Integer;
   InstallImage: TBitmapImage;
 
 const
@@ -75,21 +73,6 @@ function SetWindowLong(hWnd: HWND; nIndex: Integer; dwNewLong: Longint): Longint
   external 'SetWindowLongW@user32.dll stdcall';
 function SetLayeredWindowAttributes(hWnd: HWND; crKey: Cardinal; bAlpha: Byte; dwFlags: Cardinal): Boolean;
   external 'SetLayeredWindowAttributes@user32.dll stdcall';
-
-
-procedure AnimatePreparation(Sender: TObject);
-begin
-  if PreparationProgress = nil then
-    exit;
-
-  PreparationProgress.Position :=
-    PreparationProgress.Position + PreparationDirection;
-
-  if PreparationProgress.Position >= 100 then
-    PreparationDirection := -2
-  else if PreparationProgress.Position <= 2 then
-    PreparationDirection := 2;
-end;
 
 procedure ShowPreparationWindow;
 var
@@ -129,34 +112,20 @@ begin
   PreparationProgress.Top := ScaleY(31);
   PreparationProgress.Width := ScaleX(330);
   PreparationProgress.Height := ScaleY(18);
-  PreparationProgress.Style := npbstNormal;
-  PreparationProgress.Min := 0;
-  PreparationProgress.Max := 100;
-  PreparationProgress.Position := 2;
-  PreparationDirection := 2;
+  PreparationProgress.Style := npbstMarquee;
 
   PreparationForm.Show;
   PreparationForm.BringToFront;
   PreparationForm.Update;
 
-  { Timer dell'interfaccia: la barra avanza e torna indietro durante l'attesa. }
-  PreparationTimer := TTimer.Create(PreparationForm);
-  PreparationTimer.Interval := 35;
-  PreparationTimer.OnTimer := @AnimatePreparation;
-  PreparationTimer.Enabled := True;
+  { Avvia esplicitamente il movimento avanti/indietro della barra. }
+  SendMessage(PreparationProgress.Handle, PBM_SETMARQUEE, 1, 24);
 end;
 
 procedure HidePreparationWindow;
 begin
   if PreparationForm <> nil then
   begin
-    if PreparationTimer <> nil then
-    begin
-      PreparationTimer.Enabled := False;
-      PreparationTimer.Free;
-      PreparationTimer := nil;
-    end;
-
     PreparationForm.Hide;
     PreparationForm.Free;
     PreparationForm := nil;

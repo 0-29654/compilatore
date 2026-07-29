@@ -1,6 +1,9 @@
 ﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
+using ICSharpCode.AvalonEdit.CodeCompletion;
+using ICSharpCode.AvalonEdit.Document;
+using System.Windows.Media.Imaging;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -54,6 +57,8 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _teacherDiscoveryCts;
     private const int TeacherDiscoveryPort = 5051;
     private IHighlightingDefinition? _cppHighlighting;
+    private bool _editorAssistanceEnabled;
+    private readonly Dictionary<TextEditor, CompletionWindow> _completionWindows = new();
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
 
@@ -67,6 +72,8 @@ public partial class MainWindow : Window
         // Sicurezza predefinita: la gestione dei file .h resta bloccata finché il server non la abilita.
         ApplyHeaderManagementPermission(false);
         ConfigureCppHighlighting();
+        ConfigureEditorAssistance(Editor);
+        ConfigureEditorAssistance(HeaderEditor);
         ResetClientStateOnStartup();
         StartTeacherDiscoveryListener();
         Closed += (_, _) => { _liveMonitorTimer.Stop(); StopTeacherDiscoveryListener(); };
@@ -192,6 +199,7 @@ public partial class MainWindow : Window
                 string mode = Get(root, "mode", Get(root, "sessionMode", "esercitazione"));
                 bool compileAllowed = ReadCompilationAllowed(root);
                 bool headerManagementAllowed = ReadHeaderManagementAllowed(root);
+                bool editorAssistanceAllowed = ReadEditorAssistanceAllowed(root);
                 string command = Get(root, "command", "");
 
                 await Dispatcher.InvokeAsync(() =>
@@ -209,6 +217,7 @@ public partial class MainWindow : Window
                     ApplySessionMode(mode);
                     ApplyCompilationPermission(compileAllowed);
                     ApplyHeaderManagementPermission(headerManagementAllowed);
+                    ApplyEditorAssistancePermission(editorAssistanceAllowed);
                     StatusText.Text = $"Docente rilevato: {ip}:{port}";
                 });
             }
@@ -626,6 +635,8 @@ public partial class MainWindow : Window
             HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto
         };
+
+        ConfigureEditorAssistance(popupEditor);
 
         var applyButton = new System.Windows.Controls.Button
         {
@@ -1419,12 +1430,156 @@ public partial class MainWindow : Window
             if (teacherConnectionReceived) SetTeacherConnectionFieldsLocked(true);
             ApplyCompilationPermission(ReadCompilationAllowed(root));
             ApplyHeaderManagementPermission(ReadHeaderManagementAllowed(root));
+            ApplyEditorAssistancePermission(ReadEditorAssistanceAllowed(root));
         }
         catch
         {
             if (body.Contains("verifica", StringComparison.OrdinalIgnoreCase)) mode = "verifica";
         }
         ApplySessionMode(mode);
+    }
+
+
+    private static bool ReadEditorAssistanceAllowed(JsonElement root)
+    {
+        foreach (string name in new[] { "editorAssistanceEnabled", "allowCppAutocomplete", "cppAutocompleteEnabled", "intellisenseEnabled" })
+        {
+            if (root.TryGetProperty(name, out JsonElement value) &&
+                (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False))
+                return value.GetBoolean();
+        }
+        return false;
+    }
+
+    private void ApplyEditorAssistancePermission(bool enabled)
+    {
+        _editorAssistanceEnabled = enabled;
+        if (!enabled)
+        {
+            foreach (CompletionWindow window in _completionWindows.Values.ToList())
+                try { window.Close(); } catch { }
+            _completionWindows.Clear();
+        }
+        StatusText.Text = enabled
+            ? "Aiuto scrittura C++ abilitato dal docente"
+            : (_verificationMode ? "Modalità verifica attiva" : "Pronto");
+    }
+
+    private void ConfigureEditorAssistance(TextEditor editor)
+    {
+        editor.TextArea.TextEntered += (_, e) => Editor_TextEntered(editor, e.Text);
+        editor.TextArea.PreviewKeyDown += (_, e) => EditorAssistance_PreviewKeyDown(editor, e);
+    }
+
+    private void EditorAssistance_PreviewKeyDown(TextEditor editor, KeyEventArgs e)
+    {
+        if (!_editorAssistanceEnabled) return;
+
+        if (e.Key == Key.Tab && !_completionWindows.ContainsKey(editor))
+        {
+            string line = editor.Document.GetLineByOffset(editor.CaretOffset).Text.Trim();
+            string? snippet = line switch
+            {
+                "for" => "for (int i = 0; i < n; i++)\n{\n    \n}",
+                "while" => "while (condizione)\n{\n    \n}",
+                "if" => "if (condizione)\n{\n    \n}",
+                "else" => "else\n{\n    \n}",
+                "switch" => "switch (valore)\n{\n    case 0:\n        break;\n    default:\n        break;\n}",
+                "main" => "int main()\n{\n    \n    return 0;\n}",
+                _ => null
+            };
+            if (snippet != null)
+            {
+                DocumentLine dl = editor.Document.GetLineByOffset(editor.CaretOffset);
+                string indent = editor.Document.GetText(dl.Offset, dl.Length).TakeWhile(char.IsWhiteSpace).Aggregate("", (a,c) => a+c);
+                string formatted = string.Join("\n", snippet.Split('\n').Select((x,i) => i == 0 ? indent + x : indent + x));
+                editor.Document.Replace(dl.Offset, dl.Length, formatted);
+                editor.CaretOffset = dl.Offset + formatted.IndexOf("    \n", StringComparison.Ordinal) + 4;
+                e.Handled = true;
+                return;
+            }
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            DocumentLine line = editor.Document.GetLineByOffset(editor.CaretOffset);
+            string before = editor.Document.GetText(line.Offset, Math.Max(0, editor.CaretOffset - line.Offset));
+            string baseIndent = new string(before.TakeWhile(char.IsWhiteSpace).ToArray());
+            string extra = before.TrimEnd().EndsWith("{") ? "    " : "";
+            editor.Document.Insert(editor.CaretOffset, Environment.NewLine + baseIndent + extra);
+            editor.CaretOffset += Environment.NewLine.Length + baseIndent.Length + extra.Length;
+            e.Handled = true;
+        }
+    }
+
+    private void Editor_TextEntered(TextEditor editor, string text)
+    {
+        if (!_editorAssistanceEnabled || string.IsNullOrEmpty(text) || !char.IsLetterOrDigit(text[0]) && text[0] != '_') return;
+        if (_completionWindows.TryGetValue(editor, out CompletionWindow? old)) { old.Close(); _completionWindows.Remove(editor); }
+
+        string prefix = GetCurrentWord(editor);
+        if (prefix.Length < 2) return;
+        var matches = CppCompletions.Where(c => c.Trigger.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Take(18).ToList();
+        if (matches.Count == 0) return;
+
+        var window = new CompletionWindow(editor.TextArea) { StartOffset = editor.CaretOffset - prefix.Length };
+        foreach (var item in matches) window.CompletionList.CompletionData.Add(new CppCompletionData(item.Display, item.Insert, item.Description));
+        window.Closed += (_, _) => _completionWindows.Remove(editor);
+        _completionWindows[editor] = window;
+        window.Show();
+    }
+
+    private static string GetCurrentWord(TextEditor editor)
+    {
+        int offset = editor.CaretOffset, start = offset;
+        while (start > 0)
+        {
+            char c = editor.Document.GetCharAt(start - 1);
+            if (!char.IsLetterOrDigit(c) && c != '_' && c != ':') break;
+            start--;
+        }
+        return editor.Document.GetText(start, offset - start);
+    }
+
+    private static readonly (string Trigger, string Display, string Insert, string Description)[] CppCompletions =
+    {
+        ("for", "for — ciclo con indice", "for (int i = 0; i < n; i++)\n{\n    \n}", "Ciclo for C++17"),
+        ("foreach", "for — range based", "for (const auto& elemento : contenitore)\n{\n    \n}", "Ciclo for-each C++17"),
+        ("while", "while", "while (condizione)\n{\n    \n}", "Ciclo while"),
+        ("do", "do...while", "do\n{\n    \n} while (condizione);", "Ciclo do-while"),
+        ("if", "if", "if (condizione)\n{\n    \n}", "Condizione if"),
+        ("ifelse", "if...else", "if (condizione)\n{\n    \n}\nelse\n{\n    \n}", "Condizione completa"),
+        ("switch", "switch", "switch (valore)\n{\n    case 0:\n        break;\n    default:\n        break;\n}", "Selezione multipla"),
+        ("cout", "cout", "cout << valore << endl;", "Output standard"),
+        ("cin", "cin", "cin >> variabile;", "Input standard"),
+        ("vector", "std::vector", "vector<int> valori;", "Contenitore vector"),
+        ("string", "std::string", "string testo;", "Stringa standard"),
+        ("sort", "std::sort", "sort(contenitore.begin(), contenitore.end());", "Ordinamento"),
+        ("find", "std::find", "find(contenitore.begin(), contenitore.end(), valore)", "Ricerca"),
+        ("push_back", "push_back", "push_back(valore);", "Inserimento in coda"),
+        ("begin", "begin()", "begin()", "Primo iteratore"),
+        ("end", "end()", "end()", "Iteratore oltre l'ultimo"),
+        ("size", "size()", "size()", "Numero di elementi"),
+        ("include", "#include", "#include <iostream>", "Inclusione libreria"),
+        ("main", "main", "int main()\n{\n    \n    return 0;\n}", "Funzione principale")
+    };
+
+    private sealed class CppCompletionData : ICompletionData
+    {
+        public CppCompletionData(string text, string insertion, string description) { Text = text; _insertion = insertion; Description = description; }
+        private readonly string _insertion;
+        public ImageSource? Image => null;
+        public string Text { get; }
+        public object Content => Text;
+        public object Description { get; }
+        public double Priority => 0;
+        public void Complete(TextArea textArea, ISegment completionSegment, EventArgs insertionRequestEventArgs)
+        {
+            string indent = new string(textArea.Document.GetText(textArea.Document.GetLineByOffset(completionSegment.Offset).Offset,
+                completionSegment.Offset - textArea.Document.GetLineByOffset(completionSegment.Offset).Offset).TakeWhile(char.IsWhiteSpace).ToArray());
+            string value = string.Join(Environment.NewLine, _insertion.Split('\n').Select((line, i) => i == 0 ? line : indent + line));
+            textArea.Document.Replace(completionSegment, value);
+        }
     }
 
     private static bool ReadHeaderManagementAllowed(JsonElement root)
