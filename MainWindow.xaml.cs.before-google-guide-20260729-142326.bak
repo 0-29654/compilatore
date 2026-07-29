@@ -1640,8 +1640,6 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         Topmost = true;
         ShowInTaskbar = false;
         UpdateButton.IsEnabled = false;
-        GuideButton.IsEnabled = false;
-        GuideButton.ToolTip = "La guida è disponibile soltanto in modalità esercitazione.";
         StatusText.Text = "Modalità verifica attiva";
         Activate();
     }
@@ -1661,8 +1659,6 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         WindowState = WindowState.Maximized;
         ShowInTaskbar = true;
         UpdateButton.IsEnabled = true;
-        GuideButton.IsEnabled = true;
-        GuideButton.ToolTip = "Apri la guida visuale del compilatore";
         Activate();
     }
 
@@ -2697,159 +2693,6 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
     }
     private static string FormatDuration(TimeSpan value) => $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}";
     private string GetTaskType() => string.IsNullOrWhiteSpace(TaskTypeBox.Text) ? "A" : TaskTypeBox.Text.Trim();
-    private void Guide_Click(object sender, RoutedEventArgs e)
-    {
-        if (_verificationMode)
-        {
-            ShowVerificationSafeMessage(
-                "La guida è disponibile soltanto in modalità esercitazione.",
-                "Guida non disponibile",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            return;
-        }
-
-        var guideWindow = new Window
-        {
-            Title = "Guida visuale — CV+ Compilatore Alunno",
-            Owner = this,
-            Width = 920,
-            Height = 720,
-            MinWidth = 760,
-            MinHeight = 560,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.FromRgb(7, 18, 34)),
-            Foreground = Brushes.White,
-            ResizeMode = ResizeMode.CanResize,
-            ShowInTaskbar = false
-        };
-
-        var content = new System.Windows.Controls.StackPanel { Margin = new Thickness(22) };
-        content.Children.Add(new System.Windows.Controls.TextBlock
-        {
-            Text = "GUIDA VISUALE DEL COMPILATORE",
-            FontSize = 25,
-            FontWeight = FontWeights.Bold,
-            Foreground = new SolidColorBrush(Color.FromRgb(183, 243, 255))
-        });
-        content.Children.Add(new System.Windows.Controls.TextBlock
-        {
-            Text = "I pulsanti qui sotto sono esempi non cliccabili. Colore, nome e descrizione corrispondono ai comandi presenti nel programma.",
-            FontSize = 13,
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.FromRgb(168, 181, 199)),
-            Margin = new Thickness(0, 6, 0, 18)
-        });
-
-        AddGuideSection(content, "EDITOR E COMPILAZIONE");
-        AddGuideItem(content, "Compila e apri CMD", "#059669", "Compila il codice C++17 ed esegue il programma nella console. Gli errori di compilazione vengono mostrati nell'area output.");
-        AddGuideItem(content, "main.cpp", "#102540", "È il file principale. Con SHIFT + clic sull'editor si apre l'editor grande a tutto schermo.");
-        AddGuideItem(content, "Aggiungi esercizio.h", "#7C3AED", "Crea un file header .h. Il comando può essere abilitato o disabilitato dal docente.");
-        AddGuideItem(content, "Rinomina .h", "#9333EA", "Rinomina il file header aperto mantenendo l'estensione .h.");
-        AddGuideItem(content, "Elimina .h", "#B91C1C", "Elimina il file header corrente dopo la conferma.");
-
-        AddGuideSection(content, "SALVATAGGIO E INVIO");
-        AddGuideItem(content, "Invia al docente", "#0E8FE8", "Invia codice, dati dell'alunno, esercizio e risultati al server del docente.");
-        AddGuideItem(content, "Google Drive", "#FFFFFF", "Apre l'accesso Google e salva uno ZIP dell'esercizio nel Drive dell'account autorizzato.", "#1F2937");
-        AddGuideItem(content, "Test server", "#5B4FE8", "Controlla se il server docente indicato nel campo IP e porta è raggiungibile.");
-
-        AddGuideSection(content, "DATI DELL'ESERCIZIO");
-        AddGuideItem(content, "N° registro / Nome / Classe", "#24344D", "Identificano l'alunno. Compilali prima di inviare o salvare l'esercizio.");
-        AddGuideItem(content, "Tipologia / N° esercizio", "#24344D", "Indicano il tipo di attività e il numero dell'esercizio attualmente aperto.");
-        AddGuideItem(content, "IP docente : porta", "#24344D", "Indirizzo del computer del docente e porta del server. Può essere rilevato automaticamente sulla rete.");
-        AddGuideItem(content, "◀  ▶", "#0E78C7", "Passano all'esercizio precedente o successivo salvando lo stato dell'editor.");
-
-        AddGuideSection(content, "MODALITÀ E ASSISTENZA");
-        AddGuideItem(content, "STANDARD C++17", "#0F3550", "Il compilatore usa lo standard C++17 e include la toolchain GCC nell'installazione.");
-        AddGuideItem(content, "ESERCITAZIONE", "#102D25", "Modalità normale: consente guida, aggiornamenti e strumenti autorizzati dal docente.");
-        AddGuideItem(content, "VERIFICA", "#4B260F", "Modalità controllata dal docente: alcune funzioni vengono bloccate e la finestra resta a schermo intero.");
-        AddGuideItem(content, "Aiuto scrittura C++", "#155E75", "Quando il docente lo abilita, propone completamenti C++, costrutti e rientri automatici nell'editor.");
-
-        AddGuideSection(content, "OUTPUT");
-        AddGuideItem(content, "Output compilazione", "#10243A", "Mostra messaggi del compilatore ed eventuali errori. L'output prodotto dal programma viene visualizzato in bianco.");
-        AddGuideItem(content, "Stato", "#24344D", "In basso comunica operazioni in corso, collegamento al server, salvataggio e risultato dei comandi.");
-
-        var closeButton = new System.Windows.Controls.Button
-        {
-            Content = "Chiudi guida",
-            Width = 150,
-            Padding = new Thickness(14, 9, 14, 9),
-            Margin = new Thickness(0, 20, 0, 4),
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Background = new SolidColorBrush(Color.FromRgb(14, 120, 199)),
-            Foreground = Brushes.White,
-            BorderBrush = new SolidColorBrush(Color.FromRgb(68, 183, 255)),
-            FontWeight = FontWeights.SemiBold
-        };
-        closeButton.Click += (_, _) => guideWindow.Close();
-        content.Children.Add(closeButton);
-
-        guideWindow.Content = new System.Windows.Controls.ScrollViewer
-        {
-            Content = content,
-            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Disabled
-        };
-        guideWindow.ShowDialog();
-    }
-
-    private static void AddGuideSection(System.Windows.Controls.Panel panel, string title)
-    {
-        panel.Children.Add(new System.Windows.Controls.TextBlock
-        {
-            Text = title,
-            FontSize = 14,
-            FontWeight = FontWeights.Bold,
-            Foreground = new SolidColorBrush(Color.FromRgb(255, 209, 102)),
-            Margin = new Thickness(0, 16, 0, 7)
-        });
-    }
-
-    private static void AddGuideItem(
-        System.Windows.Controls.Panel panel,
-        string buttonText,
-        string backgroundHex,
-        string description,
-        string foregroundHex = "#FFFFFF")
-    {
-        var row = new System.Windows.Controls.Grid { Margin = new Thickness(0, 0, 0, 8) };
-        row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(215) });
-        row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        var sample = new System.Windows.Controls.Border
-        {
-            Background = (Brush)new BrushConverter().ConvertFromString(backgroundHex)!,
-            BorderBrush = new SolidColorBrush(Color.FromRgb(72, 98, 132)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(12, 9, 12, 9),
-            Margin = new Thickness(0, 0, 14, 0),
-            Child = new System.Windows.Controls.TextBlock
-            {
-                Text = buttonText,
-                Foreground = (Brush)new BrushConverter().ConvertFromString(foregroundHex)!,
-                FontWeight = FontWeights.SemiBold,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                TextAlignment = TextAlignment.Center,
-                TextWrapping = TextWrapping.Wrap
-            }
-        };
-        System.Windows.Controls.Grid.SetColumn(sample, 0);
-        row.Children.Add(sample);
-
-        var text = new System.Windows.Controls.TextBlock
-        {
-            Text = description,
-            Foreground = new SolidColorBrush(Color.FromRgb(218, 229, 242)),
-            FontSize = 13,
-            TextWrapping = TextWrapping.Wrap,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        System.Windows.Controls.Grid.SetColumn(text, 1);
-        row.Children.Add(text);
-        panel.Children.Add(row);
-    }
-
     private async void GoogleDrive_Click(object sender, RoutedEventArgs e)
     {
         if (!GoogleDriveButton.IsEnabled)

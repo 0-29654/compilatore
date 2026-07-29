@@ -94,10 +94,6 @@
                                 <TextBlock Text="C++17" Foreground="#B7F3FF" FontWeight="ExtraBold" FontSize="13"/>
                             </StackPanel>
                         </Border>
-                        <Button x:Name="GuideButton" Content="?  GUIDA" Click="Guide_Click"
-                                Style="{StaticResource ModernButton}" Padding="12,7" Margin="0,0,8,0"
-                                Background="#155E75" BorderBrush="#38BDF8"
-                                ToolTip="Apri la guida visuale del compilatore"/>
                         <Border x:Name="ModeBadge" Background="#102D25" BorderBrush="#1F6D55"
                                 BorderThickness="1" CornerRadius="14" Padding="12,7">
                             <StackPanel Orientation="Horizontal">
