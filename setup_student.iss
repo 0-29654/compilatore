@@ -4,7 +4,7 @@
 #define MyAppExeName "CppStudentClient.exe"
 
 [Setup]
-InfoBeforeFile=Informativa_Privacy_CVPlus.rtf
+LicenseFile=CONDIZIONI_UTILIZZO_CVPLUS.rtf
 AppId={{A6C18F0D-6CA6-4D34-9A45-4D3DA754D8C1}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -44,12 +44,14 @@ Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescr
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Assets\A.png"; DestDir: "{app}\Assets"; Flags: ignoreversion
 Source: "Assets\installing_a.bmp"; Flags: dontcopy
-Source: "Documenti\Informativa_Privacy_CVPlus.pdf"; DestDir: "{app}\Documenti"; Flags: ignoreversion
+Source: "INFORMATIVA_PRIVACY_CVPLUS.txt"; DestDir: "{app}\Documenti"; Flags: ignoreversion
+Source: "CONDIZIONI_UTILIZZO_CVPLUS.txt"; DestDir: "{app}\Documenti"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
 Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
-Name: "{autoprograms}\{#MyAppName} - Informativa privacy"; Filename: "{app}\Documenti\Informativa_Privacy_CVPlus.pdf"
+Name: "{autoprograms}\{#MyAppName} - Informativa privacy"; Filename: "{app}\Documenti\INFORMATIVA_PRIVACY_CVPLUS.txt"
+Name: "{autoprograms}\{#MyAppName} - Condizioni di utilizzo"; Filename: "{app}\Documenti\CONDIZIONI_UTILIZZO_CVPLUS.txt"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: nowait postinstall skipifsilent
@@ -60,7 +62,9 @@ var
   PreparationProgress: TNewProgressBar;
   PreparationText: TNewStaticText;
   InstallImage: TBitmapImage;
-  PrivacyReadCheckBox: TNewCheckBox;
+  PrivacyPage: TWizardPage;
+  PrivacyMemo: TNewMemo;
+  PrivacyCheck: TNewCheckBox;
 
 const
   PBM_SETMARQUEE = $040A;
@@ -137,6 +141,58 @@ begin
   end;
 end;
 
+procedure CreatePrivacyPage;
+begin
+  PrivacyPage := CreateCustomPage(
+    wpWelcome,
+    'Informativa sulla privacy',
+    'Leggi l''informativa e conferma di averne preso visione.'
+  );
+
+  PrivacyMemo := TNewMemo.Create(PrivacyPage);
+  PrivacyMemo.Parent := PrivacyPage.Surface;
+  PrivacyMemo.Left := 0;
+  PrivacyMemo.Top := 0;
+  PrivacyMemo.Width := PrivacyPage.SurfaceWidth;
+  PrivacyMemo.Height := PrivacyPage.SurfaceHeight - ScaleY(42);
+  PrivacyMemo.ReadOnly := True;
+  PrivacyMemo.ScrollBars := ssVertical;
+  PrivacyMemo.WordWrap := True;
+  PrivacyMemo.Font.Name := 'Segoe UI';
+  PrivacyMemo.Font.Size := 9;
+  PrivacyMemo.Lines.LoadFromFile(
+    ExpandConstant('{src}\INFORMATIVA_PRIVACY_CVPLUS.txt')
+  );
+
+  PrivacyCheck := TNewCheckBox.Create(PrivacyPage);
+  PrivacyCheck.Parent := PrivacyPage.Surface;
+  PrivacyCheck.Left := 0;
+  PrivacyCheck.Top := PrivacyPage.SurfaceHeight - ScaleY(30);
+  PrivacyCheck.Width := PrivacyPage.SurfaceWidth;
+  PrivacyCheck.Height := ScaleY(24);
+  PrivacyCheck.Caption := 'Ho letto l''Informativa sulla Privacy';
+  PrivacyCheck.Font.Name := 'Segoe UI';
+  PrivacyCheck.Font.Size := 9;
+  PrivacyCheck.Font.Style := [fsBold];
+  PrivacyCheck.Checked := WizardSilent;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+
+  if (PrivacyPage <> nil) and (CurPageID = PrivacyPage.ID) and
+     (not WizardSilent) and (not PrivacyCheck.Checked) then
+  begin
+    MsgBox(
+      'Per proseguire devi confermare di aver letto l''Informativa sulla Privacy.',
+      mbInformation,
+      MB_OK
+    );
+    Result := False;
+  end;
+end;
+
 procedure PositionInstallImage;
 begin
   InstallImage.Left :=
@@ -148,17 +204,11 @@ begin
     ScaleY(10);
 end;
 
-
-procedure PrivacyReadCheckBoxClick(Sender: TObject);
-begin
-  if (not WizardSilent) and (WizardForm.CurPageID = wpInfoBefore) then
-    WizardForm.NextButton.Enabled := PrivacyReadCheckBox.Checked;
-end;
-
 procedure InitializeWizard;
 begin
   { Questa è la prima operazione eseguita dopo la conferma della lingua. }
   ShowPreparationWindow;
+  CreatePrivacyPage;
 
   WizardForm.WelcomeLabel1.Caption :=
     'Benvenuto in CV+ Compilatore Alunno';
@@ -173,17 +223,18 @@ begin
   WizardForm.WelcomeLabel1.Font.Color := clNavy;
   WizardForm.WelcomeLabel1.Font.Style := [fsBold];
 
+  WizardForm.LicenseLabel1.Caption :=
+    'Leggi attentamente le Condizioni di utilizzo.';
+  WizardForm.LicenseLabel1.Font.Color := clNavy;
+  WizardForm.LicenseLabel1.Font.Style := [fsBold];
 
-  PrivacyReadCheckBox := TNewCheckBox.Create(WizardForm);
-  PrivacyReadCheckBox.Parent := WizardForm.InfoBeforePage;
-  PrivacyReadCheckBox.Left := ScaleX(0);
-  PrivacyReadCheckBox.Top := WizardForm.InfoBeforePage.ClientHeight - ScaleY(28);
-  PrivacyReadCheckBox.Width := WizardForm.InfoBeforePage.ClientWidth;
-  PrivacyReadCheckBox.Height := ScaleY(22);
-  PrivacyReadCheckBox.Caption := 'Ho letto l''informativa sulla privacy';
-  PrivacyReadCheckBox.Checked := False;
-  PrivacyReadCheckBox.OnClick := @PrivacyReadCheckBoxClick;
-  PrivacyReadCheckBox.Font.Style := [fsBold];
+  WizardForm.LicenseAcceptedRadio.Caption :=
+    'Accetto le Condizioni di utilizzo';
+  WizardForm.LicenseAcceptedRadio.Font.Style := [fsBold];
+  WizardForm.LicenseAcceptedRadio.Font.Color := clGreen;
+
+  WizardForm.LicenseNotAcceptedRadio.Caption :=
+    'Non accetto le Condizioni di utilizzo';
 
   ExtractTemporaryFile('installing_a.bmp');
 
@@ -204,16 +255,12 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  if CurPageID = wpInfoBefore then
-  begin
+  if ((PrivacyPage <> nil) and (CurPageID = PrivacyPage.ID)) or
+     (CurPageID = wpLicense) then
     HidePreparationWindow;
-  end;
 
-
-  if (CurPageID = wpInfoBefore) and (not WizardSilent) then
-  begin
-    WizardForm.NextButton.Enabled := PrivacyReadCheckBox.Checked;
-  end;
+  if (CurPageID = wpLicense) and WizardSilent then
+    WizardForm.LicenseAcceptedRadio.Checked := True;
 
   if (CurPageID = wpSelectTasks) and
      (WizardForm.TasksList.Items.Count > 0) then
@@ -223,17 +270,6 @@ begin
 
   if InstallImage.Visible then
     PositionInstallImage;
-end;
-
-
-function NextButtonClick(CurPageID: Integer): Boolean;
-begin
-  Result := True;
-  if (not WizardSilent) and (CurPageID = wpInfoBefore) and (not PrivacyReadCheckBox.Checked) then
-  begin
-    MsgBox('Per proseguire, conferma di avere letto l''informativa sulla privacy.', mbInformation, MB_OK);
-    Result := False;
-  end;
 end;
 
 procedure DeinitializeSetup;

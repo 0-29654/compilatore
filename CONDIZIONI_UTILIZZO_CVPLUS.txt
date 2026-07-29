@@ -1,0 +1,35 @@
+﻿CONDIZIONI DI UTILIZZO
+CV+ COMPILATORE ALUNNO
+
+Ultimo aggiornamento: 29 luglio 2026
+
+1. TITOLARITÀ E COPYRIGHT
+CV+ Compilatore Alunno, il codice, le interfacce, le immagini e la documentazione sono protetti dalla normativa sul diritto d'autore.
+
+Copyright © 2026 Alessandro Barazzuol. Tutti i diritti riservati.
+
+Salvo quanto consentito dalla legge o autorizzato per iscritto dall'autore, non è consentito copiare, modificare, vendere, ridistribuire, pubblicare, concedere in licenza, decompilare o effettuare reverse engineering del software.
+
+2. USO CONSENTITO
+Il programma è destinato ad attività didattiche e formative autorizzate. Non deve essere utilizzato per finalità illecite, per accedere senza autorizzazione a sistemi o account, per diffondere codice dannoso, per aggirare controlli di sicurezza o per copiare elaborati altrui.
+
+3. FUNZIONAMENTO DIDATTICO
+Le descrizioni degli errori, i suggerimenti e le eventuali correzioni automatiche hanno finalità didattica e possono contenere inesattezze. La valutazione finale spetta al docente. L'utente deve controllare il codice, l'output e i file prima della consegna.
+
+4. GOOGLE DRIVE
+La funzione Google Drive è facoltativa. L'utente sceglie l'account e autorizza l'accesso tramite Google OAuth. I servizi Google sono soggetti alle condizioni e alle informative di Google. L'utente è responsabile della correttezza dell'account scelto e dei file caricati.
+
+5. ASSENZA DI GARANZIE
+Il software è fornito “così com'è”. Non è garantito un funzionamento continuo, privo di errori o compatibile con ogni dispositivo, rete o configurazione. Non è garantito che il programma individui ogni errore, impedisca ogni perdita di dati o assicuri la consegna degli elaborati.
+
+6. RESPONSABILITÀ
+Nei limiti consentiti dalla legge, l'autore non risponde di perdite di dati, mancate consegne, interruzioni, incompatibilità, risultati errati o conseguenze derivanti da uso improprio del software. Restano ferme le responsabilità che non possono essere escluse dalla normativa applicabile.
+
+7. COPIE DI SICUREZZA E ACCOUNT
+L'utente deve conservare una copia dei propri elaborati, proteggere le credenziali personali e chiudere correttamente il programma sui computer condivisi.
+
+8. AGGIORNAMENTI
+Le condizioni possono essere aggiornate in caso di modifiche al programma, ai servizi collegati o alla normativa. La versione mostrata nell'installer è quella applicabile alla versione installata.
+
+9. ACCETTAZIONE
+Per installare e utilizzare il software è necessario accettare queste Condizioni di utilizzo. Chi non le accetta deve interrompere l'installazione.

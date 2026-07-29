@@ -1,0 +1,39 @@
+﻿INFORMATIVA SULLA PRIVACY
+CV+ COMPILATORE ALUNNO
+
+Ultimo aggiornamento: 29 luglio 2026
+
+1. SCOPO DEL DOCUMENTO
+Questa informativa descrive in modo semplice come CV+ Compilatore Alunno utilizza i dati necessari al funzionamento del programma. Il software è progettato secondo principi di minimizzazione, limitazione delle finalità e protezione dei dati.
+
+2. DATI UTILIZZATI DAL PROGRAMMA
+Nell'ambito delle attività didattiche, il programma può utilizzare i dati inseriti dall'utente o forniti dal docente, tra cui nome e cognome, numero di registro, classe, tipologia e numero dell'esercizio, codice sorgente, output della compilazione, messaggi di errore e dati tecnici di collegamento necessari alla comunicazione con il server del docente.
+
+3. GOOGLE DRIVE E ACCOUNT GOOGLE
+La funzione Google Drive è facoltativa e viene attivata esclusivamente quando l'utente preme il relativo pulsante. L'accesso avviene mediante Google OAuth nella finestra del browser. CV+ non vede, non riceve e non memorizza la password dell'account Google.
+
+I file scelti dall'utente vengono salvati direttamente nel Google Drive dell'account selezionato, nella cartella “CV+ Compilatore Alunno”. Il programma non conserva una copia degli elaborati su server dello sviluppatore. Eventuali dati inseriti nell'intestazione del file, come nome, classe e numero di registro, restano all'interno del file salvato dall'utente.
+
+Alla chiusura normale del programma, CV+ tenta di revocare l'autorizzazione OAuth della sessione ed elimina le credenziali locali utilizzate dall'applicazione. Alla successiva sessione può essere richiesta una nuova autorizzazione. L'account può continuare a risultare aperto nel browser, ma ciò non significa che CV+ conservi l'accesso.
+
+4. CONSERVAZIONE E TRASMISSIONE
+CV+ non utilizza i dati per pubblicità, profilazione, vendita o finalità commerciali. I dati vengono trattati solo per le funzioni didattiche richieste: compilazione, visualizzazione dell'output, invio al docente e salvataggio facoltativo su Google Drive.
+
+Le comunicazioni con il server del docente dipendono dalla rete scolastica e dalle impostazioni adottate dall'Istituto. Gli elaborati e i registri eventualmente ricevuti dal docente devono essere gestiti secondo le regole e le informative dell'Istituto scolastico.
+
+5. SERVIZI DI TERZE PARTI
+Quando viene utilizzato Google Drive, si applicano anche le condizioni e l'informativa privacy di Google. CV+ richiede soltanto le autorizzazioni necessarie alla funzione selezionata.
+
+6. SICUREZZA E LIMITI
+Il programma adotta misure tecniche per ridurre la conservazione delle credenziali e limitare il trattamento dei dati. Nessun software può garantire l'assenza assoluta di rischi; l'utente deve proteggere il proprio account, il dispositivo e i file, e deve chiudere correttamente il programma al termine dell'utilizzo.
+
+7. DATI DA NON INSERIRE
+Non devono essere inseriti password, documenti di identità, dati sanitari, dati finanziari o altre informazioni non necessarie all'attività didattica.
+
+8. TITOLARE E CONTESTO SCOLASTICO
+Per i trattamenti effettuati nell'ambito delle attività scolastiche, restano applicabili l'informativa privacy, le regole organizzative e le indicazioni del titolare del trattamento e del Responsabile della protezione dei dati (RPD/DPO) dell'Istituto.
+
+9. PRESA VISIONE
+La conferma richiesta durante l'installazione attesta che l'utente ha letto questa informativa. L'uso della funzione Google Drive resta facoltativo e l'autorizzazione viene richiesta separatamente da Google.
+
+Copyright © 2026 Alessandro Barazzuol.
