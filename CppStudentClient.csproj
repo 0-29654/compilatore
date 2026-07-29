@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -22,7 +22,11 @@
     <Compile Remove="backup_*\**\*.cs" />
     <Compile Remove="COMPILATORE_*\**\*.cs" />
     <Compile Remove="__pycache__\**\*.cs" />
+    <Compile Remove="CVPlus.Mac\**\*.cs" />
+    <Compile Remove="macos\**\*.cs" />
     <None Remove="backup_*\**\*" />
     <None Remove="COMPILATORE_*\**\*" />
+    <None Remove="CVPlus.Mac\**\*" />
+    <None Remove="macos\**\*" />
   </ItemGroup>
 </Project>

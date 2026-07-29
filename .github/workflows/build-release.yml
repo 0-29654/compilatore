@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-release:
     runs-on: windows-latest
@@ -38,6 +42,14 @@ jobs:
           Get-ChildItem . -Directory |
             Where-Object { $_.Name -like 'backup_*' -or $_.Name -like 'COMPILATORE_*' } |
             Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+          # Questa repository deve compilare esclusivamente il progetto Windows.
+          Remove-Item .\CVPlus.Mac -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item .\macos -Recurse -Force -ErrorAction SilentlyContinue
+
+          if (-not (Test-Path .\CppStudentClient.csproj)) {
+            throw 'CppStudentClient.csproj non trovato nella radice della repository.'
+          }
 
           Remove-Item .\publish -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force .\publish\compiler\ucrt64 | Out-Null
@@ -208,6 +220,13 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $verify 'verify.exe'))) {
             throw 'Test C++17 dopo installazione fallito'
           }
+
+      - name: Pubblica setup come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CVPlus-Windows-Setup
+          path: installer/CppStudentClient_Setup.exe
+          if-no-files-found: error
 
       - name: Crea GitHub Release
         shell: pwsh
