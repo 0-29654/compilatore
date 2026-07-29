@@ -1,18 +1,19 @@
-PATCH INSTALLER MODERNO INNO SETUP - SOLO WINDOWS
+PATCH CORRETTA – INSTALLER MODERNO WINDOWS
 
-Modifiche:
-- schermata iniziale più moderna con logo grande;
-- finestra di preparazione compatta, centrata e con angoli arrotondati;
-- barra animata con timer nativo di Windows;
-- stile Segoe UI, pulsanti più larghi e layout pulito;
-- immagine grande durante l'installazione mantenuta;
-- nessuna modifica al programma C# o al workflow Windows.
+Corregge l'errore GitHub Actions:
+  File 'Assets\\app.ico' cannot be found
 
-Applicazione sul Mac:
-1. Estrai lo ZIP.
+La patch ripristina tutti i file grafici richiesti sia dal progetto .NET sia da Inno Setup:
+- Assets/app.ico
+- Assets/wizard.bmp
+- Assets/wizard_small.bmp
+- Assets/installing_a.bmp
+- Assets/A.png
+- Assets/installer_header.bmp
+- Assets/installer_splash.bmp
+
+Uso su macOS:
+1. Estrarre lo ZIP.
 2. Clic destro su APPLICA_PATCH_INNO_MAC.command > Apri.
-3. Trascina la cartella locale della repository nel Terminale e premi Invio.
-4. Esegui nella repository:
-   git add -A
-   git commit -m "Installer Inno moderno con barra animata"
-   git push
+3. Trascinare la cartella principale della repository nel Terminale e premere Invio.
+4. Eseguire git add -A, commit e push.
