@@ -31,6 +31,7 @@ internal static class GoogleDriveExerciseService
     private const string AppFolderName = "CV+ Compilatore Alunno";
     private const string OAuthFileName = "google_oauth_client.json";
     private static UserCredential? _activeCredential;
+    private static readonly SemaphoreSlim DisconnectGate = new(1, 1);
 
     public static string DriveFolderDisplayName => AppFolderName;
 
@@ -104,7 +105,36 @@ internal static class GoogleDriveExerciseService
             throw new IOException(progress.Exception?.Message ?? "Il caricamento su Google Drive non è stato completato.");
     }
 
-    public static void ClearLocalAuthorizationCache()
+    public static async Task DisconnectAsync()
+    {
+        await DisconnectGate.WaitAsync();
+        try
+        {
+            UserCredential? credential = _activeCredential;
+            _activeCredential = null;
+
+            if (credential is not null)
+            {
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
+                {
+                    await credential.RevokeTokenAsync(timeout.Token);
+                }
+                catch
+                {
+                    // La revoca remota è best-effort: la cache locale viene comunque eliminata.
+                }
+            }
+
+            DeleteLocalTokenCache();
+        }
+        finally
+        {
+            DisconnectGate.Release();
+        }
+    }
+
+    public static void DeleteLocalTokenCache()
     {
         string tokenDirectory = GetTokenDirectory();
         try
@@ -114,25 +144,7 @@ internal static class GoogleDriveExerciseService
         }
         catch
         {
-            // La pulizia verrà ritentata alla chiusura o al prossimo avvio.
-        }
-    }
-
-    public static async Task DisconnectAsync()
-    {
-        try
-        {
-            if (_activeCredential is not null)
-            {
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                try { await _activeCredential.RevokeTokenAsync(timeout.Token); }
-                catch { }
-            }
-        }
-        finally
-        {
-            _activeCredential = null;
-            ClearLocalAuthorizationCache();
+            // Non bloccare l'avvio o la chiusura dell'applicazione.
         }
     }
 

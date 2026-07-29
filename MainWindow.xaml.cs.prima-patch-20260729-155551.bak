@@ -1,4 +1,4 @@
-using ICSharpCode.AvalonEdit;
+﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.CodeCompletion;
@@ -30,6 +30,8 @@ namespace CppStudentClient;
 
 public partial class MainWindow : Window
 {
+    private static int _googleDriveExitCleanupStarted;
+
     private readonly HttpClient _http = new(new HttpClientHandler { UseProxy = false, Proxy = null })
     {
         Timeout = TimeSpan.FromSeconds(20)
@@ -60,8 +62,6 @@ public partial class MainWindow : Window
     private IHighlightingDefinition? _cppHighlighting;
     private bool _editorAssistanceEnabled;
     private readonly Dictionary<TextEditor, CompletionWindow> _completionWindows = new();
-    private CancellationTokenSource? _googleDriveOperationCts;
-    private bool _googleDriveOperationRunning;
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
 
@@ -72,8 +72,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        // Privacy: ogni nuova sessione parte senza credenziali Google OAuth locali residue.
-        GoogleDriveExerciseService.ClearLocalAuthorizationCache();
+
+        // Privacy: nessuna autorizzazione Google persistente tra due sessioni.
+        GoogleDriveExerciseService.DeleteLocalTokenCache();
+        Application.Current.Exit += OnApplicationExitDisconnectGoogleDrive;
         // Sicurezza predefinita: la gestione dei file .h resta bloccata finché il server non la abilita.
         ApplyHeaderManagementPermission(false);
         ConfigureCppHighlighting();
@@ -2637,6 +2639,15 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         ActivateExercise(GetTaskType(), next);
         SaveSettings();
 
+        // Disconnette Google Drive e cancella i token locali alla chiusura.
+        try
+        {
+            GoogleDriveExerciseService.DisconnectAsync().GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // Non bloccare la chiusura in caso di errore di rete.
+        }
     }
 
     private void TaskIdentity_LostFocus(object sender, RoutedEventArgs e)
@@ -2759,7 +2770,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
         AddGuideSection(content, "SALVATAGGIO E INVIO");
         AddGuideItem(content, "Invia al docente", "#0E8FE8", "Invia codice, dati dell'alunno, esercizio e risultati al server del docente.");
-        AddGuideItem(content, "Google Drive", "#FFFFFF", "Disponibile solo in modalità esercitazione. Se esiste soltanto main.cpp salva un file .cpp con il nome scelto e aggiunge in testa i dati dell’alunno, data, ora e compilatore. Se esiste anche un file .h salva uno ZIP con il nome scelto. Il file si trova in Il mio Drive → CV+ Compilatore Alunno. Alla chiusura di CV+ l’account viene disconnesso.", "#1F2937");
+        AddGuideItem(content, "Google Drive", "#FFFFFF", "Disponibile solo in modalità esercitazione. Salva main.cpp come .cpp oppure, se è presente un header, crea uno ZIP. Il file si trova in Il mio Drive → CV+ Compilatore Alunno. Alla chiusura CV+ revoca il token dell’app e cancella la cache locale. Il browser può ricordare l’account Google, ma CV+ richiederà una nuova autorizzazione al successivo utilizzo.", "#1F2937");
         AddGuideItem(content, "Test server", "#5B4FE8", "Controlla se il server docente indicato nel campo IP e porta è raggiungibile.");
 
         AddGuideSection(content, "DATI DELL'ESERCIZIO");
@@ -2859,50 +2870,47 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         panel.Children.Add(row);
     }
 
+
+    // Gestione sicura dell'autorizzazione Google: il browser può essere chiuso
+    // senza completare il redirect OAuth. Il pulsante resta utilizzabile per annullare.
+    private CancellationTokenSource? _googleDriveAuthorizationCts;
+    private bool _googleDriveOperationInProgress;
+
     private async void GoogleDrive_Click(object sender, RoutedEventArgs e)
     {
+        // In verifica il salvataggio su Drive deve rimanere vietato.
         if (_verificationMode)
         {
             MessageBox.Show(
-                "Il salvataggio su Google Drive è disponibile soltanto in modalità esercitazione.",
-                "Google Drive disabilitato",
+                "Google Drive è disponibile soltanto in modalità ESERCITAZIONE.",
+                "Google Drive",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;
         }
 
-        // Se l'autorizzazione è già in corso, il pulsante funziona come ANNULLA.
-        // Questo evita che resti bloccato quando l'utente chiude la finestra del browser.
-        if (_googleDriveOperationRunning)
+        // Se il browser è stato chiuso senza autorizzare, il flusso OAuth può essere
+        // ancora in attesa del redirect. Un secondo clic annulla subito l'operazione.
+        if (_googleDriveOperationInProgress)
         {
-            GoogleDriveButton.Content = "Annullamento...";
-            GoogleDriveButton.IsEnabled = false;
-            _googleDriveOperationCts?.Cancel();
+            _googleDriveAuthorizationCts?.Cancel();
+            StatusText.Text = "Accesso a Google annullato";
+            GoogleDriveButton.Content = "Google Drive";
+            GoogleDriveButton.IsEnabled = true;
             return;
         }
 
-        bool hasHeader = !string.IsNullOrWhiteSpace(HeaderEditor.Text);
-        string defaultName = hasHeader
-            ? $"{GetTaskType()}-Esercizio-{GetExerciseNumber()}"
-            : $"{GetTaskType()}-Esercizio-{GetExerciseNumber()}.cpp";
-        string requestedName = Microsoft.VisualBasic.Interaction.InputBox(
-            hasHeader
-                ? "Scegli il nome dell'archivio ZIP da salvare su Google Drive."
-                : "Scegli il nome del file C++ da salvare su Google Drive.",
-            hasHeader ? "Nome archivio Google Drive" : "Nome file C++ Google Drive",
-            defaultName);
+        _googleDriveOperationInProgress = true;
+        _googleDriveAuthorizationCts?.Dispose();
+        _googleDriveAuthorizationCts = new CancellationTokenSource();
 
-        if (string.IsNullOrWhiteSpace(requestedName))
-            return;
-
-        _googleDriveOperationCts?.Dispose();
-        _googleDriveOperationCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-        CancellationToken cancellationToken = _googleDriveOperationCts.Token;
-        _googleDriveOperationRunning = true;
+        // Evita che una finestra browser chiusa lasci il programma bloccato per sempre.
+        // Dopo due minuti l'autorizzazione viene annullata automaticamente.
+        _googleDriveAuthorizationCts.CancelAfter(TimeSpan.FromMinutes(2));
 
         try
         {
-            // Il pulsante resta premibile: un secondo clic annulla l'accesso rimasto in attesa.
+            // Il pulsante resta attivo: durante l'attesa serve come comando "Annulla".
             GoogleDriveButton.IsEnabled = true;
             GoogleDriveButton.Content = "Annulla accesso Google";
             StatusText.Text = "Apertura autorizzazione Google Drive...";
@@ -2918,25 +2926,28 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
                 GetCurrentHeaderFileName(),
                 _compileOutput,
                 _programOutput,
-                DateTime.Now,
-                requestedName.Trim(),
-                "GCC g++ - standard C++17");
+                DateTime.Now);
 
-            GoogleDriveSaveResult result = await GoogleDriveExerciseService.SaveExerciseAsync(snapshot, cancellationToken);
+            GoogleDriveSaveResult result = await GoogleDriveExerciseService.SaveExerciseAsync(
+                snapshot,
+                _googleDriveAuthorizationCts.Token);
+
             StatusText.Text = "Esercizio salvato su Google Drive";
             GoogleDriveButton.Content = "Salvato su Drive ✓";
 
             MessageBox.Show(
-                $"Esercizio salvato nel Google Drive dell'account autorizzato.\n\n" +
-                $"Cartella: Il mio Drive → {GoogleDriveExerciseService.DriveFolderDisplayName}\n" +
-                $"File: {result.FileName}",
+                $"Esercizio salvato nel Google Drive dell'account autorizzato.\n\nFile: {result.FileName}",
                 "Google Drive", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Accesso a Google annullato";
-            // Elimina anche eventuali dati parziali creati durante il flusso OAuth.
-            GoogleDriveExerciseService.ClearLocalAuthorizationCache();
+            StatusText.Text = "Accesso a Google annullato o non completato";
+            MessageBox.Show(
+                "L'accesso a Google Drive non è stato completato.\n\n" +
+                "La finestra del browser potrebbe essere stata chiusa. Il pulsante è stato riattivato e puoi riprovare.",
+                "Accesso Google annullato",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
         catch (FileNotFoundException ex)
         {
@@ -2955,9 +2966,11 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         }
         finally
         {
-            _googleDriveOperationRunning = false;
-            _googleDriveOperationCts?.Dispose();
-            _googleDriveOperationCts = null;
+            _googleDriveOperationInProgress = false;
+            _googleDriveAuthorizationCts?.Dispose();
+            _googleDriveAuthorizationCts = null;
+
+            // Rispetta la modalità corrente: attivo solo in esercitazione.
             GoogleDriveButton.IsEnabled = !_verificationMode;
             if (GoogleDriveButton.Content?.ToString()?.Contains("✓") != true)
                 GoogleDriveButton.Content = "Google Drive";
@@ -3012,14 +3025,6 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             Activate();
             return;
         }
-
-        // Annulla subito un eventuale login/upload Google ancora in corso.
-        try { _googleDriveOperationCts?.Cancel(); } catch { }
-
-        // Privacy: revoca l'autorizzazione dell'app e cancella sempre i token locali.
-        // Un eventuale errore di rete non deve impedire la chiusura del programma.
-        try { GoogleDriveExerciseService.DisconnectAsync().GetAwaiter().GetResult(); } catch { }
-
         NotifyServerClientClosed();
         SaveCurrentExercise();
         SaveSettings();
@@ -3136,5 +3141,21 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         public string ProgramOutput { get; set; } = "";
         public string HeaderFileName { get; set; } = "esercizio.h";
         public string HeaderCode { get; set; } = "";
+    }
+
+
+    private static void OnApplicationExitDisconnectGoogleDrive(object? sender, ExitEventArgs e)
+    {
+        if (Interlocked.Exchange(ref _googleDriveExitCleanupStarted, 1) != 0)
+            return;
+
+        try
+        {
+            GoogleDriveExerciseService.DisconnectAsync().GetAwaiter().GetResult();
+        }
+        catch
+        {
+            GoogleDriveExerciseService.DeleteLocalTokenCache();
+        }
     }
 }
