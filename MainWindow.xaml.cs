@@ -3,6 +3,7 @@ using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.CodeCompletion;
 using ICSharpCode.AvalonEdit.Document;
+using ICSharpCode.AvalonEdit.Editing;
 using System.Windows.Media.Imaging;
 using System;
 using System.Collections.Generic;
@@ -1573,7 +1574,7 @@ public partial class MainWindow : Window
         public object Content => Text;
         public object Description { get; }
         public double Priority => 0;
-        public void Complete(TextArea textArea, ISegment completionSegment, EventArgs insertionRequestEventArgs)
+        public void Complete(ICSharpCode.AvalonEdit.Editing.TextArea textArea, ISegment completionSegment, EventArgs insertionRequestEventArgs)
         {
             string indent = new string(textArea.Document.GetText(textArea.Document.GetLineByOffset(completionSegment.Offset).Offset,
                 completionSegment.Offset - textArea.Document.GetLineByOffset(completionSegment.Offset).Offset).TakeWhile(char.IsWhiteSpace).ToArray());
