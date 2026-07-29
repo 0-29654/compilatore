@@ -1641,6 +1641,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         ShowInTaskbar = false;
         UpdateButton.IsEnabled = false;
         GuideButton.IsEnabled = false;
+        GoogleDriveButton.IsEnabled = false;
+        GoogleDriveButton.ToolTip = "Google Drive è disabilitato in modalità verifica.";
         GuideButton.ToolTip = "La guida è disponibile soltanto in modalità esercitazione.";
         StatusText.Text = "Modalità verifica attiva";
         Activate();
@@ -1662,6 +1664,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         ShowInTaskbar = true;
         UpdateButton.IsEnabled = true;
         GuideButton.IsEnabled = true;
+        GoogleDriveButton.IsEnabled = true;
+        GoogleDriveButton.ToolTip = "Salva l'esercizio nel tuo Google Drive";
         GuideButton.ToolTip = "Apri la guida visuale del compilatore";
         Activate();
     }
@@ -2628,6 +2632,16 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         ExerciseBox.Text = next.ToString();
         ActivateExercise(GetTaskType(), next);
         SaveSettings();
+
+        // Disconnette Google Drive e cancella i token locali alla chiusura.
+        try
+        {
+            GoogleDriveExerciseService.DisconnectAsync().GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // Non bloccare la chiusura in caso di errore di rete.
+        }
     }
 
     private void TaskIdentity_LostFocus(object sender, RoutedEventArgs e)
@@ -2750,7 +2764,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
         AddGuideSection(content, "SALVATAGGIO E INVIO");
         AddGuideItem(content, "Invia al docente", "#0E8FE8", "Invia codice, dati dell'alunno, esercizio e risultati al server del docente.");
-        AddGuideItem(content, "Google Drive", "#FFFFFF", "Apre l'accesso Google e salva uno ZIP dell'esercizio nel Drive dell'account autorizzato.", "#1F2937");
+        AddGuideItem(content, "Google Drive", "#FFFFFF", "Disponibile solo in modalità esercitazione. Se esiste soltanto main.cpp salva un file .cpp con il nome scelto e aggiunge in testa i dati dell’alunno, data, ora e compilatore. Se esiste anche un file .h salva uno ZIP con il nome scelto. Il file si trova in Il mio Drive → CV+ Compilatore Alunno. Alla chiusura di CV+ l’account viene disconnesso.", "#1F2937");
         AddGuideItem(content, "Test server", "#5B4FE8", "Controlla se il server docente indicato nel campo IP e porta è raggiungibile.");
 
         AddGuideSection(content, "DATI DELL'ESERCIZIO");
@@ -2852,7 +2866,31 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private async void GoogleDrive_Click(object sender, RoutedEventArgs e)
     {
+        if (_verificationMode)
+        {
+            MessageBox.Show(
+                "Il salvataggio su Google Drive è disponibile soltanto in modalità esercitazione.",
+                "Google Drive disabilitato",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
         if (!GoogleDriveButton.IsEnabled)
+            return;
+
+        bool hasHeader = !string.IsNullOrWhiteSpace(HeaderEditor.Text);
+        string defaultName = hasHeader
+            ? $"{GetTaskType()}-Esercizio-{GetExerciseNumber()}"
+            : $"{GetTaskType()}-Esercizio-{GetExerciseNumber()}.cpp";
+        string requestedName = Microsoft.VisualBasic.Interaction.InputBox(
+            hasHeader
+                ? "Scegli il nome dell'archivio ZIP da salvare su Google Drive."
+                : "Scegli il nome del file C++ da salvare su Google Drive.",
+            hasHeader ? "Nome archivio Google Drive" : "Nome file C++ Google Drive",
+            defaultName);
+
+        if (string.IsNullOrWhiteSpace(requestedName))
             return;
 
         try
@@ -2872,14 +2910,18 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
                 GetCurrentHeaderFileName(),
                 _compileOutput,
                 _programOutput,
-                DateTime.Now);
+                DateTime.Now,
+                requestedName.Trim(),
+                "GCC g++ - standard C++17");
 
             GoogleDriveSaveResult result = await GoogleDriveExerciseService.SaveExerciseAsync(snapshot);
             StatusText.Text = "Esercizio salvato su Google Drive";
             GoogleDriveButton.Content = "Salvato su Drive ✓";
 
             MessageBox.Show(
-                $"Esercizio salvato nel Google Drive dell'account autorizzato.\n\nFile: {result.FileName}",
+                $"Esercizio salvato nel Google Drive dell'account autorizzato.\n\n" +
+                $"Cartella: Il mio Drive → {GoogleDriveExerciseService.DriveFolderDisplayName}\n" +
+                $"File: {result.FileName}",
                 "Google Drive", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (FileNotFoundException ex)
@@ -2899,7 +2941,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         }
         finally
         {
-            GoogleDriveButton.IsEnabled = true;
+            GoogleDriveButton.IsEnabled = !_verificationMode;
             if (GoogleDriveButton.Content?.ToString()?.Contains("✓") != true)
                 GoogleDriveButton.Content = "Google Drive";
         }
