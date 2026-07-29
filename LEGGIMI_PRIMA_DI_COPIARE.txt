@@ -1,0 +1,23 @@
+PATCH CORRETTA - COPIARE IL CONTENUTO NELLA RADICE DELLA REPOSITORY
+
+Questa patch è volutamente senza cartella esterna.
+Quando apri lo ZIP devi vedere subito:
+  .github
+  macos
+  setup_student.iss
+
+NON creare una sottocartella nella repository.
+La cartella .github deve trovarsi direttamente nella radice, allo stesso livello di CppStudentClient.csproj.
+
+1. Copia tutti i file nella radice della repository e sostituisci quelli esistenti.
+2. Per il Mac, inserisci il vero file .dmg dentro macos/input e rimuovi INSERISCI_QUI_IL_DMG.txt.
+3. Commit e push sul ramo main.
+
+RISULTATO:
+- build-release.yml parte automaticamente a ogni push e ricostruisce Windows.
+- build-macos-arm64.yml parte automaticamente quando cambia qualcosa in macos/.
+- Il pulsante Run workflow rimane disponibile solo come alternativa manuale.
+
+IMPORTANTE MAC:
+Una firma ad-hoc non garantisce l'apertura dopo un download Internet.
+Per evitare definitivamente “Sposta nel Cestino” servono certificato Developer ID e notarizzazione Apple.
