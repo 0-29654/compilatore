@@ -1,0 +1,14 @@
+PATCH WORKFLOW UNICO WINDOWS + MAC
+
+Ora ogni push su main o master avvia un solo workflow chiamato:
+Build unico Windows e macOS
+
+Il workflow esegue tre fasi:
+1. costruisce e verifica il Setup.exe Windows;
+2. ripara e ricrea il DMG macOS;
+3. crea una sola Release con EXE, DMG e ZIP contenente le cartelle Windows e Mac.
+
+IMPORTANTE: in macos/input deve essere presente un vero file .dmg sorgente.
+Se manca, la parte Mac fallisce e la Release unica non viene pubblicata.
+
+Il vecchio workflow separato è stato rinominato in repair-macos-dmg.yml.disabled, così non parte più due volte.
