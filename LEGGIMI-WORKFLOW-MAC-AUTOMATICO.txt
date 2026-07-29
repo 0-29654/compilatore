@@ -1,0 +1,15 @@
+CORREZIONE WORKFLOW MAC AUTOMATICO
+
+Il workflow precedente aveva un filtro paths: partiva automaticamente solo quando
+venivano modificati file dentro macos/input, macos/scripts oppure il workflow stesso.
+Per gli altri commit era necessario premere manualmente Run workflow.
+
+Questa patch rimuove il filtro paths.
+Ora il workflow parte automaticamente dopo ogni push sui rami main o master.
+Resta disponibile anche il pulsante Run workflow per l'avvio manuale.
+
+IMPORTANTE:
+- in macos/input deve essere presente almeno un file .dmg tracciato da Git;
+- un file .gitkeep da solo non basta;
+- se il DMG supera il limite di dimensione di GitHub, va gestito tramite Release,
+  Git LFS oppure ricostruito direttamente dal progetto macOS.
