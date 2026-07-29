@@ -58,6 +58,8 @@ var
   PreparationProgress: TNewProgressBar;
   PreparationText: TNewStaticText;
   InstallImage: TBitmapImage;
+  PreparationTimer: TTimer;
+  PreparationDirection: Integer;
 
 const
   PBM_SETMARQUEE = $040A;
@@ -73,6 +75,21 @@ function SetWindowLong(hWnd: HWND; nIndex: Integer; dwNewLong: Longint): Longint
   external 'SetWindowLongW@user32.dll stdcall';
 function SetLayeredWindowAttributes(hWnd: HWND; crKey: Cardinal; bAlpha: Byte; dwFlags: Cardinal): Boolean;
   external 'SetLayeredWindowAttributes@user32.dll stdcall';
+
+
+procedure PreparationTimerTick(Sender: TObject);
+begin
+  if PreparationProgress = nil then
+    exit;
+
+  PreparationProgress.Position :=
+    PreparationProgress.Position + (PreparationDirection * 2);
+
+  if PreparationProgress.Position >= 98 then
+    PreparationDirection := -1
+  else if PreparationProgress.Position <= 2 then
+    PreparationDirection := 1;
+end;
 
 procedure ShowPreparationWindow;
 var
@@ -112,20 +129,33 @@ begin
   PreparationProgress.Top := ScaleY(31);
   PreparationProgress.Width := ScaleX(330);
   PreparationProgress.Height := ScaleY(18);
-  PreparationProgress.Style := npbstMarquee;
+  PreparationProgress.Min := 0;
+  PreparationProgress.Max := 100;
+  PreparationProgress.Position := 3;
+  PreparationDirection := 1;
+
+  PreparationTimer := TTimer.Create(PreparationForm);
+  PreparationTimer.Interval := 35;
+  PreparationTimer.OnTimer := @PreparationTimerTick;
+  PreparationTimer.Enabled := True;
 
   PreparationForm.Show;
   PreparationForm.BringToFront;
   PreparationForm.Update;
 
-  { Avvia esplicitamente il movimento avanti/indietro della barra. }
-  SendMessage(PreparationProgress.Handle, PBM_SETMARQUEE, 1, 24);
 end;
 
 procedure HidePreparationWindow;
 begin
   if PreparationForm <> nil then
   begin
+    if PreparationTimer <> nil then
+    begin
+      PreparationTimer.Enabled := False;
+      PreparationTimer.Free;
+      PreparationTimer := nil;
+    end;
+
     PreparationForm.Hide;
     PreparationForm.Free;
     PreparationForm := nil;

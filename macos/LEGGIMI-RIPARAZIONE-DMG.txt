@@ -1,0 +1,18 @@
+PATCH RIPARAZIONE DMG macOS
+
+Questa patch corregge i casi in cui macOS mostra “L'app è danneggiata” oppure propone “Sposta nel Cestino” a causa di:
+- attributi di quarantena incorporati nel bundle;
+- firma non valida o alterata;
+- permessi di esecuzione mancanti;
+- metadati AppleDouble/DS_Store nel pacchetto;
+- DMG creato o ricompresso su Windows.
+
+COME USARLA
+1. Copia il DMG difettoso dentro macos/input/.
+2. Fai commit e push.
+3. Apri GitHub > Actions > “Ripara e verifica DMG macOS”.
+4. Al termine trovi il DMG negli Artifacts e in una nuova Release.
+
+IMPORTANTE
+La patch ripara e riconfeziona un'app macOS già esistente. Non converte il progetto WPF Windows in un'app Mac.
+Per apertura con doppio clic senza alcun avviso su tutti i Mac serve un certificato Apple Developer ID e la notarizzazione Apple. Senza certificato, dopo la riparazione può essere necessario fare clic destro sull'app > Apri una sola volta.

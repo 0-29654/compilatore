@@ -1,0 +1,10 @@
+PATCH 29/07/2026 - BARRA PREPARAZIONE E RELEASE
+
+1. La finestrella di preparazione resta piccola e centrata come nello screenshot.
+2. La barra ora usa un timer reale e si muove avanti/indietro mentre viene preparata la pagina delle condizioni d'uso.
+3. Il workflow GitHub continua a creare automaticamente la build Windows a ogni push su main/master.
+4. La Release espone:
+   - CVPlus-Compilatore-Alunno-Windows-Setup.exe
+   - CVPlus-Windows-1.9.5.zip
+   - CVPlus-Download-Windows-Mac-1.9.5.zip con cartelle Windows e Mac.
+5. ATTENZIONE: questo sorgente è WPF net8.0-windows. Non contiene il progetto macOS e quindi non può ricostruire realmente un DMG. La cartella Mac contiene un file esplicativo. Per ottenere il DMG automatico serve integrare il progetto Mac separato nel repository o in un workflow dedicato.
