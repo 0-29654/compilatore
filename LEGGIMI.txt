@@ -1,19 +1,16 @@
-PATCH CORRETTA – INSTALLER MODERNO WINDOWS
+PATCH CORRETTA INSTALLER INNO MODERNO - SOLO WINDOWS
 
-Corregge l'errore GitHub Actions:
-  File 'Assets\\app.ico' cannot be found
+Correzione applicata:
+- rimossa la riga non supportata "WizardForm.OuterNotebook.Color"
+- risolto l'errore Inno Setup: Unknown identifier 'COLOR'
+- mantenuti logo, immagini, finestra moderna e barra animata
 
-La patch ripristina tutti i file grafici richiesti sia dal progetto .NET sia da Inno Setup:
-- Assets/app.ico
-- Assets/wizard.bmp
-- Assets/wizard_small.bmp
-- Assets/installing_a.bmp
-- Assets/A.png
-- Assets/installer_header.bmp
-- Assets/installer_splash.bmp
-
-Uso su macOS:
-1. Estrarre lo ZIP.
-2. Clic destro su APPLICA_PATCH_INNO_MAC.command > Apri.
-3. Trascinare la cartella principale della repository nel Terminale e premere Invio.
-4. Eseguire git add -A, commit e push.
+APPLICAZIONE SU macOS:
+1. Estrai lo ZIP.
+2. Clic destro su APPLICA_PATCH_INNO_MAC.command -> Apri.
+3. Trascina nel Terminale la cartella locale della repository compilatore.
+4. Premi Invio.
+5. Esegui nella repository:
+   git add -A
+   git commit -m "Correzione proprietà Color installer Inno"
+   git push

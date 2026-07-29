@@ -181,7 +181,6 @@ begin
   WizardForm.Font.Name := 'Segoe UI';
   WizardForm.Font.Size := 10;
   WizardForm.InnerPage.Color := $00FFFFFF;
-  WizardForm.OuterNotebook.Color := $00FFFFFF;
   WizardForm.NextButton.Width := ScaleX(110);
   WizardForm.BackButton.Width := ScaleX(110);
   WizardForm.CancelButton.Width := ScaleX(110);
