@@ -25,6 +25,7 @@ internal sealed class CppLibraryManifest
     public List<string> Libraries { get; set; } = new();
     public List<string> LinkerOptions { get; set; } = new();
     public List<string> RuntimeFiles { get; set; } = new();
+    public List<string> GuideFiles { get; set; } = new();
     public List<CppLibraryCompletion> Completions { get; set; } = new();
 }
 
@@ -108,6 +109,61 @@ internal static class CppLibraryManager
         }
     }
 
+    public static InstalledCppLibrary InstallLooseLibrary(string libraryPath, IEnumerable<string> headerPaths, string? guidePath)
+    {
+        if (!File.Exists(libraryPath)) throw new FileNotFoundException("File libreria non trovato.", libraryPath);
+        string ext = Path.GetExtension(libraryPath).ToLowerInvariant();
+        if (ext == ".lib") throw new InvalidDataException("I file .lib di Microsoft Visual C++ non sono supportati direttamente. Usare una libreria MinGW .a oppure un pacchetto CV+.");
+        if (ext is not (".a" or ".dll")) throw new InvalidDataException("Selezionare una libreria statica .a oppure una DLL .dll.");
+        string[] headers = headerPaths.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (headers.Length == 0) throw new InvalidDataException("Selezionare almeno un file header .h o .hpp necessario per usare la libreria.");
+
+        string displayName = Path.GetFileNameWithoutExtension(libraryPath);
+        if (displayName.StartsWith("lib", StringComparison.OrdinalIgnoreCase)) displayName = displayName[3..];
+        string id = SafeId(displayName.Replace(".dll", "", StringComparison.OrdinalIgnoreCase));
+        string staging = Path.Combine(Path.GetTempPath(), "CVPlusLoose_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(staging);
+        try
+        {
+            string include = Path.Combine(staging, "include"); Directory.CreateDirectory(include);
+            foreach (string header in headers) File.Copy(header, Path.Combine(include, Path.GetFileName(header)), true);
+            var manifest = new CppLibraryManifest { Id=id, Name=displayName, Version="1.0.0", Description="Libreria importata da file locale", Type=ext==".dll"?"dynamic":"static", IncludePaths=new List<string>{"include"} };
+            string lib = Path.Combine(staging, "lib", "x64"); Directory.CreateDirectory(lib);
+            if (ext == ".a")
+            {
+                File.Copy(libraryPath, Path.Combine(lib, Path.GetFileName(libraryPath)), true);
+                string file = Path.GetFileNameWithoutExtension(libraryPath);
+                manifest.Libraries.Add(file.StartsWith("lib", StringComparison.OrdinalIgnoreCase) ? file[3..] : file);
+            }
+            else
+            {
+                string bin = Path.Combine(staging, "bin", "x64"); Directory.CreateDirectory(bin);
+                File.Copy(libraryPath, Path.Combine(bin, Path.GetFileName(libraryPath)), true);
+                string directory = Path.GetDirectoryName(libraryPath)!;
+                string stem = Path.GetFileNameWithoutExtension(libraryPath);
+                string[] candidates = { Path.Combine(directory, "lib" + stem + ".dll.a"), Path.Combine(directory, stem + ".dll.a"), Path.Combine(directory, "lib" + stem + ".a") };
+                string? import = candidates.FirstOrDefault(File.Exists);
+                if (import is null) throw new InvalidDataException("Per collegare la DLL serve anche la libreria di importazione MinGW (.dll.a) nella stessa cartella.");
+                File.Copy(import, Path.Combine(lib, Path.GetFileName(import)), true);
+                manifest.Libraries.Add(stem);
+                manifest.RuntimeFiles.Add("bin/x64/" + Path.GetFileName(libraryPath));
+            }
+            manifest.LibraryPaths.Add("lib/x64");
+            if (!string.IsNullOrWhiteSpace(guidePath) && File.Exists(guidePath))
+            {
+                string guides = Path.Combine(staging, "guides"); Directory.CreateDirectory(guides);
+                File.Copy(guidePath, Path.Combine(guides, Path.GetFileName(guidePath)), true);
+                manifest.GuideFiles.Add("guides/" + Path.GetFileName(guidePath));
+            }
+            File.WriteAllText(Path.Combine(staging, "manifest.json"), JsonSerializer.Serialize(manifest, JsonOptions), new UTF8Encoding(false));
+            string destination = Path.Combine(RootDirectory, SafeId(manifest.Id));
+            Directory.CreateDirectory(RootDirectory); if (Directory.Exists(destination)) Directory.Delete(destination, true);
+            CopyDirectory(staging, destination);
+            return new InstalledCppLibrary(manifest, destination);
+        }
+        finally { try { if (Directory.Exists(staging)) Directory.Delete(staging, true); } catch { } }
+    }
+
     public static void Uninstall(string id)
     {
         string destination = Path.Combine(RootDirectory, SafeId(id));
@@ -141,6 +197,17 @@ internal static class CppLibraryManager
             }
         }
         return string.Join(" ", args);
+    }
+
+    public static IReadOnlyList<string> GetGuideFiles(InstalledCppLibrary library)
+    {
+        var result = new List<string>();
+        foreach (string relative in library.Manifest.GuideFiles)
+        {
+            string path = ResolveInside(library.InstallDirectory, relative);
+            if (File.Exists(path) && Path.GetExtension(path).Equals(".pdf", StringComparison.OrdinalIgnoreCase)) result.Add(path);
+        }
+        return result;
     }
 
     public static void CopyRuntimeFiles(IEnumerable<InstalledCppLibrary> libraries, string outputDirectory)
@@ -283,7 +350,7 @@ internal static class CppLibraryManager
     {
         foreach (string relative in manifest.IncludePaths.Concat(manifest.LibraryPaths))
             _ = ResolveInside(root, relative);
-        foreach (string relative in manifest.RuntimeFiles)
+        foreach (string relative in manifest.RuntimeFiles.Concat(manifest.GuideFiles))
         {
             string path = ResolveInside(root, relative);
             if (!File.Exists(path)) throw new InvalidDataException($"File runtime mancante: {relative}");

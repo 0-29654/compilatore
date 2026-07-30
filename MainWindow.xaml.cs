@@ -1014,10 +1014,12 @@ public partial class MainWindow : Window
                 );
             }
 
+            IReadOnlyList<InstalledCppLibrary> installedLibraries = CppLibraryManager.LoadInstalled();
+            string libraryArguments = CppLibraryManager.BuildCompilerArguments(installedLibraries);
             string arguments =
                 $"-std=c++17 -Wall -Wextra -Wpedantic " +
                 $"-fdiagnostics-color=never -I\"{dir}\" -I\"{CppExtensionsIncludePath}\" " +
-                $"-o \"{exe}\" \"{cpp}\"";
+                $"-o \"{exe}\" \"{cpp}\" {libraryArguments}";
             var psi = new ProcessStartInfo(BundledCompilerPath, arguments)
             {
                 UseShellExecute = false,
@@ -1048,6 +1050,7 @@ public partial class MainWindow : Window
             if (!string.IsNullOrWhiteSpace(stdout)) parts.Add(stdout);
             string diagnostic = string.Join(Environment.NewLine + Environment.NewLine, parts);
             bool success = process.ExitCode == 0 && File.Exists(exe);
+            if (success) CppLibraryManager.CopyRuntimeFiles(installedLibraries, dir);
 
             string resultText;
             if (success)
@@ -1529,7 +1532,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
         string prefix = GetCurrentWord(editor);
         if (prefix.Length < 2) return;
-        var matches = CppCompletions.Concat(GetInstalledExtensionCompletions()).Where(c => c.Trigger.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Take(24).ToList();
+        var matches = CppCompletions.Concat(GetInstalledExtensionCompletions()).Concat(GetInstalledLibraryCompletions()).Where(c => c.Trigger.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Take(24).ToList();
         if (matches.Count == 0) return;
 
         var window = new CompletionWindow(editor.TextArea) { StartOffset = editor.CaretOffset - prefix.Length };
@@ -1593,28 +1596,28 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
     }
 
 
-    private sealed record CppExtensionDefinition(string Id, string Name, string Description, (string Trigger, string Display, string Insert, string Description)[] Completions);
+    private sealed record CppExtensionDefinition(string Id, string Name, string Description, string GuideFile, (string Trigger, string Display, string Insert, string Description)[] Completions);
 
     private static readonly CppExtensionDefinition[] CppExtensionCatalog =
     {
-        new("stl-snippets", "C++ STL Essentials", "Snippet e completamenti per vector, list, map, set, stack e queue.", new[]
+        new("stl-snippets", "C++ STL Essentials", "Snippet e completamenti per vector, list, map, set, stack e queue.", "Guida_CPP_STL_Essentials.pdf", new[]
         {
             ("vecfor", "vector + ciclo", "vector<int> valori;\nfor (const int valore : valori)\n{\n    cout << valore << endl;\n}", "Vector e ciclo range-based"),
             ("mapfor", "map + ciclo", "map<string, int> valori;\nfor (const auto& [chiave, valore] : valori)\n{\n    cout << chiave << \": \" << valore << endl;\n}", "Map e structured binding"),
             ("queue", "queue completa", "queue<int> coda;\ncoda.push(valore);\nint primo = coda.front();\ncoda.pop();", "Operazioni principali su queue")
         }),
-        new("algorithms", "C++ Algorithms", "Completamenti per sort, find, count, transform e accumulate.", new[]
+        new("algorithms", "C++ Algorithms", "Completamenti per sort, find, count, transform e accumulate.", "Guida_CPP_Algorithms.pdf", new[]
         {
             ("accumulate", "std::accumulate", "int somma = accumulate(valori.begin(), valori.end(), 0);", "Somma degli elementi; richiede <numeric>"),
             ("transform", "std::transform", "transform(valori.begin(), valori.end(), valori.begin(), [](int x) { return x * 2; });", "Trasforma gli elementi"),
             ("countif", "std::count_if", "int quanti = count_if(valori.begin(), valori.end(), [](int x) { return x > 0; });", "Conta gli elementi che rispettano una condizione")
         }),
-        new("cpp-math", "C++ Math", "Snippet per cmath, numeri casuali e semplici calcoli.", new[]
+        new("cpp-math", "C++ Math", "Snippet per cmath, numeri casuali e semplici calcoli.", "Guida_CPP_Math.pdf", new[]
         {
             ("random", "random C++17", "random_device rd;\nmt19937 gen(rd());\nuniform_int_distribution<int> distribuzione(minimo, massimo);\nint casuale = distribuzione(gen);", "Generatore casuale C++17; richiede <random>"),
             ("distance2d", "distanza 2D", "double distanza = hypot(x2 - x1, y2 - y1);", "Distanza euclidea; richiede <cmath>")
         }),
-        new("cvplus-header", "CV+ Utility Header", "Installa una libreria header-only locale con funzioni didattiche sicure.", new[]
+        new("cvplus-header", "CV+ Utility Header", "Installa una libreria header-only locale con funzioni didattiche sicure.", "Guida_CVPlus_Utility_Header.pdf", new[]
         {
             ("cvread", "cvplus::leggi", "int valore = cvplus::leggi<int>(\"Inserisci valore: \");", "Input controllato dalla libreria CV+"),
             ("cvprint", "cvplus::stampa", "cvplus::stampa(valore);", "Output semplice dalla libreria CV+")
@@ -1675,33 +1678,134 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         File.WriteAllText(Path.Combine(CppExtensionsIncludePath, "cvplus_utils.hpp"), headerText, new UTF8Encoding(false));
     }
 
+    private string CppGuidesDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "CppGuides");
+
+    private IEnumerable<(string Trigger, string Display, string Insert, string Description)> GetInstalledLibraryCompletions() =>
+        CppLibraryManager.LoadInstalled().SelectMany(x => x.Manifest.Completions.Select(c => (c.Trigger, c.Display, c.Insert, c.Description)));
+
+    private void OpenPdfGuide(string filePath)
+    {
+        if (!File.Exists(filePath))
+        {
+            MessageBox.Show("Guida PDF non trovata:\n" + filePath, "CV+", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+    }
+
+    private void InstallLocalCppLibrary()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Seleziona una libreria CV+",
+            Filter = "Pacchetti CV+ (*.cvplus;*.zip)|*.cvplus;*.zip|Tutti i file (*.*)|*.*"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            InstalledCppLibrary installed = CppLibraryManager.InstallPackage(dialog.FileName);
+            StatusText.Text = $"Libreria installata: {installed.Manifest.Name} {installed.Manifest.Version}";
+            MessageBox.Show($"Libreria installata correttamente.\n\n{installed.Manifest.Name} {installed.Manifest.Version}\nTipo: {installed.Manifest.Type}", "CV+", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Installazione non riuscita:\n" + ex.Message, "CV+", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ImportLooseCppLibrary()
+    {
+        var libraryDialog = new Microsoft.Win32.OpenFileDialog { Title="Seleziona libreria statica o dinamica", Filter="Librerie MinGW (*.a;*.dll;*.lib)|*.a;*.dll;*.lib|Tutti i file (*.*)|*.*" };
+        if (libraryDialog.ShowDialog(this) != true) return;
+        var headersDialog = new Microsoft.Win32.OpenFileDialog { Title="Seleziona uno o più header della libreria", Filter="Header C++ (*.h;*.hpp)|*.h;*.hpp", Multiselect=true };
+        if (headersDialog.ShowDialog(this) != true) return;
+        var guideDialog = new Microsoft.Win32.OpenFileDialog { Title="Seleziona la guida PDF (facoltativa)", Filter="Guide PDF (*.pdf)|*.pdf" };
+        string? guide = guideDialog.ShowDialog(this) == true ? guideDialog.FileName : null;
+        try
+        {
+            InstalledCppLibrary installed = CppLibraryManager.InstallLooseLibrary(libraryDialog.FileName, headersDialog.FileNames, guide);
+            MessageBox.Show($"Libreria importata correttamente.\n\n{installed.Manifest.Name}\nTipo: {installed.Manifest.Type}", "CV+", MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText.Text = "Libreria locale importata";
+        }
+        catch (Exception ex) { MessageBox.Show("Importazione non riuscita:\n" + ex.Message, "CV+", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void InstallDeterminantSample()
+    {
+        try
+        {
+            string source = Path.Combine(AppContext.BaseDirectory, "Assets", "SampleLibraries", "Determinante");
+            string temp = Path.Combine(Path.GetTempPath(), "CVPlus_Determinante_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(temp);
+            string package = Path.Combine(temp, "cvplus-determinante.cvplus");
+            string created = CppLibraryManager.CreatePackage(source, package, "CV+ Determinante", "1.0.0", "static", "Calcolo del determinante di una matrice quadrata", BundledCompilerPath);
+            // Inserisce guida e completamento nel pacchetto appena creato.
+            string unpack = Path.Combine(temp, "package");
+            System.IO.Compression.ZipFile.ExtractToDirectory(created, unpack);
+            string guideDir = Path.Combine(unpack, "guides"); Directory.CreateDirectory(guideDir);
+            File.Copy(Path.Combine(CppGuidesDirectory, "Guida_Libreria_Determinante.pdf"), Path.Combine(guideDir, "Guida_Libreria_Determinante.pdf"), true);
+            string manifestPath = Path.Combine(unpack, "manifest.json");
+            CppLibraryManifest manifest = JsonSerializer.Deserialize<CppLibraryManifest>(File.ReadAllText(manifestPath), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+            manifest.GuideFiles.Add("guides/Guida_Libreria_Determinante.pdf");
+            manifest.Completions.Add(new CppLibraryCompletion { Trigger = "determinante", Display = "cvplus::determinante", Insert = "double det = cvplus::determinante(matrice);", Description = "Calcola il determinante di una matrice quadrata" });
+            File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+            File.Delete(created); System.IO.Compression.ZipFile.CreateFromDirectory(unpack, created);
+            InstalledCppLibrary installed = CppLibraryManager.InstallPackage(created);
+            StatusText.Text = "Libreria statica Determinante installata";
+            MessageBox.Show("Esempio installato.\n\nUsa:\n#include <cvplus_determinante.hpp>\n\nPoi:\ncvplus::determinante(matrice)", "CV+", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Creazione/installazione dell'esempio non riuscita:\n" + ex.Message, "CV+", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void OpenCppExtensions_Click(object sender, RoutedEventArgs e)
     {
         var panel = new StackPanel { Margin = new Thickness(8) };
         panel.Children.Add(new TextBlock { Text = "ESTENSIONI C++ PER CV+", Foreground = Brushes.White, FontSize = 24, FontWeight = FontWeights.Bold, Margin = new Thickness(0,0,0,8) });
-        panel.Children.Add(new TextBlock { Text = "Componenti compatibili con questo compilatore. Non installa estensioni VSIX di Visual Studio Code.", Foreground = new SolidColorBrush(Color.FromRgb(180,180,180)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,14) });
+        panel.Children.Add(new TextBlock { Text = "Snippet, librerie header-only, statiche MinGW (.a) e dinamiche Windows (.dll + .dll.a). Installare solo pacchetti attendibili.", Foreground = new SolidColorBrush(Color.FromRgb(180,180,180)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,14) });
+
+        var actions = new WrapPanel { Margin = new Thickness(0,0,0,14) };
+        Button installLocal = new() { Content = "INSTALLA LIBRERIA LOCALE", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(14,99,156)), Foreground = Brushes.White };
+        installLocal.Click += (_, _) => { InstallLocalCppLibrary(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
+        Button importFiles = new() { Content = "IMPORTA .A / .DLL + HEADER + PDF", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(104,75,145)), Foreground = Brushes.White };
+        importFiles.Click += (_, _) => { ImportLooseCppLibrary(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
+        Button generalGuide = new() { Content = "GUIDA LIBRERIE PDF", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(70,70,70)), Foreground = Brushes.White };
+        generalGuide.Click += (_, _) => OpenPdfGuide(Path.Combine(CppGuidesDirectory, "Guida_Librerie_CVPlus.pdf"));
+        Button sample = new() { Content = "INSTALLA ESEMPIO DETERMINANTE", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(19,130,85)), Foreground = Brushes.White };
+        sample.Click += (_, _) => { InstallDeterminantSample(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
+        actions.Children.Add(installLocal); actions.Children.Add(importFiles); actions.Children.Add(generalGuide); actions.Children.Add(sample); panel.Children.Add(actions);
+
         foreach (CppExtensionDefinition extension in CppExtensionCatalog)
         {
             var row = new Grid { Margin = new Thickness(0,0,0,9), Background = new SolidColorBrush(Color.FromRgb(37,37,38)) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var text = new StackPanel { Margin = new Thickness(12,9,12,9) };
             text.Children.Add(new TextBlock { Text = extension.Name, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 15 });
             text.Children.Add(new TextBlock { Text = extension.Description, Foreground = new SolidColorBrush(Color.FromRgb(190,190,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,3,0,0) });
             row.Children.Add(text);
+            var guide = new Button { Content = "GUIDA", Margin = new Thickness(8), Padding = new Thickness(12,6,12,6), MinWidth = 82, Background = new SolidColorBrush(Color.FromRgb(70,70,70)), Foreground = Brushes.White };
+            guide.Click += (_, _) => OpenPdfGuide(Path.Combine(CppGuidesDirectory, extension.GuideFile)); Grid.SetColumn(guide,1); row.Children.Add(guide);
             bool installed = _installedCppExtensions.Contains(extension.Id);
             var button = new Button { Content = installed ? "RIMUOVI" : "INSTALLA", Tag = extension.Id, Margin = new Thickness(8), Padding = new Thickness(12,6,12,6), MinWidth = 92, Background = new SolidColorBrush(installed ? Color.FromRgb(90,90,90) : Color.FromRgb(14,99,156)), Foreground = Brushes.White };
-            Grid.SetColumn(button, 1);
-            button.Click += (_, _) =>
-            {
-                string id = (string)button.Tag;
-                if (_installedCppExtensions.Contains(id)) _installedCppExtensions.Remove(id); else _installedCppExtensions.Add(id);
-                SaveCppExtensions();
-                StatusText.Text = "Estensioni C++ aggiornate";
-                CloseActiveOverlay();
-                OpenCppExtensions_Click(sender, e);
-            };
-            row.Children.Add(button);
+            Grid.SetColumn(button, 2);
+            button.Click += (_, _) => { string id=(string)button.Tag; if (_installedCppExtensions.Contains(id)) _installedCppExtensions.Remove(id); else _installedCppExtensions.Add(id); SaveCppExtensions(); StatusText.Text="Estensioni C++ aggiornate"; CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
+            row.Children.Add(button); panel.Children.Add(row);
+        }
+
+        panel.Children.Add(new TextBlock { Text = "LIBRERIE INSTALLATE", Foreground = Brushes.White, FontSize = 19, FontWeight = FontWeights.Bold, Margin = new Thickness(0,18,0,8) });
+        var libraries = CppLibraryManager.LoadInstalled();
+        if (libraries.Count == 0) panel.Children.Add(new TextBlock { Text = "Nessuna libreria aggiuntiva installata.", Foreground = new SolidColorBrush(Color.FromRgb(180,180,180)), Margin = new Thickness(4,4,4,10) });
+        foreach (InstalledCppLibrary library in libraries)
+        {
+            var row = new Grid { Margin = new Thickness(0,0,0,9), Background = new SolidColorBrush(Color.FromRgb(37,37,38)) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1,GridUnitType.Star) }); row.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto }); row.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto });
+            var text = new StackPanel { Margin=new Thickness(12,9,12,9) }; text.Children.Add(new TextBlock { Text=$"{library.Manifest.Name} {library.Manifest.Version}", Foreground=Brushes.White, FontWeight=FontWeights.SemiBold }); text.Children.Add(new TextBlock { Text=$"{library.Manifest.Type} - {library.Manifest.Description}", Foreground=new SolidColorBrush(Color.FromRgb(190,190,190)), TextWrapping=TextWrapping.Wrap }); row.Children.Add(text);
+            var guides=CppLibraryManager.GetGuideFiles(library); var g=new Button { Content="GUIDA", IsEnabled=guides.Count>0, Margin=new Thickness(8), Padding=new Thickness(12,6,12,6), Foreground=Brushes.White, Background=new SolidColorBrush(Color.FromRgb(70,70,70)) }; g.Click += (_,_) => { if(guides.Count>0) OpenPdfGuide(guides[0]); }; Grid.SetColumn(g,1); row.Children.Add(g);
+            var remove=new Button { Content="RIMUOVI", Margin=new Thickness(8), Padding=new Thickness(12,6,12,6), Foreground=Brushes.White, Background=new SolidColorBrush(Color.FromRgb(120,60,60)) }; remove.Click += (_,_) => { CppLibraryManager.Uninstall(library.Manifest.Id); StatusText.Text="Libreria rimossa"; CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); }; Grid.SetColumn(remove,2); row.Children.Add(remove);
             panel.Children.Add(row);
         }
         var scroll = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };

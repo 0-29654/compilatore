@@ -1,0 +1,13 @@
+PATCH LIBRERIE E GUIDE PDF - 30/07/2026
+
+Aggiunte:
+- pulsante GUIDA per le quattro estensioni integrate;
+- cinque guide PDF incluse nell'installer;
+- installazione pacchetti locali .cvplus/.zip;
+- supporto header-only, librerie statiche MinGW .a e DLL con import library .dll.a;
+- elenco librerie installate, guida e rimozione;
+- integrazione automatica di -I, -L e -l nella compilazione;
+- copia DLL runtime accanto all'eseguibile;
+- esempio statico CV+ Determinante creato e compilato localmente con il GCC incluso.
+
+La rete e il protocollo server non sono stati modificati.
