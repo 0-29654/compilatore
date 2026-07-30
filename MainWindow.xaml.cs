@@ -1,4 +1,4 @@
-using ICSharpCode.AvalonEdit;
+﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.CodeCompletion;
@@ -800,6 +800,24 @@ public partial class MainWindow : Window
                 compilation.ExePath,
                 compilation.CompileOutput
             );
+            return;
+        }
+
+        // Le librerie grafiche (per esempio CV+ Output Window) vengono avviate
+        // direttamente, senza file BAT e senza cmd.exe. Il linker -mwindows
+        // impedisce inoltre la creazione della console Windows.
+        if (UsesGraphicalOutputLibrary())
+        {
+            var graphicalStartInfo = new ProcessStartInfo(compilation.ExePath)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(compilation.ExePath) ?? Path.GetTempPath()
+            };
+            ConfigureCompilerEnvironment(graphicalStartInfo);
+            Process.Start(graphicalStartInfo);
+            _programOutput = "Esecuzione avviata nella finestra grafica CV+ (CMD disattivato).";
+            SaveCurrentExerciseResult(compilation.CompileOutput, _programOutput);
             return;
         }
 
@@ -3391,6 +3409,21 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
     private static string BuildNetworkError(Exception ex) =>
         "Non riesco a raggiungere il PC docente.\n\n" + ex.Message +
         "\n\nControlla che:\n• il server sia avviato nella scheda Compiti alunni;\n• IP, porta e codice sessione siano identici;\n• i due PC siano nella stessa rete;\n• il firewall consenta il server;\n• con una macchina virtuale sia usata la rete Bridge.";
+
+    private static bool UsesGraphicalOutputLibrary()
+    {
+        try
+        {
+            return CppLibraryManager.LoadInstalled().Any(library =>
+                library.Manifest.Id.Equals("cvplus-output-window", StringComparison.OrdinalIgnoreCase) ||
+                library.Manifest.LinkerOptions.Any(option =>
+                    option.Contains("-mwindows", StringComparison.OrdinalIgnoreCase)));
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private void ConfigureCompilerEnvironment(ProcessStartInfo psi)
     {

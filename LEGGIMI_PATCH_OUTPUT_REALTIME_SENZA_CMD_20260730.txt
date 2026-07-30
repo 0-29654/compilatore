@@ -1,0 +1,10 @@
+PATCH CV+ OUTPUT WINDOW 1.2
+
+Modifiche:
+- avvio diretto dell EXE senza cmd.exe quando e installata una libreria con -mwindows;
+- CV+ Output Window apre subito la finestra grafica;
+- cout aggiorna la finestra in tempo reale;
+- supporto for, while e do-while anche non terminanti;
+- il pulsante Chiudi programma termina il processo.
+
+Workflow: main, master, sviluppo.
