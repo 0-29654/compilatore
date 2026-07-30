@@ -62,6 +62,8 @@ public partial class MainWindow : Window
     private readonly Dictionary<TextEditor, CompletionWindow> _completionWindows = new();
     private CancellationTokenSource? _googleDriveOperationCts;
     private bool _googleDriveOperationRunning;
+    private readonly HashSet<string> _installedCppExtensions = new(StringComparer.OrdinalIgnoreCase);
+    private string CppExtensionsSettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CVPlus", "cpp-extensions.json");
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
 
@@ -79,6 +81,7 @@ public partial class MainWindow : Window
         ConfigureCppHighlighting();
         ConfigureEditorAssistance(Editor);
         ConfigureEditorAssistance(HeaderEditor);
+        LoadCppExtensions();
         ResetClientStateOnStartup();
         StartTeacherDiscoveryListener();
         Closed += (_, _) => { _liveMonitorTimer.Stop(); StopTeacherDiscoveryListener(); };
@@ -1012,7 +1015,7 @@ public partial class MainWindow : Window
 
             string arguments =
                 $"-std=c++17 -Wall -Wextra -Wpedantic " +
-                $"-fdiagnostics-color=never -I\"{dir}\" " +
+                $"-fdiagnostics-color=never -I\"{dir}\" -I\"{CppExtensionsIncludePath}\" " +
                 $"-o \"{exe}\" \"{cpp}\"";
             var psi = new ProcessStartInfo(BundledCompilerPath, arguments)
             {
@@ -1525,7 +1528,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
         string prefix = GetCurrentWord(editor);
         if (prefix.Length < 2) return;
-        var matches = CppCompletions.Where(c => c.Trigger.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Take(18).ToList();
+        var matches = CppCompletions.Concat(GetInstalledExtensionCompletions()).Where(c => c.Trigger.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Take(24).ToList();
         if (matches.Count == 0) return;
 
         var window = new CompletionWindow(editor.TextArea) { StartOffset = editor.CaretOffset - prefix.Length };
@@ -1586,6 +1589,118 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             string value = string.Join(Environment.NewLine, _insertion.Split('\n').Select((line, i) => i == 0 ? line : indent + line));
             textArea.Document.Replace(completionSegment, value);
         }
+    }
+
+
+    private sealed record CppExtensionDefinition(string Id, string Name, string Description, (string Trigger, string Display, string Insert, string Description)[] Completions);
+
+    private static readonly CppExtensionDefinition[] CppExtensionCatalog =
+    {
+        new("stl-snippets", "C++ STL Essentials", "Snippet e completamenti per vector, list, map, set, stack e queue.", new[]
+        {
+            ("vecfor", "vector + ciclo", "vector<int> valori;\nfor (const int valore : valori)\n{\n    cout << valore << endl;\n}", "Vector e ciclo range-based"),
+            ("mapfor", "map + ciclo", "map<string, int> valori;\nfor (const auto& [chiave, valore] : valori)\n{\n    cout << chiave << \": \" << valore << endl;\n}", "Map e structured binding"),
+            ("queue", "queue completa", "queue<int> coda;\ncoda.push(valore);\nint primo = coda.front();\ncoda.pop();", "Operazioni principali su queue")
+        }),
+        new("algorithms", "C++ Algorithms", "Completamenti per sort, find, count, transform e accumulate.", new[]
+        {
+            ("accumulate", "std::accumulate", "int somma = accumulate(valori.begin(), valori.end(), 0);", "Somma degli elementi; richiede <numeric>"),
+            ("transform", "std::transform", "transform(valori.begin(), valori.end(), valori.begin(), [](int x) { return x * 2; });", "Trasforma gli elementi"),
+            ("countif", "std::count_if", "int quanti = count_if(valori.begin(), valori.end(), [](int x) { return x > 0; });", "Conta gli elementi che rispettano una condizione")
+        }),
+        new("cpp-math", "C++ Math", "Snippet per cmath, numeri casuali e semplici calcoli.", new[]
+        {
+            ("random", "random C++17", "random_device rd;\nmt19937 gen(rd());\nuniform_int_distribution<int> distribuzione(minimo, massimo);\nint casuale = distribuzione(gen);", "Generatore casuale C++17; richiede <random>"),
+            ("distance2d", "distanza 2D", "double distanza = hypot(x2 - x1, y2 - y1);", "Distanza euclidea; richiede <cmath>")
+        }),
+        new("cvplus-header", "CV+ Utility Header", "Installa una libreria header-only locale con funzioni didattiche sicure.", new[]
+        {
+            ("cvread", "cvplus::leggi", "int valore = cvplus::leggi<int>(\"Inserisci valore: \");", "Input controllato dalla libreria CV+"),
+            ("cvprint", "cvplus::stampa", "cvplus::stampa(valore);", "Output semplice dalla libreria CV+")
+        })
+    };
+
+    private void LoadCppExtensions()
+    {
+        try
+        {
+            if (File.Exists(CppExtensionsSettingsPath))
+            {
+                string[]? ids = JsonSerializer.Deserialize<string[]>(File.ReadAllText(CppExtensionsSettingsPath));
+                if (ids != null) foreach (string id in ids) _installedCppExtensions.Add(id);
+            }
+            EnsureCvPlusHeader();
+        }
+        catch { _installedCppExtensions.Clear(); }
+    }
+
+    private void SaveCppExtensions()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(CppExtensionsSettingsPath)!);
+        File.WriteAllText(CppExtensionsSettingsPath, JsonSerializer.Serialize(_installedCppExtensions.OrderBy(x => x), new JsonSerializerOptions { WriteIndented = true }));
+        EnsureCvPlusHeader();
+    }
+
+    private IEnumerable<(string Trigger, string Display, string Insert, string Description)> GetInstalledExtensionCompletions() =>
+        CppExtensionCatalog.Where(x => _installedCppExtensions.Contains(x.Id)).SelectMany(x => x.Completions);
+
+    private string CppExtensionsIncludePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CVPlus", "CppExtensions", "include");
+
+    private void EnsureCvPlusHeader()
+    {
+        if (!_installedCppExtensions.Contains("cvplus-header")) return;
+        Directory.CreateDirectory(CppExtensionsIncludePath);
+        File.WriteAllText(Path.Combine(CppExtensionsIncludePath, "cvplus_utils.hpp"), """#pragma once
+#include <iostream>
+#include <limits>
+#include <string>
+namespace cvplus {
+template<class T> T leggi(const std::string& messaggio) {
+    T valore{};
+    while (true) {
+        std::cout << messaggio;
+        if (std::cin >> valore) return valore;
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::cout << "Valore non valido. Riprova.\n";
+    }
+}
+template<class T> void stampa(const T& valore) { std::cout << valore << std::endl; }
+}
+""", new UTF8Encoding(false));
+    }
+
+    private void OpenCppExtensions_Click(object sender, RoutedEventArgs e)
+    {
+        var panel = new StackPanel { Margin = new Thickness(8) };
+        panel.Children.Add(new TextBlock { Text = "ESTENSIONI C++ PER CV+", Foreground = Brushes.White, FontSize = 24, FontWeight = FontWeights.Bold, Margin = new Thickness(0,0,0,8) });
+        panel.Children.Add(new TextBlock { Text = "Componenti compatibili con questo compilatore. Non installa estensioni VSIX di Visual Studio Code.", Foreground = new SolidColorBrush(Color.FromRgb(180,180,180)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,14) });
+        foreach (CppExtensionDefinition extension in CppExtensionCatalog)
+        {
+            var row = new Grid { Margin = new Thickness(0,0,0,9), Background = new SolidColorBrush(Color.FromRgb(37,37,38)) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var text = new StackPanel { Margin = new Thickness(12,9,12,9) };
+            text.Children.Add(new TextBlock { Text = extension.Name, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 15 });
+            text.Children.Add(new TextBlock { Text = extension.Description, Foreground = new SolidColorBrush(Color.FromRgb(190,190,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,3,0,0) });
+            row.Children.Add(text);
+            bool installed = _installedCppExtensions.Contains(extension.Id);
+            var button = new Button { Content = installed ? "RIMUOVI" : "INSTALLA", Tag = extension.Id, Margin = new Thickness(8), Padding = new Thickness(12,6,12,6), MinWidth = 92, Background = new SolidColorBrush(installed ? Color.FromRgb(90,90,90) : Color.FromRgb(14,99,156)), Foreground = Brushes.White };
+            Grid.SetColumn(button, 1);
+            button.Click += (_, _) =>
+            {
+                string id = (string)button.Tag;
+                if (_installedCppExtensions.Contains(id)) _installedCppExtensions.Remove(id); else _installedCppExtensions.Add(id);
+                SaveCppExtensions();
+                StatusText.Text = "Estensioni C++ aggiornate";
+                CloseActiveOverlay();
+                OpenCppExtensions_Click(sender, e);
+            };
+            row.Children.Add(button);
+            panel.Children.Add(row);
+        }
+        var scroll = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        ShowFullscreenOverlay("Estensioni C++", scroll);
     }
 
     private static bool ReadHeaderManagementAllowed(JsonElement root)

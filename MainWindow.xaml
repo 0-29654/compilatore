@@ -151,18 +151,26 @@
         <Border Grid.Row="2" Margin="16,0,16,0" CornerRadius="14" Background="#050B14" BorderBrush="#2B4567" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Background="#102540" BorderBrush="#2B4567" BorderThickness="0,0,0,1">
-                    <Grid Margin="12,0"><TextBlock Text="main.cpp" Foreground="#F1F7FF" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text="SHIFT+CLICK: editor a tutto schermo • C++17" Foreground="#FFD166" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
+                <Border Background="#181818" BorderBrush="#333333" BorderThickness="0,0,0,1">
+                    <Grid Margin="10,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="C++  ›  main.cpp" Foreground="#CCCCCC" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="CV+ EDITOR — C++17" Foreground="#858585" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <Button Content="▣ ESTENSIONI C++" Click="OpenCppExtensions_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#0E639C" BorderBrush="#1177BB" ToolTip="Installa componenti compatibili per editor, snippet e librerie header-only"/>
+                            <TextBlock Text="SHIFT+CLICK: TUTTO SCHERMO" Foreground="#D7BA7D" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
                 </Border>
                 <TabControl Grid.Row="1" Background="#050B14" BorderThickness="0">
                     <TabItem Header="main.cpp">
                         <avalonEdit:TextEditor x:Name="Editor" ShowLineNumbers="True" FontFamily="Cascadia Mono, Consolas" FontSize="16"
-                                               Background="#050B14" Foreground="#F7FBFF" LineNumbersForeground="#7690B1" Padding="10"
+                                               Background="#1E1E1E" Foreground="#D4D4D4" LineNumbersForeground="#858585" Padding="10"
                                                TextChanged="Editor_TextChanged" PreviewMouseLeftButtonDown="Editor_PreviewMouseLeftButtonDown"/>
                     </TabItem>
                     <TabItem x:Name="HeaderTab" Header="esercizio.h" Visibility="Collapsed">
                         <avalonEdit:TextEditor x:Name="HeaderEditor" ShowLineNumbers="True" FontFamily="Cascadia Mono, Consolas" FontSize="16"
-                                               Background="#050B14" Foreground="#F7FBFF" LineNumbersForeground="#7690B1" Padding="10"
+                                               Background="#1E1E1E" Foreground="#D4D4D4" LineNumbersForeground="#858585" Padding="10"
                                                TextChanged="HeaderEditor_TextChanged" PreviewMouseLeftButtonDown="HeaderEditor_PreviewMouseLeftButtonDown"/>
                     </TabItem>
                 </TabControl>

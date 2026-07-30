@@ -1,0 +1,38 @@
+PATCH EDITOR C++ STILE VISUAL STUDIO CODE — 30/07/2026
+
+Questa patch mantiene il progetto originale CV+ Compilatore Alunno e non modifica:
+- protocollo e collegamento con il server docente;
+- nome, cognome, classe, numero registro, tipologia ed esercizio;
+- modalità Esercitazione/Verifica;
+- invio degli esercizi, monitoraggio, compilazione, output e Google Drive;
+- autorizzazione dell'aiuto scrittura C++ controllata dal server.
+
+AGGIUNTE
+1. Aspetto dell'editor più vicino a Visual Studio Code:
+   - sfondo #1E1E1E;
+   - numeri di riga grigi;
+   - barra breadcrumb “C++ > main.cpp”;
+   - intestazione e comandi in stile VS Code.
+
+2. Pulsante “ESTENSIONI C++” nell'editor.
+
+3. Gestore di componenti compatibili con CV+:
+   - C++ STL Essentials;
+   - C++ Algorithms;
+   - C++ Math;
+   - CV+ Utility Header.
+
+4. Le estensioni installate sono salvate per l'utente in:
+   %LOCALAPPDATA%\CVPlus\cpp-extensions.json
+
+5. CV+ Utility Header crea:
+   %LOCALAPPDATA%\CVPlus\CppExtensions\include\cvplus_utils.hpp
+   Il percorso viene aggiunto automaticamente ai parametri -I di g++.
+   Per usarlo nel codice:
+   #include <cvplus_utils.hpp>
+
+NOTA IMPORTANTE
+Le estensioni .VSIX del Marketplace di Visual Studio Code non sono direttamente compatibili con un'applicazione WPF/AvalonEdit. Questa patch offre un sistema di estensioni C++ nativo per CV+, senza trasformare o sostituire il client con Electron e senza compromettere il collegamento al server.
+
+VERIFICA
+In questo ambiente non era presente il comando dotnet, quindi non è stato possibile eseguire qui la compilazione Release. Il file XAML è stato validato come XML e le modifiche sono state applicate direttamente ai sorgenti net8.0-windows.
