@@ -1,0 +1,4 @@
+CORREZIONE BUILD CONTROLLI WPF - 30/07/2026
+
+Aggiunto using System.Windows.Controls; in MainWindow.xaml.cs.
+Corregge gli errori relativi a StackPanel, TextBlock, Grid, ColumnDefinition e Button.
