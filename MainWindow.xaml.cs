@@ -1650,24 +1650,28 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
     {
         if (!_installedCppExtensions.Contains("cvplus-header")) return;
         Directory.CreateDirectory(CppExtensionsIncludePath);
-        File.WriteAllText(Path.Combine(CppExtensionsIncludePath, "cvplus_utils.hpp"), """#pragma once
-#include <iostream>
-#include <limits>
-#include <string>
-namespace cvplus {
-template<class T> T leggi(const std::string& messaggio) {
-    T valore{};
-    while (true) {
-        std::cout << messaggio;
-        if (std::cin >> valore) return valore;
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        std::cout << "Valore non valido. Riprova.\n";
-    }
-}
-template<class T> void stampa(const T& valore) { std::cout << valore << std::endl; }
-}
-""", new UTF8Encoding(false));
+        string headerText = string.Join(Environment.NewLine, new[]
+        {
+            "#pragma once",
+            "#include <iostream>",
+            "#include <limits>",
+            "#include <string>",
+            "namespace cvplus {",
+            "template<class T> T leggi(const std::string& messaggio) {",
+            "    T valore{};",
+            "    while (true) {",
+            "        std::cout << messaggio;",
+            "        if (std::cin >> valore) return valore;",
+            "        std::cin.clear();",
+            "        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');",
+            "        std::cout << \"Valore non valido. Riprova.\\n\";",
+            "    }",
+            "}",
+            "template<class T> void stampa(const T& valore) { std::cout << valore << std::endl; }",
+            "}",
+            string.Empty
+        });
+        File.WriteAllText(Path.Combine(CppExtensionsIncludePath, "cvplus_utils.hpp"), headerText, new UTF8Encoding(false));
     }
 
     private void OpenCppExtensions_Click(object sender, RoutedEventArgs e)
