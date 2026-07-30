@@ -212,18 +212,18 @@
                         Click="AddHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#7C3AED" BorderBrush="#9F7AEA" VerticalAlignment="Center"/>
 
-                <Button x:Name="ImportHeaderButton" Grid.Column="2" Content="Importa .h" IsEnabled="False"
-                        Click="ImportHeader_Click" Style="{StaticResource ModernButton}"
-                        Background="#6D28D9" BorderBrush="#A78BFA" VerticalAlignment="Center"
-                        ToolTip="Importa un file .h o .hpp locale nell'editor dell'esercizio"/>
-
-                <Button x:Name="RenameHeaderButton" Grid.Column="3" Content="Rinomina .h" IsEnabled="False"
+                <Button x:Name="RenameHeaderButton" Grid.Column="2" Content="Rinomina .h" IsEnabled="False"
                         Click="RenameHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#9333EA" BorderBrush="#C084FC" VerticalAlignment="Center"/>
 
-                <Button x:Name="DeleteHeaderButton" Grid.Column="4" Content="Elimina .h" IsEnabled="False"
+                <Button x:Name="DeleteHeaderButton" Grid.Column="3" Content="Elimina .h" IsEnabled="False"
                         Click="DeleteHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#B91C1C" BorderBrush="#F87171" VerticalAlignment="Center"/>
+
+                <Button x:Name="ImportHeaderButton" Grid.Column="4" Content="Importa .h/.hpp" IsEnabled="False"
+                        Click="ImportHeader_Click" Style="{StaticResource ModernButton}"
+                        Background="#0F766E" BorderBrush="#2DD4BF" VerticalAlignment="Center"
+                        ToolTip="Importa un file header locale nell'editor C++"/>
 
                 <Button x:Name="SendButton" Grid.Column="5" Content="Invia al docente"
                         Click="Send_Click" Style="{StaticResource ModernButton}"
@@ -234,24 +234,24 @@
                         Background="#FFFFFF" Foreground="#1F2937" BorderBrush="#D1D5DB" VerticalAlignment="Center"
                         ToolTip="Accedi con il tuo account Google e salva l'esercizio nel tuo Drive"/>
 
-                <TextBlock x:Name="CurrentTaskSummaryText" Grid.Column="7"
+                <TextBlock x:Name="CurrentTaskSummaryText" Grid.Column="6"
                            Text="Tipologia — • esercizio 1" Foreground="#BDD6F3"
                            FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                            Margin="8,0,10,0"/>
 
-                <Button x:Name="TestServerButton" Grid.Column="8" Content="Test server"
+                <Button x:Name="TestServerButton" Grid.Column="7" Content="Test server"
                         Click="TestServer_Click" Style="{StaticResource ModernButton}"
                         Background="#5B4FE8" BorderBrush="#746BFF" VerticalAlignment="Center"/>
 
-                <ProgressBar x:Name="ServerTestProgress" Grid.Column="9"
+                <ProgressBar x:Name="ServerTestProgress" Grid.Column="8"
                              Height="8" Margin="4,0,12,0" IsIndeterminate="True"
                              Visibility="Collapsed" VerticalAlignment="Center"
                              Foreground="#47D7FF" Background="#10243A"/>
 
-                <TextBlock x:Name="StatusText" Grid.Column="10" Text="Pronto"
+                <TextBlock x:Name="StatusText" Grid.Column="9" Text="Pronto"
                            Foreground="#A8B5C7" VerticalAlignment="Center" Margin="8,0"/>
 
-                <Button x:Name="UpdateButton" Grid.Column="11" Content="Ricerca aggiornamenti"
+                <Button x:Name="UpdateButton" Grid.Column="10" Content="Ricerca aggiornamenti"
                         Click="CheckUpdates_Click" Style="{StaticResource ModernButton}"
                         Background="#0F4C75" BorderBrush="#38BDF8" VerticalAlignment="Center"
                         Margin="8,0,0,0"/>

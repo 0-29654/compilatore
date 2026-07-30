@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - master
+      - sviluppo
     paths:
       - '.github/workflows/pulisci-build-vecchie.yml'
 

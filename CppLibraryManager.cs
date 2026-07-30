@@ -170,6 +170,19 @@ internal static class CppLibraryManager
         if (Directory.Exists(destination)) Directory.Delete(destination, true);
     }
 
+    public static void UninstallAll()
+    {
+        try
+        {
+            if (Directory.Exists(RootDirectory))
+                Directory.Delete(RootDirectory, true);
+        }
+        catch
+        {
+            // La pulizia non deve impedire avvio o chiusura dell'applicazione.
+        }
+    }
+
     public static string BuildCompilerArguments(IEnumerable<InstalledCppLibrary> libraries)
     {
         var args = new List<string>();

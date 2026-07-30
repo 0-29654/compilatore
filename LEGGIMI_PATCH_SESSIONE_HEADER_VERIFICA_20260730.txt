@@ -1,0 +1,9 @@
+PATCH BASATA SULLA VERSIONE CON LIBRERIE/DLL/GUIDE
+
+Modifiche:
+- conserva Installa libreria locale, Importa .A/.DLL + header + PDF, Guida librerie PDF, esempio Determinante;
+- aggiunge Importa .h/.hpp nell'editor;
+- disattiva Estensioni C++ e import header in modalità verifica;
+- rimuove automaticamente librerie ed estensioni installate alla chiusura e all'avvio;
+- aggiorna Guida_Librerie_CVPlus.pdf con comandi CMD per creare .a e .dll;
+- include sempre sviluppo nei trigger dei workflow.
