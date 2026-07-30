@@ -157,7 +157,7 @@
                         <TextBlock Text="C++  ›  main.cpp" Foreground="#CCCCCC" FontFamily="Segoe UI" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1" Text="CV+ EDITOR — C++17" Foreground="#858585" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
-                            <Button Content="▣ ESTENSIONI C++" Click="OpenCppExtensions_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#0E639C" BorderBrush="#1177BB" ToolTip="Installa componenti compatibili per editor, snippet e librerie header-only"/>
+                            <Button x:Name="CppExtensionsButton" Content="▣ ESTENSIONI C++" Click="OpenCppExtensions_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#0E639C" BorderBrush="#1177BB" ToolTip="Installa componenti compatibili per editor, snippet e librerie header-only"/>
                             <TextBlock Text="SHIFT+CLICK: TUTTO SCHERMO" Foreground="#D7BA7D" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
@@ -198,6 +198,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="120"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -211,41 +212,46 @@
                         Click="AddHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#7C3AED" BorderBrush="#9F7AEA" VerticalAlignment="Center"/>
 
-                <Button x:Name="RenameHeaderButton" Grid.Column="2" Content="Rinomina .h" IsEnabled="False"
+                <Button x:Name="ImportHeaderButton" Grid.Column="2" Content="Importa .h" IsEnabled="False"
+                        Click="ImportHeader_Click" Style="{StaticResource ModernButton}"
+                        Background="#6D28D9" BorderBrush="#A78BFA" VerticalAlignment="Center"
+                        ToolTip="Importa un file .h o .hpp locale nell'editor dell'esercizio"/>
+
+                <Button x:Name="RenameHeaderButton" Grid.Column="3" Content="Rinomina .h" IsEnabled="False"
                         Click="RenameHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#9333EA" BorderBrush="#C084FC" VerticalAlignment="Center"/>
 
-                <Button x:Name="DeleteHeaderButton" Grid.Column="3" Content="Elimina .h" IsEnabled="False"
+                <Button x:Name="DeleteHeaderButton" Grid.Column="4" Content="Elimina .h" IsEnabled="False"
                         Click="DeleteHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#B91C1C" BorderBrush="#F87171" VerticalAlignment="Center"/>
 
-                <Button x:Name="SendButton" Grid.Column="4" Content="Invia al docente"
+                <Button x:Name="SendButton" Grid.Column="5" Content="Invia al docente"
                         Click="Send_Click" Style="{StaticResource ModernButton}"
                         Background="#0E8FE8" BorderBrush="#44B7FF" VerticalAlignment="Center"/>
 
-                <Button x:Name="GoogleDriveButton" Grid.Column="5" Content="Google Drive"
+                <Button x:Name="GoogleDriveButton" Grid.Column="6" Content="Google Drive"
                         Click="GoogleDrive_Click" Style="{StaticResource ModernButton}"
                         Background="#FFFFFF" Foreground="#1F2937" BorderBrush="#D1D5DB" VerticalAlignment="Center"
                         ToolTip="Accedi con il tuo account Google e salva l'esercizio nel tuo Drive"/>
 
-                <TextBlock x:Name="CurrentTaskSummaryText" Grid.Column="6"
+                <TextBlock x:Name="CurrentTaskSummaryText" Grid.Column="7"
                            Text="Tipologia — • esercizio 1" Foreground="#BDD6F3"
                            FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                            Margin="8,0,10,0"/>
 
-                <Button x:Name="TestServerButton" Grid.Column="7" Content="Test server"
+                <Button x:Name="TestServerButton" Grid.Column="8" Content="Test server"
                         Click="TestServer_Click" Style="{StaticResource ModernButton}"
                         Background="#5B4FE8" BorderBrush="#746BFF" VerticalAlignment="Center"/>
 
-                <ProgressBar x:Name="ServerTestProgress" Grid.Column="8"
+                <ProgressBar x:Name="ServerTestProgress" Grid.Column="9"
                              Height="8" Margin="4,0,12,0" IsIndeterminate="True"
                              Visibility="Collapsed" VerticalAlignment="Center"
                              Foreground="#47D7FF" Background="#10243A"/>
 
-                <TextBlock x:Name="StatusText" Grid.Column="9" Text="Pronto"
+                <TextBlock x:Name="StatusText" Grid.Column="10" Text="Pronto"
                            Foreground="#A8B5C7" VerticalAlignment="Center" Margin="8,0"/>
 
-                <Button x:Name="UpdateButton" Grid.Column="10" Content="Ricerca aggiornamenti"
+                <Button x:Name="UpdateButton" Grid.Column="11" Content="Ricerca aggiornamenti"
                         Click="CheckUpdates_Click" Style="{StaticResource ModernButton}"
                         Background="#0F4C75" BorderBrush="#38BDF8" VerticalAlignment="Center"
                         Margin="8,0,0,0"/>
