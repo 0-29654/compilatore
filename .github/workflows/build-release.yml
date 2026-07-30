@@ -2,7 +2,7 @@ name: Build Compilatore Alunni Release
 
 on:
   push:
-    branches: [ main, master ,sviluppo ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
