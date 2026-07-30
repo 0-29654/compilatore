@@ -2,7 +2,7 @@ name: Build Compilatore Alunni Release
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, sviluppo ]
   workflow_dispatch:
 
 permissions:
@@ -260,6 +260,7 @@ jobs:
           if-no-files-found: error
 
       - name: Crea GitHub Release
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

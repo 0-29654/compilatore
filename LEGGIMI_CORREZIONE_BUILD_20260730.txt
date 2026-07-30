@@ -1,0 +1,8 @@
+CORREZIONE BUILD PATCH EDITOR C++ - 30/07/2026
+
+Corretto l'errore di compilazione in MainWindow.xaml.cs alle righe circa 1653-1658.
+La causa era una stringa C# raw non valida usata per generare cvplus_utils.hpp.
+La stringa è stata sostituita con una costruzione compatibile tramite string.Join.
+
+Non sono state modificate le funzioni di rete, collegamento al server, dati alunno,
+modalità esercitazione/verifica, compilazione o invio degli esercizi.
