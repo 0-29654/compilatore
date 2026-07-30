@@ -1782,7 +1782,29 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         generalGuide.Click += (_, _) => OpenPdfGuide(Path.Combine(CppGuidesDirectory, "Guida_Librerie_CVPlus.pdf"));
         Button sample = new() { Content = "INSTALLA ESEMPIO DETERMINANTE", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(19,130,85)), Foreground = Brushes.White };
         sample.Click += (_, _) => { InstallDeterminantSample(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
-        actions.Children.Add(installLocal); actions.Children.Add(importFiles); actions.Children.Add(generalGuide); actions.Children.Add(sample); panel.Children.Add(actions);
+        Button importHeader = new()
+        {
+            Content = "IMPORTA .H / .HPP",
+            Margin = new Thickness(0,0,8,8),
+            Padding = new Thickness(12,7,12,7),
+            Background = new SolidColorBrush(Color.FromRgb(15,118,110)),
+            Foreground = Brushes.White,
+            IsEnabled = ImportHeaderButton.IsEnabled,
+            ToolTip = ImportHeaderButton.IsEnabled
+                ? "Importa un file header locale nell'editor C++."
+                : "Gestione dei file header disabilitata dal docente."
+        };
+        importHeader.Click += (_, _) =>
+        {
+            CloseActiveOverlay();
+            ImportHeader_Click(importHeader, new RoutedEventArgs());
+        };
+        actions.Children.Add(installLocal);
+        actions.Children.Add(importFiles);
+        actions.Children.Add(generalGuide);
+        actions.Children.Add(sample);
+        actions.Children.Add(importHeader);
+        panel.Children.Add(actions);
 
         foreach (CppExtensionDefinition extension in CppExtensionCatalog)
         {

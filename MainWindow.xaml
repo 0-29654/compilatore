@@ -220,9 +220,12 @@
                         Click="DeleteHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#B91C1C" BorderBrush="#F87171" VerticalAlignment="Center"/>
 
+                <!-- Il comando è mostrato nella finestra Estensioni C++; questo controllo nascosto
+                     conserva lo stato/autorizzazione usato dalla logica esistente. -->
                 <Button x:Name="ImportHeaderButton" Grid.Column="4" Content="Importa .h/.hpp" IsEnabled="False"
                         Click="ImportHeader_Click" Style="{StaticResource ModernButton}"
                         Background="#0F766E" BorderBrush="#2DD4BF" VerticalAlignment="Center"
+                        Visibility="Collapsed"
                         ToolTip="Importa un file header locale nell'editor C++"/>
 
                 <Button x:Name="SendButton" Grid.Column="5" Content="Invia al docente"
