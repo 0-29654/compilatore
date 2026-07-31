@@ -89,7 +89,10 @@ internal static class CppLibraryManager
             string? manifestPath = Directory.EnumerateFiles(staging, "manifest.json", SearchOption.AllDirectories)
                 .OrderBy(x => x.Count(c => c == Path.DirectorySeparatorChar))
                 .FirstOrDefault();
-            if (manifestPath is null) throw new InvalidDataException("Il pacchetto non contiene manifest.json.");
+            // Compatibilita con i normali ZIP creati dall'utente: se non e presente
+            // manifest.json, CV+ riconosce automaticamente header, .a, .dll/.dll.a e PDF.
+            if (manifestPath is null)
+                return InstallSimpleZip(staging, Path.GetFileNameWithoutExtension(packagePath));
 
             string packageRoot = Path.GetDirectoryName(manifestPath)!;
             CppLibraryManifest manifest = JsonSerializer.Deserialize<CppLibraryManifest>(File.ReadAllText(manifestPath), JsonOptions)
@@ -106,6 +109,118 @@ internal static class CppLibraryManager
         finally
         {
             try { if (Directory.Exists(staging)) Directory.Delete(staging, true); } catch { }
+        }
+    }
+
+
+    private static InstalledCppLibrary InstallSimpleZip(string extractedRoot, string fallbackName)
+    {
+        string[] allFiles = Directory.EnumerateFiles(extractedRoot, "*", SearchOption.AllDirectories).ToArray();
+        string[] headers = allFiles.Where(x => x.EndsWith(".h", StringComparison.OrdinalIgnoreCase) ||
+                                               x.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (headers.Length == 0)
+            throw new InvalidDataException("Lo ZIP non contiene header .h/.hpp. Inserire almeno l'header necessario per usare la libreria.");
+
+        string? dll = allFiles.FirstOrDefault(x => x.EndsWith(".dll", StringComparison.OrdinalIgnoreCase));
+        string? staticArchive = allFiles.FirstOrDefault(x => x.EndsWith(".a", StringComparison.OrdinalIgnoreCase) &&
+                                                          !x.EndsWith(".dll.a", StringComparison.OrdinalIgnoreCase));
+        string? guide = allFiles.FirstOrDefault(x => x.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
+
+        string displayName;
+        string type;
+        string? mainLibrary;
+        string? importLibrary = null;
+
+        if (dll is not null)
+        {
+            displayName = Path.GetFileNameWithoutExtension(dll);
+            type = "dynamic";
+            mainLibrary = dll;
+            string stem = Path.GetFileNameWithoutExtension(dll);
+            string[] expected = { "lib" + stem + ".dll.a", stem + ".dll.a", "lib" + stem + ".a" };
+            importLibrary = allFiles.FirstOrDefault(x => expected.Any(e => Path.GetFileName(x).Equals(e, StringComparison.OrdinalIgnoreCase)));
+            if (importLibrary is null)
+                throw new InvalidDataException($"Nello ZIP e presente {Path.GetFileName(dll)}, ma manca la libreria di importazione MinGW lib{stem}.dll.a.");
+        }
+        else if (staticArchive is not null)
+        {
+            displayName = Path.GetFileNameWithoutExtension(staticArchive);
+            if (displayName.StartsWith("lib", StringComparison.OrdinalIgnoreCase)) displayName = displayName[3..];
+            type = "static";
+            mainLibrary = staticArchive;
+        }
+        else
+        {
+            displayName = string.IsNullOrWhiteSpace(fallbackName) ? Path.GetFileNameWithoutExtension(headers[0]) : fallbackName;
+            type = "header-only";
+            mainLibrary = null;
+        }
+
+        string id = SafeId(displayName);
+        if (id.Length == 0) id = "libreria-locale";
+        string canonical = Path.Combine(Path.GetTempPath(), "CVPlusSimpleZip_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(canonical);
+        try
+        {
+            string include = Path.Combine(canonical, "include");
+            Directory.CreateDirectory(include);
+            foreach (string header in headers)
+                File.Copy(header, Path.Combine(include, Path.GetFileName(header)), true);
+
+            var manifest = new CppLibraryManifest
+            {
+                Id = id,
+                Name = displayName,
+                Version = "1.0.0",
+                Description = "Libreria importata automaticamente da ZIP locale",
+                Type = type,
+                Compiler = "mingw64",
+                Architecture = "x64",
+                CppStandard = "c++17",
+                IncludePaths = new List<string> { "include" }
+            };
+
+            if (type == "static" && mainLibrary is not null)
+            {
+                string libDir = Path.Combine(canonical, "lib", "x64");
+                Directory.CreateDirectory(libDir);
+                File.Copy(mainLibrary, Path.Combine(libDir, Path.GetFileName(mainLibrary)), true);
+                string libName = Path.GetFileNameWithoutExtension(mainLibrary);
+                manifest.LibraryPaths.Add("lib/x64");
+                manifest.Libraries.Add(libName.StartsWith("lib", StringComparison.OrdinalIgnoreCase) ? libName[3..] : libName);
+            }
+            else if (type == "dynamic" && mainLibrary is not null && importLibrary is not null)
+            {
+                string binDir = Path.Combine(canonical, "bin", "x64");
+                string libDir = Path.Combine(canonical, "lib", "x64");
+                Directory.CreateDirectory(binDir);
+                Directory.CreateDirectory(libDir);
+                File.Copy(mainLibrary, Path.Combine(binDir, Path.GetFileName(mainLibrary)), true);
+                File.Copy(importLibrary, Path.Combine(libDir, Path.GetFileName(importLibrary)), true);
+                string stem = Path.GetFileNameWithoutExtension(mainLibrary);
+                manifest.LibraryPaths.Add("lib/x64");
+                manifest.Libraries.Add(stem);
+                manifest.RuntimeFiles.Add("bin/x64/" + Path.GetFileName(mainLibrary));
+            }
+
+            if (guide is not null)
+            {
+                string guideDir = Path.Combine(canonical, "guides");
+                Directory.CreateDirectory(guideDir);
+                File.Copy(guide, Path.Combine(guideDir, Path.GetFileName(guide)), true);
+                manifest.GuideFiles.Add("guides/" + Path.GetFileName(guide));
+            }
+
+            File.WriteAllText(Path.Combine(canonical, "manifest.json"), JsonSerializer.Serialize(manifest, JsonOptions), new UTF8Encoding(false));
+            string destination = Path.Combine(RootDirectory, SafeId(manifest.Id));
+            Directory.CreateDirectory(RootDirectory);
+            if (Directory.Exists(destination)) Directory.Delete(destination, true);
+            CopyDirectory(canonical, destination);
+            return new InstalledCppLibrary(manifest, destination);
+        }
+        finally
+        {
+            try { if (Directory.Exists(canonical)) Directory.Delete(canonical, true); } catch { }
         }
     }
 

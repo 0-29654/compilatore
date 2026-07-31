@@ -1,0 +1,23 @@
+FIX ESTENSIONI C++ - IMPORTAZIONE ZIP SENZA manifest.json
+Data: 31/07/2026
+
+Modifiche applicate:
+1. Il pulsante "INSTALLA PACCHETTO / ZIP" accetta ora anche normali file ZIP creati dall'utente senza manifest.json.
+2. CV+ riconosce automaticamente nello ZIP:
+   - file .h e .hpp;
+   - librerie statiche .a;
+   - DLL .dll con la relativa libreria di importazione .dll.a;
+   - una guida PDF facoltativa.
+3. Sono supportati file nella radice dello ZIP oppure in sottocartelle.
+4. Per saluti.dll viene cercato automaticamente libsaluti.dll.a, saluti.dll.a oppure libsaluti.a.
+5. La guida PDF generale è stata aggiornata: i comandi di creazione delle librerie non contengono più -std=c++17.
+6. Il file saluti.cpp può essere presente nello ZIP, ma non è necessario per installare una DLL già compilata.
+
+Esempio ZIP valido:
+- saluti.h
+- saluti.cpp (facoltativo)
+- saluti.dll
+- libsaluti.dll.a
+- guida.pdf (facoltativo)
+
+Nota: non è stato possibile eseguire dotnet build nell'ambiente di preparazione perché il comando dotnet non è installato. Il codice è stato controllato a livello sorgente.
