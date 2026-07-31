@@ -1,0 +1,15 @@
+CV+ Compilatore Alunno - versione unica 1.9.6
+
+La versione si modifica solamente nel file:
+  CppStudentClient.csproj
+
+Riga:
+  <Version>1.9.6</Version>
+
+Il workflow GitHub legge automaticamente questa versione e la usa per:
+- compilazione dell'eseguibile;
+- versione dell'installer Inno Setup;
+- tag e titolo della GitHub Release;
+- testo delle note della Release.
+
+Per la prossima versione modificare soltanto 1.9.6 in 1.9.7 nel file .csproj.

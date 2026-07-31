@@ -1,4 +1,4 @@
-﻿using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.CodeCompletion;
@@ -2151,8 +2151,11 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
                     "https://api.github.com/repos/0-29654/compilatore/releases/latest"
                 );
 
+            Version runningVersion =
+                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 0);
+
             request.Headers.UserAgent.ParseAdd(
-                "CVPlusCompilatoreAlunno/1.9.3"
+                $"CVPlusCompilatoreAlunno/{runningVersion.Major}.{runningVersion.Minor}.{runningVersion.Build}"
             );
 
             using HttpResponseMessage response =
