@@ -2018,23 +2018,43 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             Version? latestVersion =
                 ExtractVersionFromTag(tag);
 
-            DateTimeOffset? publishedAt = null;
-            if (release.TryGetProperty("published_at", out JsonElement publishedElement) &&
-                DateTimeOffset.TryParse(publishedElement.GetString(), out DateTimeOffset parsedPublishedAt))
+            long releaseId =
+                release.TryGetProperty("id", out JsonElement releaseIdElement) &&
+                releaseIdElement.TryGetInt64(out long parsedReleaseId)
+                    ? parsedReleaseId
+                    : 0;
+
+            string updateStateDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "CVPlus");
+
+            string installedReleaseMarker = Path.Combine(
+                updateStateDirectory,
+                "installed-release-id.txt");
+
+            long installedReleaseId = 0;
+            if (File.Exists(installedReleaseMarker))
             {
-                publishedAt = parsedPublishedAt;
+                long.TryParse(
+                    File.ReadAllText(installedReleaseMarker).Trim(),
+                    out installedReleaseId);
             }
 
-            DateTimeOffset installedBuildTime = new DateTimeOffset(
-                File.GetLastWriteTimeUtc(Assembly.GetExecutingAssembly().Location),
-                TimeSpan.Zero);
-
             bool newerSemanticVersion = latestVersion != null && latestVersion > currentVersion;
-            bool newerReleaseBuild = latestVersion != null && latestVersion == currentVersion &&
-                                     publishedAt.HasValue &&
-                                     publishedAt.Value > installedBuildTime.AddMinutes(5);
+            bool sameSemanticVersionWithDifferentRelease =
+                latestVersion != null &&
+                latestVersion == currentVersion &&
+                releaseId > 0 &&
+                releaseId != installedReleaseId;
 
-            if (!newerSemanticVersion && !newerReleaseBuild)
+            bool unversionedDifferentRelease =
+                latestVersion == null &&
+                releaseId > 0 &&
+                releaseId != installedReleaseId;
+
+            if (!newerSemanticVersion &&
+                !sameSemanticVersionWithDifferentRelease &&
+                !unversionedDifferentRelease)
             {
                 StatusText.Text = "Il programma è aggiornato";
 
@@ -2158,6 +2178,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             StatusText.Text =
                 "Installazione automatica dell'aggiornamento...";
 
+            Directory.CreateDirectory(updateStateDirectory);
+
             string updaterScript =
                 Path.Combine(
                     Path.GetTempPath(),
@@ -2185,6 +2207,9 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
                 "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART " +
                 "/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RESTARTAPPLICATIONS\r\n" +
                 "set \"SETUP_EXIT=%ERRORLEVEL%\"\r\n" +
+                "if %SETUP_EXIT% EQU 0 (\r\n" +
+                $"  >\"{installedReleaseMarker}\" echo {releaseId}\r\n" +
+                ")\r\n" +
                 "del /f /q \"%INSTALLER%\" >NUL 2>&1\r\n" +
                 "del /f /q \"%~f0\" >NUL 2>&1\r\n" +
                 "exit /b %SETUP_EXIT%\r\n";
