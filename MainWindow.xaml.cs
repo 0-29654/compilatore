@@ -1732,6 +1732,170 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         }
     }
 
+
+    private const string GitLibrariesApiUrl = "https://api.github.com/repos/0-29654/compilatore/contents/librerie?ref=main";
+    private const string GitLibrariesPassword = "20242lbg";
+
+    private bool RequestGitLibrariesPassword()
+    {
+        var dialog = new Window
+        {
+            Title = "Accesso librerie Git",
+            Owner = this,
+            Width = 430,
+            Height = 245,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize,
+            Background = new SolidColorBrush(Color.FromRgb(30, 30, 30)),
+            ShowInTaskbar = false
+        };
+
+        var panel = new StackPanel { Margin = new Thickness(22) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Inserisci la password per accedere alla cartella librerie di GitHub.",
+            Foreground = Brushes.White,
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 15,
+            Margin = new Thickness(0, 0, 0, 12)
+        });
+
+        var password = new PasswordBox
+        {
+            Height = 34,
+            FontSize = 16,
+            Padding = new Thickness(7, 4, 7, 4),
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        panel.Children.Add(password);
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Aiuto: 20……..g",
+            Foreground = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
+            Margin = new Thickness(0, 0, 0, 15)
+        });
+
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        var cancel = new Button { Content = "ANNULLA", MinWidth = 95, Padding = new Thickness(12, 7, 12, 7), Margin = new Thickness(0, 0, 8, 0) };
+        var confirm = new Button { Content = "ACCEDI", MinWidth = 95, Padding = new Thickness(12, 7, 12, 7), IsDefault = true };
+        cancel.Click += (_, _) => { dialog.DialogResult = false; dialog.Close(); };
+        confirm.Click += (_, _) =>
+        {
+            if (!string.Equals(password.Password, GitLibrariesPassword, StringComparison.Ordinal))
+            {
+                MessageBox.Show(dialog, "Password non corretta.", "CV+", MessageBoxButton.OK, MessageBoxImage.Warning);
+                password.Clear();
+                password.Focus();
+                return;
+            }
+            dialog.DialogResult = true;
+            dialog.Close();
+        };
+        buttons.Children.Add(cancel);
+        buttons.Children.Add(confirm);
+        panel.Children.Add(buttons);
+        dialog.Content = panel;
+        dialog.Loaded += (_, _) => password.Focus();
+        return dialog.ShowDialog() == true;
+    }
+
+    private async Task InstallCppLibraryFromGitAsync()
+    {
+        if (!RequestGitLibrariesPassword()) return;
+
+        try
+        {
+            StatusText.Text = "Connessione alla cartella librerie GitHub...";
+            using var request = new HttpRequestMessage(HttpMethod.Get, GitLibrariesApiUrl);
+            request.Headers.UserAgent.ParseAdd("CVPlus-Compilatore/1.0");
+            request.Headers.Accept.ParseAdd("application/vnd.github+json");
+            using HttpResponseMessage response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            using JsonDocument document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var libraries = document.RootElement.EnumerateArray()
+                .Where(item => item.TryGetProperty("type", out JsonElement type) && type.GetString() == "file")
+                .Select(item => new
+                {
+                    Name = item.TryGetProperty("name", out JsonElement name) ? name.GetString() ?? "" : "",
+                    DownloadUrl = item.TryGetProperty("download_url", out JsonElement url) ? url.GetString() ?? "" : ""
+                })
+                .Where(item => (item.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || item.Name.EndsWith(".cvplus", StringComparison.OrdinalIgnoreCase)) && !string.IsNullOrWhiteSpace(item.DownloadUrl))
+                .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (libraries.Count == 0)
+            {
+                MessageBox.Show("Nella cartella GitHub 'librerie' non sono presenti pacchetti .zip o .cvplus installabili.", "CV+", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusText.Text = "Nessuna libreria Git disponibile";
+                return;
+            }
+
+            var selection = new Window
+            {
+                Title = "Scegli libreria da GitHub",
+                Owner = this,
+                Width = 650,
+                Height = 430,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Background = new SolidColorBrush(Color.FromRgb(30, 30, 30)),
+                ShowInTaskbar = false
+            };
+            var root = new Grid { Margin = new Thickness(18) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var title = new TextBlock { Text = "Seleziona la libreria da installare", Foreground = Brushes.White, FontSize = 19, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 12) };
+            root.Children.Add(title);
+            var list = new ListBox { ItemsSource = libraries.Select(x => x.Name).ToList(), FontSize = 14, Margin = new Thickness(0, 0, 0, 14) };
+            if (libraries.Count > 0) list.SelectedIndex = 0;
+            Grid.SetRow(list, 1); root.Children.Add(list);
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            var cancel = new Button { Content = "ANNULLA", MinWidth = 100, Padding = new Thickness(12, 7, 12, 7), Margin = new Thickness(0, 0, 8, 0) };
+            var install = new Button { Content = "INSTALLA", MinWidth = 105, Padding = new Thickness(12, 7, 12, 7), IsDefault = true };
+            cancel.Click += (_, _) => { selection.DialogResult = false; selection.Close(); };
+            install.Click += (_, _) =>
+            {
+                if (list.SelectedIndex < 0) return;
+                selection.DialogResult = true;
+                selection.Close();
+            };
+            actions.Children.Add(cancel); actions.Children.Add(install);
+            Grid.SetRow(actions, 2); root.Children.Add(actions);
+            selection.Content = root;
+
+            if (selection.ShowDialog() != true || list.SelectedIndex < 0) return;
+            var selected = libraries[list.SelectedIndex];
+
+            StatusText.Text = "Download libreria: " + selected.Name;
+            string tempDirectory = Path.Combine(Path.GetTempPath(), "CVPlusGitLibrary_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDirectory);
+            string packagePath = Path.Combine(tempDirectory, Path.GetFileName(selected.Name));
+            try
+            {
+                using var downloadRequest = new HttpRequestMessage(HttpMethod.Get, selected.DownloadUrl);
+                downloadRequest.Headers.UserAgent.ParseAdd("CVPlus-Compilatore/1.0");
+                using HttpResponseMessage downloadResponse = await _http.SendAsync(downloadRequest);
+                downloadResponse.EnsureSuccessStatusCode();
+                await using (FileStream output = File.Create(packagePath))
+                    await downloadResponse.Content.CopyToAsync(output);
+
+                InstalledCppLibrary installedLibrary = CppLibraryManager.InstallPackage(packagePath);
+                StatusText.Text = $"Libreria installata da GitHub: {installedLibrary.Manifest.Name} {installedLibrary.Manifest.Version}";
+                MessageBox.Show($"Libreria installata correttamente da GitHub.\n\n{installedLibrary.Manifest.Name} {installedLibrary.Manifest.Version}\nTipo: {installedLibrary.Manifest.Type}", "CV+", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            finally
+            {
+                try { if (Directory.Exists(tempDirectory)) Directory.Delete(tempDirectory, true); } catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Installazione da GitHub non riuscita";
+            MessageBox.Show("Impossibile caricare o installare la libreria da GitHub:\n" + ex.Message, "CV+", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void ImportLooseCppLibrary()
     {
         var libraryDialog = new Microsoft.Win32.OpenFileDialog { Title="Seleziona libreria statica o dinamica", Filter="Librerie MinGW (*.a;*.dll;*.lib)|*.a;*.dll;*.lib|Tutti i file (*.*)|*.*" };
@@ -1794,6 +1958,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         var actions = new WrapPanel { Margin = new Thickness(0,0,0,14) };
         Button installLocal = new() { Content = "INSTALLA LIBRERIA LOCALE", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(14,99,156)), Foreground = Brushes.White };
         installLocal.Click += (_, _) => { InstallLocalCppLibrary(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
+        Button installGit = new() { Content = "INSTALLA LIBRERIA DA GIT", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(30,136,229)), Foreground = Brushes.White, ToolTip = "Accede alla cartella librerie del repository GitHub e permette di scegliere un pacchetto da installare." };
+        installGit.Click += async (_, _) => { await InstallCppLibraryFromGitAsync(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
         Button importFiles = new() { Content = "IMPORTA .A / .DLL + HEADER + PDF", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(104,75,145)), Foreground = Brushes.White };
         importFiles.Click += (_, _) => { ImportLooseCppLibrary(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
         Button generalGuide = new() { Content = "GUIDA LIBRERIE PDF", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(70,70,70)), Foreground = Brushes.White };
@@ -1818,6 +1984,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             ImportHeader_Click(importHeader, new RoutedEventArgs());
         };
         actions.Children.Add(installLocal);
+        actions.Children.Add(installGit);
         actions.Children.Add(importFiles);
         actions.Children.Add(generalGuide);
         actions.Children.Add(sample);

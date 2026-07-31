@@ -1,0 +1,18 @@
+MODIFICA: INSTALLA LIBRERIA DA GIT
+
+File modificato:
+- MainWindow.xaml.cs
+
+Nella scheda Estensioni C++ è stato aggiunto il pulsante:
+- INSTALLA LIBRERIA DA GIT
+
+Funzionamento:
+1. Richiede la password configurata.
+2. Mostra l'aiuto: 20……..g
+3. Legge i pacchetti .zip e .cvplus presenti nella cartella "librerie" del repository GitHub 0-29654/compilatore, branch main.
+4. Permette di scegliere la libreria.
+5. Scarica il pacchetto in una cartella temporanea e lo installa con il gestore librerie già presente.
+6. Cancella il file temporaneo al termine.
+
+NOTA DI SICUREZZA:
+La password è un blocco di accesso interno all'applicazione, non protegge realmente una cartella GitHub pubblica. Una password incorporata in un eseguibile può essere recuperata da un utente esperto.
