@@ -2018,14 +2018,28 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             Version? latestVersion =
                 ExtractVersionFromTag(tag);
 
-            if (latestVersion == null ||
-                latestVersion <= currentVersion)
+            DateTimeOffset? publishedAt = null;
+            if (release.TryGetProperty("published_at", out JsonElement publishedElement) &&
+                DateTimeOffset.TryParse(publishedElement.GetString(), out DateTimeOffset parsedPublishedAt))
             {
-                StatusText.Text =
-                    "Il programma è aggiornato";
+                publishedAt = parsedPublishedAt;
+            }
+
+            DateTimeOffset installedBuildTime = new DateTimeOffset(
+                File.GetLastWriteTimeUtc(Assembly.GetExecutingAssembly().Location),
+                TimeSpan.Zero);
+
+            bool newerSemanticVersion = latestVersion != null && latestVersion > currentVersion;
+            bool newerReleaseBuild = latestVersion != null && latestVersion == currentVersion &&
+                                     publishedAt.HasValue &&
+                                     publishedAt.Value > installedBuildTime.AddMinutes(5);
+
+            if (!newerSemanticVersion && !newerReleaseBuild)
+            {
+                StatusText.Text = "Il programma è aggiornato";
 
                 ShowVerificationSafeMessage(
-                    $"La versione installata ({currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}) è già aggiornata.",
+                    $"La versione installata ({currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}) corrisponde all'ultima Release pubblicata nel repository principale.",
                     "Nessun aggiornamento",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information,
@@ -2082,8 +2096,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
             MessageBoxResult answer =
                 ShowVerificationSafeMessage(
-                    $"È disponibile la versione {latestVersion}.\n\n" +
-                    "Vuoi scaricarla e avviare l'installazione?",
+                    $"È disponibile una Release più recente ({tag}).\n\n" +
+                    "Vuoi scaricarla e installarla automaticamente? CV+ verrà chiuso e l'installer partirà da solo.",
                     "Aggiornamento disponibile",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question,
@@ -3113,6 +3127,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         AddGuideItem(content, "Aggiungi esercizio.h", "#7C3AED", "Crea un file header .h. Il comando può essere abilitato o disabilitato dal docente.");
         AddGuideItem(content, "Rinomina .h", "#9333EA", "Rinomina il file header aperto mantenendo l'estensione .h.");
         AddGuideItem(content, "Elimina .h", "#B91C1C", "Elimina il file header corrente dopo la conferma.");
+        AddGuideItem(content, "Estensioni C++", "#0F766E", "Apre la gestione delle estensioni. Da qui puoi installare pacchetti ZIP, importare file .h/.hpp, librerie statiche .a, librerie dinamiche .dll e guide PDF. Le estensioni installate vengono collegate automaticamente durante la compilazione quando previsto dal pacchetto.");
 
         AddGuideSection(content, "SALVATAGGIO E INVIO");
         AddGuideItem(content, "Invia al docente", "#0E8FE8", "Invia codice, dati dell'alunno, esercizio e risultati al server del docente.");

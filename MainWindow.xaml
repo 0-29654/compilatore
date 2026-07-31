@@ -237,10 +237,11 @@
                         Background="#FFFFFF" Foreground="#1F2937" BorderBrush="#D1D5DB" VerticalAlignment="Center"
                         ToolTip="Accedi con il tuo account Google e salva l'esercizio nel tuo Drive"/>
 
-                <TextBlock x:Name="CurrentTaskSummaryText" Grid.Column="6"
+                <TextBlock x:Name="CurrentTaskSummaryText" Grid.Column="10"
                            Text="Tipologia — • esercizio 1" Foreground="#BDD6F3"
                            FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
-                           Margin="8,0,10,0"/>
+                           HorizontalAlignment="Right" TextAlignment="Right"
+                           TextTrimming="CharacterEllipsis" Margin="8,0,10,0"/>
 
                 <Button x:Name="TestServerButton" Grid.Column="7" Content="Test server"
                         Click="TestServer_Click" Style="{StaticResource ModernButton}"
@@ -254,7 +255,7 @@
                 <TextBlock x:Name="StatusText" Grid.Column="9" Text="Pronto"
                            Foreground="#A8B5C7" VerticalAlignment="Center" Margin="8,0"/>
 
-                <Button x:Name="UpdateButton" Grid.Column="10" Content="Ricerca aggiornamenti"
+                <Button x:Name="UpdateButton" Grid.Column="11" Content="Ricerca aggiornamenti"
                         Click="CheckUpdates_Click" Style="{StaticResource ModernButton}"
                         Background="#0F4C75" BorderBrush="#38BDF8" VerticalAlignment="Center"
                         Margin="8,0,0,0"/>

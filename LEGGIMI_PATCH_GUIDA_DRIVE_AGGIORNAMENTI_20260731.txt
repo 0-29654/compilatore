@@ -1,0 +1,12 @@
+PATCH 31/07/2026 - branch sviluppo
+
+Modifiche:
+1. Aggiunto il pulsante Estensioni C++ nella guida visuale, con spiegazione di ZIP, header, .a, .dll e PDF.
+2. Corretto l'accavallamento grafico: il riepilogo Tipologia/Esercizio non viene più disegnato sopra il pulsante Google Drive.
+3. Ricerca aggiornamenti collegata alla Release pubblica più recente del repository principale.
+4. Gestite anche Release nuove con lo stesso numero di versione ma pubblicate successivamente.
+5. Dopo conferma dell'utente, download e avvio automatico dell'installer.
+6. Riscritta Guida_Librerie_CVPlus.pdf con differenza tra libreria statica e DLL ed esempi senza namespace.
+7. Nei comandi della guida non viene imposto -std=c++17.
+
+Copiare tutto nel repository locale mentre GitHub Desktop è sul branch sviluppo, quindi Commit to sviluppo e Push origin.
