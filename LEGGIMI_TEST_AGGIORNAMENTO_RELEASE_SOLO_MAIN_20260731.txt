@@ -1,0 +1,12 @@
+PATCH DI PROVA AGGIORNAMENTO - 31/07/2026
+
+Modifiche applicate:
+1. Il workflow compila su main, master e sviluppo, ma crea una GitHub Release soltanto quando il push riguarda main o master.
+2. Il pulsante ? GUIDA nella barra superiore è stato reso arancione, per riconoscere facilmente la nuova versione durante la prova dell’aggiornamento.
+
+Procedura consigliata:
+- commit e push di questa patch su sviluppo;
+- scaricare e provare l’Artifact da Actions;
+- quando verificato, creare la Pull Request sviluppo -> main e completare il merge;
+- il workflow di main creerà la Release ufficiale;
+- dalla versione precedente usare Ricerca aggiornamenti per verificare download e avvio dell’installer.
