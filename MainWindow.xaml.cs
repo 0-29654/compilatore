@@ -1716,8 +1716,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Seleziona un pacchetto CV+ o uno ZIP con libreria",
-            Filter = "Pacchetti CV+ o ZIP (*.cvplus;*.zip)|*.cvplus;*.zip|Tutti i file (*.*)|*.*"
+            Title = "Seleziona una libreria CV+",
+            Filter = "Pacchetti CV+ (*.cvplus;*.zip)|*.cvplus;*.zip|Tutti i file (*.*)|*.*"
         };
         if (dialog.ShowDialog(this) != true) return;
         try
@@ -1792,7 +1792,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         panel.Children.Add(new TextBlock { Text = "Snippet, librerie header-only, statiche MinGW (.a) e dinamiche Windows (.dll + .dll.a). Installare solo pacchetti attendibili.", Foreground = new SolidColorBrush(Color.FromRgb(180,180,180)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,14) });
 
         var actions = new WrapPanel { Margin = new Thickness(0,0,0,14) };
-        Button installLocal = new() { Content = "INSTALLA PACCHETTO / ZIP", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(14,99,156)), Foreground = Brushes.White };
+        Button installLocal = new() { Content = "INSTALLA LIBRERIA LOCALE", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(14,99,156)), Foreground = Brushes.White };
         installLocal.Click += (_, _) => { InstallLocalCppLibrary(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
         Button importFiles = new() { Content = "IMPORTA .A / .DLL + HEADER + PDF", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(104,75,145)), Foreground = Brushes.White };
         importFiles.Click += (_, _) => { ImportLooseCppLibrary(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };

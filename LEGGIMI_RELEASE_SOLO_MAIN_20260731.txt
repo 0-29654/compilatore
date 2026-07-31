@@ -1,0 +1,11 @@
+MODIFICA WORKFLOW RELEASE - 31/07/2026
+
+È stata aggiunta una condizione al passaggio "Crea GitHub Release" in:
+.github/workflows/build-release.yml
+
+Comportamento risultante:
+- push su sviluppo: crea la build e l'Artifact in GitHub Actions, ma NON crea una Release;
+- push/merge su main o master: crea la build, l'Artifact e la Release ufficiale.
+
+La condizione aggiunta è:
+if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
