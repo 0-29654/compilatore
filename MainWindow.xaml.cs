@@ -64,6 +64,10 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _googleDriveOperationCts;
     private bool _googleDriveOperationRunning;
     private readonly HashSet<string> _installedCppExtensions = new(StringComparer.OrdinalIgnoreCase);
+    private Process? _shellProcess;
+    private bool _shellVisible;
+    private readonly List<string> _shellCommandHistory = new();
+    private int _shellHistoryIndex = 0;
     private string CppExtensionsSettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CVPlus", "cpp-extensions.json");
 
     private const string DefaultCode = "#include <iostream>\nusing namespace std;\n\nint main()\n{\n    \n    return 0;\n}\n";
@@ -86,7 +90,7 @@ public partial class MainWindow : Window
         LoadCppExtensions();
         ResetClientStateOnStartup();
         StartTeacherDiscoveryListener();
-        Closed += (_, _) => { _liveMonitorTimer.Stop(); StopTeacherDiscoveryListener(); };
+        Closed += (_, _) => { _liveMonitorTimer.Stop(); StopTeacherDiscoveryListener(); StopShell(); };
         if (!File.Exists(BundledCompilerPath))
             OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
         ActivateExercise(GetTaskType(), GetExerciseNumber());
@@ -107,6 +111,210 @@ public partial class MainWindow : Window
             UpdateWindowTitle();
             await RefreshServerModeAsync(false);
         };
+    }
+
+    private void Shell_Click(object sender, RoutedEventArgs e)
+    {
+        if (_shellVisible)
+        {
+            HideShell();
+            return;
+        }
+
+        ShowShell();
+    }
+
+    private void ShowShell()
+    {
+        _shellVisible = true;
+        EditorTabs.Visibility = Visibility.Collapsed;
+        ShellPanel.Visibility = Visibility.Visible;
+        OutputPanel.Visibility = Visibility.Collapsed;
+        OutputRow.Height = new GridLength(0);
+        ShellButton.Content = "C++ EDITOR";
+        ShellButton.ToolTip = "Torna all'editor C++";
+
+        if (_shellProcess == null || _shellProcess.HasExited)
+            StartShell();
+
+        ShellInputBox.Focus();
+        StatusText.Text = "Shell CMD — Documenti — G++ nel PATH";
+    }
+
+    private void HideShell()
+    {
+        _shellVisible = false;
+        ShellPanel.Visibility = Visibility.Collapsed;
+        EditorTabs.Visibility = Visibility.Visible;
+        OutputPanel.Visibility = Visibility.Visible;
+        OutputRow.Height = new GridLength(125);
+        ShellButton.Content = ">_ SHELL";
+        ShellButton.ToolTip = "Apri la shell CMD nella cartella Documenti con G++ già nel PATH";
+        Editor.Focus();
+        StatusText.Text = "Editor C++ attivo";
+    }
+
+    private void StartShell()
+    {
+        StopShell();
+        string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        if (string.IsNullOrWhiteSpace(documents) || !Directory.Exists(documents))
+            documents = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        try
+        {
+            var psi = new ProcessStartInfo("cmd.exe")
+            {
+                Arguments = "/Q /D",
+                WorkingDirectory = documents,
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8
+            };
+            ConfigureCompilerEnvironment(psi);
+
+            _shellProcess = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            _shellProcess.OutputDataReceived += Shell_OutputDataReceived;
+            _shellProcess.ErrorDataReceived += Shell_OutputDataReceived;
+            _shellProcess.Exited += (_, _) => Dispatcher.BeginInvoke(() =>
+            {
+                AppendShellText("\r\n[Shell terminata. Premi SHELL/C++ EDITOR e riaprila per una nuova sessione.]\r\n");
+            });
+            _shellProcess.Start();
+            _shellProcess.BeginOutputReadLine();
+            _shellProcess.BeginErrorReadLine();
+
+            ShellOutputBox.Clear();
+            AppendShellText("Microsoft Windows CMD integrato in CV+\r\n");
+            AppendShellText($"Cartella iniziale: {documents}\r\n");
+            AppendShellText($"Compilatore: {BundledCompilerPath}\r\n");
+            AppendShellText("G++ è già aggiunto al PATH. Digita help per l'elenco dei comandi DOS.\r\n\r\n");
+            WriteShellCommand("prompt $P$G");
+            WriteShellCommand("cd /d \"" + documents + "\"");
+        }
+        catch (Exception ex)
+        {
+            AppendShellText("Impossibile avviare CMD: " + ex.Message + "\r\n");
+            StatusText.Text = "Errore avvio Shell";
+        }
+    }
+
+    private void Shell_OutputDataReceived(object sender, DataReceivedEventArgs e)
+    {
+        if (e.Data == null) return;
+        Dispatcher.BeginInvoke(() => AppendShellText(e.Data + Environment.NewLine));
+    }
+
+    private void AppendShellText(string text)
+    {
+        ShellOutputBox.AppendText(text);
+        ShellOutputBox.ScrollToEnd();
+    }
+
+    private void ShellInputBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Up)
+        {
+            e.Handled = true;
+            if (_shellCommandHistory.Count == 0) return;
+
+            if (_shellHistoryIndex > 0)
+                _shellHistoryIndex--;
+
+            ShellInputBox.Text = _shellCommandHistory[_shellHistoryIndex];
+            ShellInputBox.CaretIndex = ShellInputBox.Text.Length;
+            return;
+        }
+
+        if (e.Key == Key.Down)
+        {
+            e.Handled = true;
+            if (_shellCommandHistory.Count == 0) return;
+
+            if (_shellHistoryIndex < _shellCommandHistory.Count - 1)
+            {
+                _shellHistoryIndex++;
+                ShellInputBox.Text = _shellCommandHistory[_shellHistoryIndex];
+            }
+            else
+            {
+                _shellHistoryIndex = _shellCommandHistory.Count;
+                ShellInputBox.Clear();
+            }
+
+            ShellInputBox.CaretIndex = ShellInputBox.Text.Length;
+            return;
+        }
+
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        string command = ShellInputBox.Text;
+        ShellInputBox.Clear();
+
+        if (string.IsNullOrWhiteSpace(command))
+        {
+            WriteShellCommand("");
+            return;
+        }
+
+        _shellCommandHistory.Add(command);
+        _shellHistoryIndex = _shellCommandHistory.Count;
+
+        AppendShellText("> " + command + Environment.NewLine);
+
+        if (command.Trim().Equals("cls", StringComparison.OrdinalIgnoreCase))
+        {
+            ShellOutputBox.Clear();
+            return;
+        }
+
+        if (command.Trim().Equals("exit", StringComparison.OrdinalIgnoreCase))
+        {
+            StopShell();
+            AppendShellText("[Shell terminata]\r\n");
+            return;
+        }
+
+        WriteShellCommand(command);
+    }
+
+    private void WriteShellCommand(string command)
+    {
+        try
+        {
+            if (_shellProcess == null || _shellProcess.HasExited)
+                StartShell();
+            _shellProcess?.StandardInput.WriteLine(command);
+            _shellProcess?.StandardInput.Flush();
+        }
+        catch (Exception ex)
+        {
+            AppendShellText("Errore Shell: " + ex.Message + Environment.NewLine);
+        }
+    }
+
+    private void StopShell()
+    {
+        try
+        {
+            if (_shellProcess != null && !_shellProcess.HasExited)
+            {
+                _shellProcess.StandardInput.WriteLine("exit");
+                _shellProcess.StandardInput.Flush();
+                if (!_shellProcess.WaitForExit(300))
+                    _shellProcess.Kill(true);
+            }
+        }
+        catch { }
+        finally
+        {
+            _shellProcess?.Dispose();
+            _shellProcess = null;
+        }
     }
 
     private void UpdateWindowTitle()
@@ -3322,6 +3530,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         AddGuideItem(content, "Aggiungi esercizio.h", "#7C3AED", "Crea un file header .h. Il comando può essere abilitato o disabilitato dal docente.");
         AddGuideItem(content, "Rinomina .h", "#9333EA", "Rinomina il file header aperto mantenendo l'estensione .h.");
         AddGuideItem(content, "Elimina .h", "#B91C1C", "Elimina il file header corrente dopo la conferma.");
+        AddGuideItem(content, "Shell", "#166534", "Apre una shell CMD reale integrata nella cartella Documenti. G++ è già disponibile nel PATH; puoi usare i normali comandi Windows/DOS, help, creare cartelle e file, aprire Notepad e compilare sorgenti C++ e header.");
         AddGuideItem(content, "Estensioni C++", "#0F766E", "Apre la gestione delle estensioni. Da qui puoi installare pacchetti ZIP, importare file .h/.hpp, librerie statiche .a, librerie dinamiche .dll e guide PDF. Le estensioni installate vengono collegate automaticamente durante la compilazione quando previsto dal pacchetto.");
 
         AddGuideSection(content, "SALVATAGGIO E INVIO");

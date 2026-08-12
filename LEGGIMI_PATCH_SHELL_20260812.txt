@@ -1,0 +1,11 @@
+PATCH SHELL INTEGRATA — 12/08/2026
+
+- ESTENSIONI C++ resta visibile ma disabilitato.
+- Aggiunto pulsante >_ SHELL vicino a ESTENSIONI C++.
+- Il pulsante sostituisce editor e pannello Compilazione ed esecuzione con una shell CMD integrata.
+- La shell parte dalla cartella Documenti dell’utente.
+- Il compilatore G++ incluso nell’applicazione viene aggiunto automaticamente al PATH.
+- Sono disponibili i normali comandi CMD/DOS (help, dir, cd, mkdir, copy, del, ren, type, ecc.).
+- È possibile richiamare programmi come notepad e usare g++ per compilare .cpp con header .h/.hpp.
+- Il pulsante diventa C++ EDITOR per tornare all’editor originale.
+- cls viene gestito direttamente dall’interfaccia per pulire la console integrata.

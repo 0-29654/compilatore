@@ -69,7 +69,7 @@
             <RowDefinition Height="108"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="125"/>
+            <RowDefinition x:Name="OutputRow" Height="125"/>
             <RowDefinition Height="82"/>
         </Grid.RowDefinitions>
 
@@ -157,12 +157,13 @@
                         <TextBlock Text="C++  ›  main.cpp" Foreground="#CCCCCC" FontFamily="Segoe UI" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1" Text="CV+ EDITOR — C++17" Foreground="#858585" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <Button x:Name="ShellButton" Content=">_ SHELL" Click="Shell_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#166534" BorderBrush="#22C55E" ToolTip="Apri la shell CMD nella cartella Documenti con G++ già nel PATH"/>
                             <Button x:Name="CppExtensionsButton" Content="▣ ESTENSIONI C++" IsEnabled="False" Click="OpenCppExtensions_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#0E639C" BorderBrush="#1177BB" ToolTip="Installa componenti compatibili per editor, snippet e librerie header-only"/>
                             <TextBlock Text="SHIFT+CLICK: TUTTO SCHERMO" Foreground="#D7BA7D" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                 </Border>
-                <TabControl Grid.Row="1" Background="#050B14" BorderThickness="0">
+                <TabControl x:Name="EditorTabs" Grid.Row="1" Background="#050B14" BorderThickness="0">
                     <TabItem Header="main.cpp">
                         <avalonEdit:TextEditor x:Name="Editor" ShowLineNumbers="True" FontFamily="Cascadia Mono, Consolas" FontSize="16"
                                                Background="#1E1E1E" Foreground="#D4D4D4" LineNumbersForeground="#858585" Padding="10"
@@ -174,10 +175,27 @@
                                                TextChanged="HeaderEditor_TextChanged" PreviewMouseLeftButtonDown="HeaderEditor_PreviewMouseLeftButtonDown"/>
                     </TabItem>
                 </TabControl>
+                <Grid x:Name="ShellPanel" Grid.Row="1" Visibility="Collapsed" Background="#0C0C0C">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBox x:Name="ShellOutputBox" Grid.Row="0" IsReadOnly="True" AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                             TextWrapping="NoWrap" BorderThickness="0" Background="#0C0C0C" Foreground="#E5E5E5"
+                             FontFamily="Cascadia Mono, Consolas" FontSize="14" Padding="10"/>
+                    <DockPanel Grid.Row="1" Background="#111111" LastChildFill="True" Margin="0,1,0,0">
+                        <TextBlock Text=">" Foreground="#22C55E" FontFamily="Cascadia Mono, Consolas" FontSize="15"
+                                   FontWeight="Bold" VerticalAlignment="Center" Margin="10,0,7,0"/>
+                        <TextBox x:Name="ShellInputBox" Background="#111111" Foreground="White" BorderThickness="0"
+                                 FontFamily="Cascadia Mono, Consolas" FontSize="14" Padding="4,7"
+                                 KeyDown="ShellInputBox_KeyDown"/>
+                    </DockPanel>
+                </Grid>
             </Grid>
         </Border>
 
-        <Border Grid.Row="3" Margin="16,10,16,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
+        <Border x:Name="OutputPanel" Grid.Row="3" Margin="16,10,16,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Border Background="#132139"><Grid Margin="13,0"><TextBlock Text="COMPILAZIONE ED ESECUZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/><TextBlock Text="SHIFT+CLICK: apri a tutto schermo" Foreground="#FFD166" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid></Border>
