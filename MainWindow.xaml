@@ -141,8 +141,8 @@
                 <StackPanel Grid.Column="7" Margin="4">
                     <TextBlock Text="CAMBIA ESERCIZIO" Style="{StaticResource LabelStyle}"/>
                     <StackPanel Orientation="Horizontal">
-                        <Button Content="◀" Width="42" Click="PreviousExercise_Click" Style="{StaticResource ModernButton}" Padding="8,7"/>
-                        <Button Content="▶" Width="42" Click="NextExercise_Click" Style="{StaticResource ModernButton}" Padding="8,7" Margin="0" Background="#0E78C7" BorderBrush="#2AAEFF"/>
+                        <Button x:Name="PreviousExerciseButton" Content="◀" Width="42" Click="PreviousExercise_Click" Style="{StaticResource ModernButton}" Padding="8,7"/>
+                        <Button x:Name="NextExerciseButton" Content="▶" Width="42" Click="NextExercise_Click" Style="{StaticResource ModernButton}" Padding="8,7" Margin="0" Background="#0E78C7" BorderBrush="#2AAEFF"/>
                     </StackPanel>
                 </StackPanel>
             </Grid>

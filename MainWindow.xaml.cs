@@ -55,6 +55,7 @@ public partial class MainWindow : Window
     private bool _modalDialogOpen;
     private System.Windows.Controls.Grid? _activeOverlay;
     private bool _compilationAllowed = true;
+    private bool _headerManagementAllowed;
     private UdpClient? _teacherDiscoveryUdp;
     private CancellationTokenSource? _teacherDiscoveryCts;
     private const int TeacherDiscoveryPort = 5051;
@@ -115,6 +116,12 @@ public partial class MainWindow : Window
 
     private void Shell_Click(object sender, RoutedEventArgs e)
     {
+        if (_verificationMode)
+        {
+            StatusText.Text = "Shell disabilitata in modalità verifica";
+            return;
+        }
+
         if (_shellVisible)
         {
             HideShell();
@@ -133,6 +140,7 @@ public partial class MainWindow : Window
         OutputRow.Height = new GridLength(0);
         ShellButton.Content = "C++ EDITOR";
         ShellButton.ToolTip = "Torna all'editor C++";
+        ApplyShellUiLock();
 
         if (_shellProcess == null || _shellProcess.HasExited)
             StartShell();
@@ -150,8 +158,33 @@ public partial class MainWindow : Window
         OutputRow.Height = new GridLength(125);
         ShellButton.Content = ">_ SHELL";
         ShellButton.ToolTip = "Apri la shell CMD nella cartella Documenti con G++ già nel PATH";
+        ApplyShellUiLock();
         Editor.Focus();
-        StatusText.Text = "Editor C++ attivo";
+        StatusText.Text = _verificationMode ? "Modalità verifica attiva" : "Editor C++ attivo";
+    }
+
+    private void ApplyShellUiLock()
+    {
+        // La Shell ha priorità assoluta sullo stato dei controlli: il server CPPVisual
+        // può aggiornare i permessi, ma non può riattivare questi pulsanti finché
+        // la Shell è visibile. In modalità verifica la Shell è sempre disabilitata.
+        bool editorActionsEnabled = !_shellVisible;
+
+        RunButton.IsEnabled = editorActionsEnabled && _compilationAllowed;
+        AddHeaderButton.IsEnabled = editorActionsEnabled && _headerManagementAllowed;
+        RenameHeaderButton.IsEnabled = editorActionsEnabled && _headerManagementAllowed;
+        DeleteHeaderButton.IsEnabled = editorActionsEnabled && _headerManagementAllowed;
+        ImportHeaderButton.IsEnabled = editorActionsEnabled && _headerManagementAllowed && !_verificationMode;
+        SendButton.IsEnabled = editorActionsEnabled;
+        GoogleDriveButton.IsEnabled = editorActionsEnabled && !_verificationMode && !_googleDriveOperationRunning;
+        TestServerButton.IsEnabled = editorActionsEnabled;
+        UpdateButton.IsEnabled = editorActionsEnabled && !_verificationMode;
+        GuideButton.IsEnabled = editorActionsEnabled && !_verificationMode;
+        PreviousExerciseButton.IsEnabled = editorActionsEnabled;
+        NextExerciseButton.IsEnabled = editorActionsEnabled;
+
+        CppExtensionsButton.IsEnabled = false;
+        ShellButton.IsEnabled = !_verificationMode;
     }
 
     private void StartShell()
@@ -579,7 +612,7 @@ public partial class MainWindow : Window
     private void ApplyCompilationPermission(bool allowed)
     {
         _compilationAllowed = allowed;
-        RunButton.IsEnabled = allowed;
+        RunButton.IsEnabled = allowed && !_shellVisible;
         if (!allowed)
         {
             StatusText.Text = "Compilazione inibita dal docente";
@@ -1607,7 +1640,7 @@ public partial class MainWindow : Window
         {
             ServerTestProgress.Visibility =
                 Visibility.Collapsed;
-            TestServerButton.IsEnabled = true;
+            TestServerButton.IsEnabled = !_shellVisible;
         }
     }
 
@@ -1670,6 +1703,7 @@ public partial class MainWindow : Window
             ApplyCompilationPermission(ReadCompilationAllowed(root));
             ApplyHeaderManagementPermission(ReadHeaderManagementAllowed(root));
             ApplyEditorAssistancePermission(ReadEditorAssistanceAllowed(root));
+            ApplyShellUiLock();
         }
         catch
         {
@@ -2254,10 +2288,11 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private void ApplyHeaderManagementPermission(bool allowed)
     {
-        AddHeaderButton.IsEnabled = allowed;
-        RenameHeaderButton.IsEnabled = allowed;
-        DeleteHeaderButton.IsEnabled = allowed;
-        ImportHeaderButton.IsEnabled = allowed && !_verificationMode;
+        _headerManagementAllowed = allowed;
+        AddHeaderButton.IsEnabled = allowed && !_shellVisible;
+        RenameHeaderButton.IsEnabled = allowed && !_shellVisible;
+        DeleteHeaderButton.IsEnabled = allowed && !_shellVisible;
+        ImportHeaderButton.IsEnabled = allowed && !_verificationMode && !_shellVisible;
 
         string? tooltip = allowed
             ? null
@@ -2280,6 +2315,9 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private void EnterVerificationMode()
     {
+        if (_shellVisible)
+            HideShell();
+
         SaveCurrentExercise();
         ModeText.Text = "VERIFICA";
         ModeDot.Fill = new SolidColorBrush(Color.FromRgb(255, 184, 76));
@@ -2297,11 +2335,14 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         GuideButton.IsEnabled = false;
         CppExtensionsButton.IsEnabled = false;
         CppExtensionsButton.ToolTip = "Estensioni C++ disabilitate in modalità verifica.";
+        ShellButton.IsEnabled = false;
+        ShellButton.ToolTip = "Shell disabilitata in modalità verifica.";
         ImportHeaderButton.IsEnabled = false;
         ImportHeaderButton.ToolTip = "Importazione header disabilitata in modalità verifica.";
         GoogleDriveButton.IsEnabled = false;
         GoogleDriveButton.ToolTip = "Google Drive è disabilitato in modalità verifica.";
         GuideButton.ToolTip = "La guida è disponibile soltanto in modalità esercitazione.";
+        ApplyShellUiLock();
         StatusText.Text = "Modalità verifica attiva";
         Activate();
     }
@@ -2324,10 +2365,13 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         GuideButton.IsEnabled = true;
         CppExtensionsButton.IsEnabled = false;
         CppExtensionsButton.ToolTip = "Estensioni C++ disabilitate.";
+        ShellButton.IsEnabled = true;
+        ShellButton.ToolTip = "Apri la shell CMD nella cartella Documenti con G++ già nel PATH";
         ImportHeaderButton.IsEnabled = AddHeaderButton.IsEnabled;
         ImportHeaderButton.ToolTip = AddHeaderButton.IsEnabled ? "Importa un file header locale nell'editor C++." : "Gestione dei file header disabilitata dal docente.";
         GoogleDriveButton.IsEnabled = true;
         GoogleDriveButton.ToolTip = "Salva l'esercizio nel tuo Google Drive";
+        ApplyShellUiLock();
         GuideButton.ToolTip = "Apri la guida visuale del compilatore";
         Activate();
     }
@@ -2627,7 +2671,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         finally
         {
             if (IsVisible)
-                UpdateButton.IsEnabled = true;
+                UpdateButton.IsEnabled = !_shellVisible && !_verificationMode;
         }
     }
 
@@ -3679,7 +3723,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         try
         {
             // Il pulsante resta premibile: un secondo clic annulla l'accesso rimasto in attesa.
-            GoogleDriveButton.IsEnabled = true;
+            GoogleDriveButton.IsEnabled = !_shellVisible;
             GoogleDriveButton.Content = "Annulla accesso Google";
             StatusText.Text = "Apertura autorizzazione Google Drive...";
 
@@ -3734,7 +3778,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             _googleDriveOperationRunning = false;
             _googleDriveOperationCts?.Dispose();
             _googleDriveOperationCts = null;
-            GoogleDriveButton.IsEnabled = !_verificationMode;
+            GoogleDriveButton.IsEnabled = !_verificationMode && !_shellVisible;
             if (GoogleDriveButton.Content?.ToString()?.Contains("✓") != true)
                 GoogleDriveButton.Content = "Google Drive";
         }
