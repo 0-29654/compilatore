@@ -248,19 +248,13 @@ public partial class MainWindow : Window
         ShellOutputBox.ScrollToEnd();
     }
 
-    private void ShellInputBox_KeyDown(object sender, KeyEventArgs e)
+    private bool HandleShellHistoryKey(Key key)
     {
-        // PreviewKeyDown viene usato apposta: le frecce devono essere intercettate
-        // prima che TextBox/Window possano consumarle per navigazione o scrolling.
-        Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (!_shellVisible || _shellCommandHistory.Count == 0)
+            return false;
 
         if (key == Key.Up)
         {
-            e.Handled = true;
-            if (_shellCommandHistory.Count == 0)
-                return;
-
-            // Se siamo dopo l'ultimo comando, il primo UP richiama l'ultimo inserito.
             if (_shellHistoryIndex < 0 || _shellHistoryIndex > _shellCommandHistory.Count)
                 _shellHistoryIndex = _shellCommandHistory.Count;
             if (_shellHistoryIndex > 0)
@@ -269,15 +263,11 @@ public partial class MainWindow : Window
             ShellInputBox.Text = _shellCommandHistory[_shellHistoryIndex];
             ShellInputBox.CaretIndex = ShellInputBox.Text.Length;
             ShellInputBox.Focus();
-            return;
+            return true;
         }
 
         if (key == Key.Down)
         {
-            e.Handled = true;
-            if (_shellCommandHistory.Count == 0)
-                return;
-
             if (_shellHistoryIndex < 0)
                 _shellHistoryIndex = _shellCommandHistory.Count;
 
@@ -294,6 +284,19 @@ public partial class MainWindow : Window
 
             ShellInputBox.CaretIndex = ShellInputBox.Text.Length;
             ShellInputBox.Focus();
+            return true;
+        }
+
+        return false;
+    }
+
+    private void ShellInputBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if ((key == Key.Up || key == Key.Down) && HandleShellHistoryKey(key))
+        {
+            e.Handled = true;
             return;
         }
 
@@ -3803,6 +3806,27 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // La finestra intercetta per prima le frecce quando la Shell è visibile.
+        // In questo modo la cronologia funziona anche se WPF sposta momentaneamente
+        // il focus o un controllo interno consuma KeyDown/PreviewKeyDown.
+        if (_shellVisible)
+        {
+            Key shellKey = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (shellKey == Key.Up || shellKey == Key.Down)
+            {
+                if (HandleShellHistoryKey(shellKey))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                // Anche senza cronologia, evita che le frecce spostino il focus.
+                e.Handled = true;
+                ShellInputBox.Focus();
+                return;
+            }
+        }
+
         if (!_verificationMode) return;
         if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0 && e.Key == Key.F4) { e.Handled = true; return; }
         if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0 && e.Key == Key.Tab) { e.Handled = true; Activate(); return; }

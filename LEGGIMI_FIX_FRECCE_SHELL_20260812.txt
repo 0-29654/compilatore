@@ -1,0 +1,11 @@
+FIX SHELL - FRECCE SU/GIU - 12/08/2026
+
+Correzione applicata alla shell integrata CV+.
+
+- FRECCIA SU: richiama l'ultimo comando eseguito e poi risale nella cronologia.
+- FRECCIA GIU: scende verso i comandi piu recenti; dopo l'ultimo comando svuota la riga.
+- Le frecce vengono intercettate anche a livello finestra quando la Shell e visibile,
+  cosi la cronologia continua a funzionare anche se WPF sposta/consuma il focus del TextBox.
+- Nessun'altra funzione e stata modificata intenzionalmente.
+
+File modificato: MainWindow.xaml.cs
