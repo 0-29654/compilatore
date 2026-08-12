@@ -157,7 +157,7 @@
                         <TextBlock Text="C++  ›  main.cpp" Foreground="#CCCCCC" FontFamily="Segoe UI" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1" Text="CV+ EDITOR — C++17" Foreground="#858585" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
-                            <Button x:Name="CppExtensionsButton" Content="▣ ESTENSIONI C++" Click="OpenCppExtensions_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#0E639C" BorderBrush="#1177BB" ToolTip="Installa componenti compatibili per editor, snippet e librerie header-only"/>
+                            <Button x:Name="CppExtensionsButton" Content="▣ ESTENSIONI C++" IsEnabled="False" Click="OpenCppExtensions_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#0E639C" BorderBrush="#1177BB" ToolTip="Installa componenti compatibili per editor, snippet e librerie header-only"/>
                             <TextBlock Text="SHIFT+CLICK: TUTTO SCHERMO" Foreground="#D7BA7D" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
