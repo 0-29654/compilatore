@@ -250,23 +250,36 @@ public partial class MainWindow : Window
 
     private void ShellInputBox_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Up)
+        // PreviewKeyDown viene usato apposta: le frecce devono essere intercettate
+        // prima che TextBox/Window possano consumarle per navigazione o scrolling.
+        Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key == Key.Up)
         {
             e.Handled = true;
-            if (_shellCommandHistory.Count == 0) return;
+            if (_shellCommandHistory.Count == 0)
+                return;
 
+            // Se siamo dopo l'ultimo comando, il primo UP richiama l'ultimo inserito.
+            if (_shellHistoryIndex < 0 || _shellHistoryIndex > _shellCommandHistory.Count)
+                _shellHistoryIndex = _shellCommandHistory.Count;
             if (_shellHistoryIndex > 0)
                 _shellHistoryIndex--;
 
             ShellInputBox.Text = _shellCommandHistory[_shellHistoryIndex];
             ShellInputBox.CaretIndex = ShellInputBox.Text.Length;
+            ShellInputBox.Focus();
             return;
         }
 
-        if (e.Key == Key.Down)
+        if (key == Key.Down)
         {
             e.Handled = true;
-            if (_shellCommandHistory.Count == 0) return;
+            if (_shellCommandHistory.Count == 0)
+                return;
+
+            if (_shellHistoryIndex < 0)
+                _shellHistoryIndex = _shellCommandHistory.Count;
 
             if (_shellHistoryIndex < _shellCommandHistory.Count - 1)
             {
@@ -280,10 +293,11 @@ public partial class MainWindow : Window
             }
 
             ShellInputBox.CaretIndex = ShellInputBox.Text.Length;
+            ShellInputBox.Focus();
             return;
         }
 
-        if (e.Key != Key.Enter) return;
+        if (key != Key.Enter && key != Key.Return) return;
         e.Handled = true;
         string command = ShellInputBox.Text;
         ShellInputBox.Clear();

@@ -189,7 +189,7 @@
                                    FontWeight="Bold" VerticalAlignment="Center" Margin="10,0,7,0"/>
                         <TextBox x:Name="ShellInputBox" Background="#111111" Foreground="White" BorderThickness="0"
                                  FontFamily="Cascadia Mono, Consolas" FontSize="14" Padding="4,7"
-                                 KeyDown="ShellInputBox_KeyDown"/>
+                                 PreviewKeyDown="ShellInputBox_KeyDown"/>
                     </DockPanel>
                 </Grid>
             </Grid>
