@@ -1,0 +1,11 @@
+FIX VERIFICHE QUIZ - FULLSCREEN SEPARATO
+13/08/2026
+
+Correzione client:
+- la modalita' Verifiche Quiz NON attiva piu' la vecchia _verificationMode del compilatore;
+- il compilatore resta normale mentre il server Quiz e' attivo e attende una verifica;
+- quando arriva il PDF viene aperto soltanto QuizVerificationWindow a tutto schermo;
+- la finestra principale viene nascosta mentre il Quiz e' aperto;
+- alla consegna o al comando quizStopped/Ferma server il form Quiz si chiude e torna il compilatore;
+- la modalita' verifica C++ tradizionale resta invariata e separata.
+- resta incluso il supporto [CODICE]...[/CODICE] con codice monospaziato/indentato.

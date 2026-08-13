@@ -501,10 +501,13 @@ public partial class MainWindow : Window
                         _quizServerBase = "";
                         _quizSessionCode = "";
                         _lastQuizServerSeenUtc = DateTime.MinValue;
-                        ApplySessionMode("esercitazione");
-                        ApplyCompilationPermission(true);
-                        ApplyHeaderManagementPermission(true);
-                        StatusText.Text = "Server Verifiche Quiz fermato - modalità esercitazione ripristinata";
+                        _lastQuizAssignmentId = "";
+                        _quizVerificationMode = false;
+
+                        // Il Quiz non modifica piu' la modalita' C++ tradizionale.
+                        // Fermare il server Quiz chiude quindi soltanto il form Quiz
+                        // e lascia il compilatore nel suo stato normale precedente.
+                        StatusText.Text = "Server Verifiche Quiz fermato";
                         return;
                     }
 
@@ -525,9 +528,9 @@ public partial class MainWindow : Window
                         SetSessionCode(session);
                         SetTeacherConnectionFieldsLocked(true);
                         ApplySessionMode("quiz_verifica");
-                        ApplyCompilationPermission(false);
-                        ApplyHeaderManagementPermission(false);
-                        ApplyEditorAssistancePermission(false);
+                        // Non blocchiamo/trasformiamo il compilatore mentre il docente
+                        // prepara o assegna il Quiz. Il blocco fullscreen appartiene
+                        // esclusivamente a QuizVerificationWindow dopo la ricezione.
                         StatusText.Text = $"Verifica Quiz: collegato a {ip}:{port} - in attesa del PDF";
                     }
                     else
@@ -1859,7 +1862,11 @@ public partial class MainWindow : Window
             File.WriteAllBytes(pdfPath, pdfBytes);
             _lastQuizAssignmentId = assignmentId;
 
-            await Dispatcher.InvokeAsync(() => ApplySessionMode("quiz_verifica"));
+            await Dispatcher.InvokeAsync(() =>
+            {
+                _quizVerificationMode = true;
+                StatusText.Text = "Verifica Quiz ricevuta - apertura modulo...";
+            });
 
             try
             {
@@ -2502,20 +2509,33 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         bool quiz = mode.Equals("quiz_verifica", StringComparison.OrdinalIgnoreCase) ||
                     mode.Equals("verifica_quiz", StringComparison.OrdinalIgnoreCase) ||
                     mode.Equals("quiz", StringComparison.OrdinalIgnoreCase);
-        bool verify = quiz || mode.Equals("verifica", StringComparison.OrdinalIgnoreCase) || mode.Equals("test", StringComparison.OrdinalIgnoreCase);
+
+        // IMPORTANTE: Verifiche Quiz e verifica C++ tradizionale sono due modalita'
+        // completamente separate. Il Quiz NON deve trasformare MainWindow nella
+        // vecchia modalita' verifica fullscreen: il solo QuizVerificationWindow
+        // occupa lo schermo quando il PDF viene realmente ricevuto.
+        if (quiz)
+        {
+            _quizVerificationMode = true;
+            StatusText.Text = "Verifica Quiz collegata - in attesa del PDF";
+            return;
+        }
+
+        // Se arriva una modalita' del server C++ tradizionale, non cancelliamo il
+        // canale Quiz dedicato: i due server possono convivere.
+        bool verify = mode.Equals("verifica", StringComparison.OrdinalIgnoreCase) ||
+                      mode.Equals("test", StringComparison.OrdinalIgnoreCase);
         bool verificationChanged = verify != _verificationMode;
-        bool quizChanged = quiz != _quizVerificationMode;
-        _quizVerificationMode = quiz;
-        if (!verificationChanged && !quizChanged) return;
+        if (!verificationChanged) return;
+
         _verificationMode = verify;
         if (verify)
         {
             EnterVerificationMode();
-            StatusText.Text = quiz ? "Modalità Verifica Quiz attiva - in attesa del PDF" : "Modalità verifica attiva";
+            StatusText.Text = "Modalità verifica attiva";
         }
         else
         {
-            _lastQuizAssignmentId = "";
             ExitVerificationMode();
         }
     }
