@@ -1,4 +1,4 @@
-using ICSharpCode.AvalonEdit;
+﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.CodeCompletion;
@@ -38,6 +38,7 @@ public partial class MainWindow : Window
 
     private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer _modeTimer = new() { Interval = TimeSpan.FromSeconds(7) };
+    private readonly DispatcherTimer _quizAssignmentTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _liveMonitorTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly Dictionary<string, ExerciseState> _exerciseStates = new(StringComparer.OrdinalIgnoreCase);
 
@@ -48,6 +49,9 @@ public partial class MainWindow : Window
     private DateTime _activeStartedUtc = DateTime.UtcNow;
     private bool _loadingExercise;
     private bool _verificationMode;
+    private bool _quizVerificationMode;
+    private string _lastQuizAssignmentId = "";
+    private bool _quizAssignmentCheckRunning;
     private bool _allowClose;
     private bool _serverModeCheckRunning;
     private bool _liveMonitorSyncRunning;
@@ -91,7 +95,7 @@ public partial class MainWindow : Window
         LoadCppExtensions();
         ResetClientStateOnStartup();
         StartTeacherDiscoveryListener();
-        Closed += (_, _) => { _liveMonitorTimer.Stop(); StopTeacherDiscoveryListener(); StopShell(); };
+        Closed += (_, _) => { _liveMonitorTimer.Stop(); _quizAssignmentTimer.Stop(); StopTeacherDiscoveryListener(); StopShell(); };
         if (!File.Exists(BundledCompilerPath))
             OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
         ActivateExercise(GetTaskType(), GetExerciseNumber());
@@ -100,6 +104,8 @@ public partial class MainWindow : Window
         _clockTimer.Start();
         _modeTimer.Tick += async (_, _) => await RefreshServerModeAsync(false);
         _modeTimer.Start();
+        _quizAssignmentTimer.Tick += async (_, _) => await CheckQuizAssignmentAsync();
+        _quizAssignmentTimer.Start();
         _liveMonitorTimer.Tick += async (_, _) => await SyncLiveMonitorAsync();
         _liveMonitorTimer.Start();
 
@@ -1730,6 +1736,76 @@ public partial class MainWindow : Window
     }
 
 
+    private async Task CheckQuizAssignmentAsync()
+    {
+        if (!_quizVerificationMode || _quizAssignmentCheckRunning || string.IsNullOrWhiteSpace(ServerBox.Text)) return;
+        if (string.IsNullOrWhiteSpace(StudentIdBox.Text) && string.IsNullOrWhiteSpace(StudentNameBox.Text)) return;
+        _quizAssignmentCheckRunning = true;
+        try
+        {
+            string baseAddress = NormalizeServerAddress(ServerBox.Text);
+            string id = Uri.EscapeDataString(StudentIdBox.Text.Trim());
+            string ip = Uri.EscapeDataString(GetLocalIpv4Address());
+            string session = Uri.EscapeDataString(SessionBox.Text.Trim());
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using HttpResponseMessage response = await _http.GetAsync(
+                $"{baseAddress}/quiz-assignment?studentId={id}&clientIp={ip}&sessionCode={session}", timeout.Token);
+            if (!response.IsSuccessStatusCode) return;
+            string json = await response.Content.ReadAsStringAsync();
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement root = doc.RootElement;
+            if (!root.TryGetProperty("available", out JsonElement available) || available.ValueKind != JsonValueKind.True) return;
+            string assignmentId = Get(root, "assignmentId", "");
+            if (string.IsNullOrWhiteSpace(assignmentId) || assignmentId == _lastQuizAssignmentId) return;
+            string pdfBase64 = Get(root, "pdfBase64", "");
+            if (string.IsNullOrWhiteSpace(pdfBase64)) return;
+            string type = Get(root, "verificationType", "A");
+            int minutes = root.TryGetProperty("durationMinutes", out JsonElement dur) && dur.TryGetInt32(out int parsedMinutes) ? parsedMinutes : 60;
+            byte[] pdfBytes = Convert.FromBase64String(pdfBase64);
+            string tempFolder = Path.Combine(Path.GetTempPath(), "CVPlus", "VerificheQuiz");
+            Directory.CreateDirectory(tempFolder);
+            string pdfPath = Path.Combine(tempFolder, $"{assignmentId}.pdf");
+            File.WriteAllBytes(pdfPath, pdfBytes);
+            _lastQuizAssignmentId = assignmentId;
+
+            try
+            {
+                var ack = new { assignmentId, studentId = StudentIdBox.Text.Trim(), studentName = StudentNameBox.Text.Trim(), className = ClassBox.Text.Trim(), clientIp = GetLocalIpv4Address() };
+                using var ackContent = new StringContent(JsonSerializer.Serialize(ack), Encoding.UTF8, "application/json");
+                using var ackTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(4));
+                await _http.PostAsync(baseAddress + "/quiz-received", ackContent, ackTimeout.Token);
+            }
+            catch { }
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                _modalDialogOpen = true;
+                bool oldTopmost = Topmost;
+                try
+                {
+                    Topmost = false;
+                    var quiz = new QuizVerificationWindow(
+                        _http, baseAddress, assignmentId, pdfPath, type, minutes,
+                        StudentIdBox.Text.Trim(), StudentNameBox.Text.Trim(), ClassBox.Text.Trim(), GetLocalIpv4Address());
+                    quiz.Owner = this;
+                    quiz.ShowDialog();
+                    StatusText.Text = "Verifica Quiz consegnata";
+                }
+                finally
+                {
+                    Topmost = oldTopmost;
+                    _modalDialogOpen = false;
+                    Activate();
+                }
+            });
+        }
+        catch
+        {
+            // Il polling è silenzioso: se la rete ha un'interruzione, il client riprova automaticamente.
+        }
+        finally { _quizAssignmentCheckRunning = false; }
+    }
+
     private static bool ReadEditorAssistanceAllowed(JsonElement root)
     {
         foreach (string name in new[] { "editorAssistanceEnabled", "allowCppAutocomplete", "cppAutocompleteEnabled", "intellisenseEnabled" })
@@ -2324,10 +2400,25 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private void ApplySessionMode(string mode)
     {
-        bool verify = mode.Equals("verifica", StringComparison.OrdinalIgnoreCase) || mode.Equals("test", StringComparison.OrdinalIgnoreCase);
-        if (verify == _verificationMode) return;
+        bool quiz = mode.Equals("quiz_verifica", StringComparison.OrdinalIgnoreCase) ||
+                    mode.Equals("verifica_quiz", StringComparison.OrdinalIgnoreCase) ||
+                    mode.Equals("quiz", StringComparison.OrdinalIgnoreCase);
+        bool verify = quiz || mode.Equals("verifica", StringComparison.OrdinalIgnoreCase) || mode.Equals("test", StringComparison.OrdinalIgnoreCase);
+        bool verificationChanged = verify != _verificationMode;
+        bool quizChanged = quiz != _quizVerificationMode;
+        _quizVerificationMode = quiz;
+        if (!verificationChanged && !quizChanged) return;
         _verificationMode = verify;
-        if (verify) EnterVerificationMode(); else ExitVerificationMode();
+        if (verify)
+        {
+            EnterVerificationMode();
+            StatusText.Text = quiz ? "Modalità Verifica Quiz attiva - in attesa del PDF" : "Modalità verifica attiva";
+        }
+        else
+        {
+            _lastQuizAssignmentId = "";
+            ExitVerificationMode();
+        }
     }
 
     private void EnterVerificationMode()
@@ -2336,6 +2427,15 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             HideShell();
 
         SaveCurrentExercise();
+
+        // Ogni nuova verifica tradizionale deve partire sempre dall'esercizio 1.
+        // Nella modalità Verifiche Quiz l'interfaccia PDF sostituisce invece gli esercizi C++.
+        if (!_quizVerificationMode)
+        {
+            ExerciseBox.Text = "1";
+            ActivateExercise(GetTaskType(), 1);
+        }
+
         ModeText.Text = "VERIFICA";
         ModeDot.Fill = new SolidColorBrush(Color.FromRgb(255, 184, 76));
         ModeBadge.Background = new SolidColorBrush(Color.FromRgb(75, 38, 15));

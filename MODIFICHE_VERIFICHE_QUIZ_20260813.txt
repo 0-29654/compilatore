@@ -1,0 +1,11 @@
+MODIFICHE VERIFICHE QUIZ - CLIENT - 13/08/2026
+
+- Riconoscimento della nuova modalità server "quiz_verifica".
+- Mantiene gli stessi blocchi kiosk della modalità verifica esistente.
+- Poll automatico del PDF assegnato allo specifico alunno.
+- Lettura del testo del PDF tramite PdfPig.
+- Creazione di un form stile Google Moduli con domande multiple e aperte.
+- Timer della verifica; allo scadere consegna automatica.
+- Creazione PDF finale con dati alunno, tipologia, tempo, domande, crocette e risposte aperte.
+- Invio del PDF finale al server.
+- Correzione aggiuntiva: entrando nella modalità verifica C++ tradizionale si parte sempre dall'esercizio 1.
