@@ -1,4 +1,4 @@
-using ICSharpCode.AvalonEdit;
+﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.CodeCompletion;
@@ -63,6 +63,7 @@ public partial class MainWindow : Window
     private bool _liveMonitorSyncRunning;
     private string _lastRemoteCommandId = "";
     private bool _modalDialogOpen;
+    private bool _startupUpdateChecked;
     private System.Windows.Controls.Grid? _activeOverlay;
     private bool _compilationAllowed = true;
     private bool _headerManagementAllowed;
@@ -123,6 +124,16 @@ public partial class MainWindow : Window
             UpdateTaskSummary();
             UpdateWindowTitle();
             await RefreshServerModeAsync(false);
+
+            // Controllo aggiornamenti automatico una sola volta a ogni avvio.
+            // Se non c'è nulla di nuovo resta silenzioso; se trova una Release
+            // più recente chiede all'utente se desidera installarla.
+            if (!_startupUpdateChecked && !_verificationMode)
+            {
+                _startupUpdateChecked = true;
+                await Task.Delay(700);
+                await CheckUpdatesAsync(silentWhenCurrent: true, automaticCheck: true);
+            }
         };
     }
 
@@ -2684,15 +2695,23 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         object sender,
         RoutedEventArgs e)
     {
+        await CheckUpdatesAsync(silentWhenCurrent: false, automaticCheck: false);
+    }
+
+    private async Task CheckUpdatesAsync(bool silentWhenCurrent, bool automaticCheck)
+    {
         if (_verificationMode)
         {
-            ShowVerificationSafeMessage(
-                "La ricerca degli aggiornamenti è disponibile soltanto in modalità esercitazione.",
-                "Aggiornamenti non disponibili",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information,
-                MessageBoxResult.OK
-            );
+            if (!automaticCheck)
+            {
+                ShowVerificationSafeMessage(
+                    "La ricerca degli aggiornamenti è disponibile soltanto in modalità esercitazione.",
+                    "Aggiornamenti non disponibili",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information,
+                    MessageBoxResult.OK
+                );
+            }
             return;
         }
 
@@ -2784,13 +2803,16 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             {
                 StatusText.Text = "Il programma è aggiornato";
 
-                ShowVerificationSafeMessage(
-                    $"La versione installata ({currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}) corrisponde all'ultima Release pubblicata nel repository principale.",
-                    "Nessun aggiornamento",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information,
-                    MessageBoxResult.OK
-                );
+                if (!silentWhenCurrent)
+                {
+                    ShowVerificationSafeMessage(
+                        $"La versione installata ({currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}) corrisponde all'ultima Release pubblicata nel repository principale.",
+                        "Nessun aggiornamento",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information,
+                        MessageBoxResult.OK
+                    );
+                }
 
                 return;
             }
@@ -2963,14 +2985,17 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             StatusText.Text =
                 "Ricerca aggiornamenti non riuscita";
 
-            ShowVerificationSafeMessage(
-                "Non è stato possibile verificare o scaricare l'aggiornamento.\n\n" +
-                ex.Message,
-                "Errore aggiornamenti",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning,
-                MessageBoxResult.OK
-            );
+            if (!automaticCheck)
+            {
+                ShowVerificationSafeMessage(
+                    "Non è stato possibile verificare o scaricare l'aggiornamento.\n\n" +
+                    ex.Message,
+                    "Errore aggiornamenti",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.OK
+                );
+            }
         }
         finally
         {

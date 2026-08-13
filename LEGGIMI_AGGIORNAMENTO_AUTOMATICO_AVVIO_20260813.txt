@@ -1,0 +1,6 @@
+AGGIORNAMENTO AUTOMATICO ALL'AVVIO
+
+All'avvio il client controlla una sola volta l'ultima Release GitHub.
+Se il programma è aggiornato non mostra finestre.
+Se trova un aggiornamento chiede se installarlo; in caso di Sì usa lo stesso flusso di download/installazione automatica già presente.
+Il controllo manuale Ricerca aggiornamenti continua a funzionare e mostra anche il messaggio Nessun aggiornamento.

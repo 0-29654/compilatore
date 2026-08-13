@@ -140,12 +140,74 @@ public partial class QuizVerificationWindow : Window
                 }
                 stack.Children.Add(optionPanel); _answerControls[q.Number] = optionPanel;
             }
+            else if (q.AnswerKind == QuizAnswerKind.Code)
+            {
+                stack.Children.Add(new TextBlock
+                {
+                    Text = "Scrivi il codice qui sotto:",
+                    FontSize = 14,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(95, 99, 104)),
+                    Margin = new Thickness(0, 4, 0, 6)
+                });
+                var box = new TextBox
+                {
+                    AcceptsReturn = true,
+                    AcceptsTab = true,
+                    TextWrapping = TextWrapping.NoWrap,
+                    MinHeight = 260,
+                    FontSize = 15,
+                    FontFamily = new FontFamily("Consolas"),
+                    Padding = new Thickness(12),
+                    Background = new SolidColorBrush(Color.FromRgb(248, 249, 250)),
+                    Foreground = new SolidColorBrush(Color.FromRgb(32, 33, 36)),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(190, 194, 198)),
+                    BorderThickness = new Thickness(1),
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+                };
+                box.PreviewKeyDown += CodeAnswerBox_PreviewKeyDown;
+                stack.Children.Add(box); _answerControls[q.Number] = box;
+            }
             else
             {
                 var box = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 110, FontSize = 15, Padding = new Thickness(10), VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
                 stack.Children.Add(box); _answerControls[q.Number] = box;
             }
             card.Child = stack; QuestionsPanel.Children.Add(card);
+        }
+    }
+
+    private static void CodeAnswerBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+
+        // TAB resta dentro l'editor e non sposta il focus su altri controlli.
+        if (e.Key == Key.Tab)
+        {
+            int start = box.SelectionStart;
+            box.SelectedText = "    ";
+            box.SelectionStart = start + 4;
+            box.SelectionLength = 0;
+            e.Handled = true;
+            return;
+        }
+
+        // ENTER mantiene l'indentazione della riga corrente e aggiunge un livello
+        // dopo una graffa aperta, come in un normale editor C++.
+        if (e.Key == Key.Enter)
+        {
+            int caret = box.SelectionStart;
+            string text = box.Text ?? "";
+            int lineStart = caret > 0 ? text.LastIndexOf('\n', Math.Max(0, caret - 1)) + 1 : 0;
+            string beforeCaret = text.Substring(lineStart, Math.Max(0, caret - lineStart)).TrimEnd('\r');
+            string indent = new string(beforeCaret.TakeWhile(c => c == ' ' || c == '\t').ToArray());
+            string trimmed = beforeCaret.TrimEnd();
+            if (trimmed.EndsWith("{", StringComparison.Ordinal)) indent += "    ";
+            box.SelectedText = Environment.NewLine + indent;
+            box.SelectionStart = caret + Environment.NewLine.Length + indent.Length;
+            box.SelectionLength = 0;
+            e.Handled = true;
         }
     }
 
@@ -169,7 +231,8 @@ public partial class QuizVerificationWindow : Window
     private string GetAnswer(QuizQuestion q)
     {
         if (!_answerControls.TryGetValue(q.Number, out FrameworkElement? control)) return "";
-        if (control is TextBox tb) return tb.Text.Trim();
+        if (control is TextBox tb)
+            return q.AnswerKind == QuizAnswerKind.Code ? (tb.Text ?? "").TrimEnd() : (tb.Text ?? "").Trim();
         if (control is StackPanel sp)
         {
             return sp.Children.OfType<RadioButton>().FirstOrDefault(x => x.IsChecked == true)?.Tag?.ToString() ?? "";
@@ -184,13 +247,14 @@ public partial class QuizVerificationWindow : Window
         try
         {
             long elapsed = Math.Min((long)(DateTime.UtcNow - _startedUtc).TotalSeconds, _durationMinutes * 60L);
-            var rows = _questions.Select(q => new PdfAnswerRow(q.Number, q.Text, q.Options, GetAnswer(q))).ToList();
+            var rows = _questions.Select(q => new PdfAnswerRow(q.Number, q.Text, q.Options, GetAnswer(q), q.AnswerKind, q.Parts.ToList())).ToList();
             byte[] pdf = SimplePdf.Create($"VERIFICA - TIPOLOGIA {_type}", new[]
             {
                 $"Numero di registro: {_studentId}", $"Nome e cognome: {_studentName}", $"Classe: {_className}",
                 $"Tempo impiegato: {TimeSpan.FromSeconds(elapsed):hh\\:mm\\:ss}", automatic ? "Consegna: automatica per tempo scaduto" : "Consegna: manuale"
             }, rows);
-            var payload = new { assignmentId = _assignmentId, studentId = _studentId, studentName = _studentName, className = _className, clientIp = _clientIp, verificationType = _type, elapsedSeconds = elapsed, autoSubmitted = automatic, pdfBase64 = Convert.ToBase64String(pdf) };
+            bool containsCodeAnswers = _questions.Any(q => q.AnswerKind == QuizAnswerKind.Code);
+            var payload = new { assignmentId = _assignmentId, studentId = _studentId, studentName = _studentName, className = _className, clientIp = _clientIp, verificationType = _type, elapsedSeconds = elapsed, autoSubmitted = automatic, answerFormat = "structured-code-v2", containsCodeAnswers, pdfBase64 = Convert.ToBase64String(pdf) };
             using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
             using HttpResponseMessage response = await _http.PostAsync(_serverBase + "/quiz-submit", content, timeout.Token);
@@ -256,6 +320,7 @@ public partial class QuizVerificationWindow : Window
             Match om = orx.Match(line);
             if (om.Success && current != null)
             {
+                current.AnswerKind = QuizAnswerKind.Multiple;
                 current.Options.Add(om.Groups[1].Value.ToUpperInvariant() + ") " + om.Groups[2].Value.Trim());
                 continue;
             }
@@ -278,11 +343,11 @@ public partial class QuizVerificationWindow : Window
     {
         var result = new List<QuizQuestion>();
         QuizQuestion? current = null;
-        bool currentIsMultiple = false;
+        QuizAnswerKind currentKind = QuizAnswerKind.Open;
         bool inCode = false;
         var code = new List<string>();
         var normalText = new List<string>();
-        var header = new Regex(@"^\s*\[DOMANDA\s+(\d{1,3})\]\s*\[(MULTIPLA|APERTA)\]\s*$", RegexOptions.IgnoreCase);
+        var header = new Regex(@"^\s*\[DOMANDA\s+(\d{1,3})\]\s*\[(MULTIPLA|APERTA|CODICE)\]\s*$", RegexOptions.IgnoreCase);
         var option = new Regex(@"^\s*\[([A-H])\]\s*(.+)$", RegexOptions.IgnoreCase);
 
         void FlushNormal()
@@ -321,8 +386,11 @@ public partial class QuizVerificationWindow : Window
                     FlushNormal();
                     if (!string.IsNullOrWhiteSpace(current.Text)) result.Add(current);
                 }
-                current = new QuizQuestion { Number = int.Parse(hm.Groups[1].Value), Text = "" };
-                currentIsMultiple = hm.Groups[2].Value.Equals("MULTIPLA", StringComparison.OrdinalIgnoreCase);
+                string kindText = hm.Groups[2].Value;
+                currentKind = kindText.Equals("MULTIPLA", StringComparison.OrdinalIgnoreCase) ? QuizAnswerKind.Multiple
+                    : kindText.Equals("CODICE", StringComparison.OrdinalIgnoreCase) ? QuizAnswerKind.Code
+                    : QuizAnswerKind.Open;
+                current = new QuizQuestion { Number = int.Parse(hm.Groups[1].Value), Text = "", AnswerKind = currentKind };
                 normalText.Clear(); code.Clear(); inCode = false;
                 continue;
             }
@@ -356,12 +424,12 @@ public partial class QuizVerificationWindow : Window
                 FlushNormal();
                 if (current != null && !string.IsNullOrWhiteSpace(current.Text)) result.Add(current);
                 current = null;
-                currentIsMultiple = false;
+                currentKind = QuizAnswerKind.Open;
                 continue;
             }
 
             Match om = option.Match(trimmed);
-            if (currentIsMultiple && om.Success)
+            if (currentKind == QuizAnswerKind.Multiple && om.Success)
             {
                 FlushNormal();
                 current.Options.Add(om.Groups[1].Value.ToUpperInvariant() + ") " + om.Groups[2].Value.Trim());
@@ -370,7 +438,7 @@ public partial class QuizVerificationWindow : Window
 
             // Una continuazione dopo un'opzione appartiene all'opzione; altrimenti
             // fa parte del testo normale della domanda.
-            if (currentIsMultiple && current.Options.Count > 0)
+            if (currentKind == QuizAnswerKind.Multiple && current.Options.Count > 0)
                 current.Options[current.Options.Count - 1] += " " + Regex.Replace(trimmed, "\\s+", " ");
             else if (trimmed.Length > 0)
                 normalText.Add(rawLine);
@@ -424,58 +492,177 @@ public partial class QuizVerificationWindow : Window
         return string.Join(Environment.NewLine, output);
     }
 
+    private enum QuizAnswerKind
+    {
+        Open,
+        Multiple,
+        Code
+    }
+
     private sealed class QuizQuestion
     {
         public int Number { get; set; }
         public string Text { get; set; } = "";
+        public QuizAnswerKind AnswerKind { get; set; } = QuizAnswerKind.Open;
         public List<string> Options { get; } = new();
         public List<QuizPart> Parts { get; } = new();
     }
 
     private sealed record QuizPart(bool IsCode, string Text);
-    private sealed record PdfAnswerRow(int Number, string Question, List<string> Options, string Answer);
+    private sealed record PdfAnswerRow(int Number, string Question, List<string> Options, string Answer, QuizAnswerKind AnswerKind, List<QuizPart> Parts);
+    private sealed record PdfLine(string Text, bool IsCode = false);
 
     private static class SimplePdf
     {
         public static byte[] Create(string title, IEnumerable<string> header, IEnumerable<PdfAnswerRow> answers)
         {
-            var lines = new List<string> { title, "" }; lines.AddRange(header); lines.Add("");
+            var lines = new List<PdfLine> { new(title), new("") };
+            lines.AddRange(header.Select(x => new PdfLine(x)));
+            lines.Add(new PdfLine(""));
+
             foreach (var a in answers)
             {
-                lines.Add($"{a.Number}. {a.Question}");
+                lines.Add(new PdfLine($"ESERCIZIO {a.Number}"));
+
+                // Ricostruiamo il testo della consegna distinguendo gli eventuali
+                // blocchi di codice forniti dal docente.
+                if (a.Parts.Count > 0)
+                {
+                    foreach (var part in a.Parts)
+                    {
+                        if (part.IsCode)
+                        {
+                            foreach (string codeLine in SplitLines(part.Text))
+                                lines.Add(new PdfLine(codeLine, true));
+                        }
+                        else
+                        {
+                            foreach (string textLine in Wrap(Clean(part.Text), 92))
+                                lines.Add(new PdfLine(textLine));
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (string textLine in Wrap(Clean(a.Question), 92))
+                        lines.Add(new PdfLine(textLine));
+                }
+
                 if (a.Options.Count > 0)
-                    foreach (string o in a.Options) lines.Add((o == a.Answer ? "[X] " : "[ ] ") + o);
-                else lines.Add("Risposta: " + (string.IsNullOrWhiteSpace(a.Answer) ? "(nessuna risposta)" : a.Answer));
-                lines.Add("");
+                {
+                    foreach (string o in a.Options)
+                        lines.Add(new PdfLine((o == a.Answer ? "[X] " : "[ ] ") + o));
+                }
+                else if (a.AnswerKind == QuizAnswerKind.Code)
+                {
+                    lines.Add(new PdfLine("RISPOSTA CODICE:"));
+                    if (string.IsNullOrWhiteSpace(a.Answer))
+                    {
+                        lines.Add(new PdfLine("(nessuna risposta)", true));
+                    }
+                    else
+                    {
+                        foreach (string codeLine in SplitLines(a.Answer.Replace("\t", "    ")))
+                            foreach (string physicalLine in WrapCode(CleanCode(codeLine), 100))
+                                lines.Add(new PdfLine(physicalLine, true));
+                    }
+                }
+                else
+                {
+                    lines.Add(new PdfLine("RISPOSTA:"));
+                    string answer = string.IsNullOrWhiteSpace(a.Answer) ? "(nessuna risposta)" : a.Answer;
+                    foreach (string answerLine in SplitLines(answer))
+                        foreach (string wrapped in Wrap(Clean(answerLine), 92))
+                            lines.Add(new PdfLine(wrapped));
+                }
+                lines.Add(new PdfLine(""));
             }
-            var wrapped = lines.SelectMany(x => Wrap(Clean(x), 92)).ToList();
-            var pages = wrapped.Chunk(48).ToList();
+
+            // Le righe di codice sono leggermente più compatte, ma ogni pagina
+            // conserva una quantità prevedibile di righe.
+            var pages = lines.Chunk(48).ToList();
             var objects = new List<byte[]>();
             int pageCount = pages.Count;
-            int fontObj = 3 + pageCount * 2;
+            int helveticaObj = 3 + pageCount * 2;
+            int courierObj = helveticaObj + 1;
             objects.Add(Ascii("<< /Type /Catalog /Pages 2 0 R >>"));
             var kids = string.Join(" ", Enumerable.Range(0, pageCount).Select(i => $"{3 + i*2} 0 R"));
             objects.Add(Ascii($"<< /Type /Pages /Kids [{kids}] /Count {pageCount} >>"));
-            for (int i=0;i<pageCount;i++)
+
+            for (int i = 0; i < pageCount; i++)
             {
-                int pageObj = 3+i*2, contentObj = pageObj+1;
-                objects.Add(Ascii($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 {fontObj} 0 R >> >> /Contents {contentObj} 0 R >>"));
-                var sb = new StringBuilder("BT\n/F1 10 Tf\n50 790 Td\n14 TL\n");
-                foreach (string line in pages[i]) sb.Append('(').Append(Escape(line)).Append(") Tj\nT*\n");
-                sb.Append("ET"); byte[] stream = Ascii(sb.ToString());
+                int pageObj = 3 + i * 2, contentObj = pageObj + 1;
+                objects.Add(Ascii($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 {helveticaObj} 0 R /F2 {courierObj} 0 R >> >> /Contents {contentObj} 0 R >>"));
+                var sb = new StringBuilder("BT\n50 790 Td\n14 TL\n");
+                bool? lastCode = null;
+                foreach (PdfLine line in pages[i])
+                {
+                    if (lastCode != line.IsCode)
+                    {
+                        sb.Append(line.IsCode ? "/F2 8.5 Tf\n" : "/F1 10 Tf\n");
+                        lastCode = line.IsCode;
+                    }
+                    sb.Append('(').Append(Escape(line.Text)).Append(") Tj\nT*\n");
+                }
+                sb.Append("ET");
+                byte[] stream = Ascii(sb.ToString());
                 objects.Add(Ascii($"<< /Length {stream.Length} >>\nstream\n").Concat(stream).Concat(Ascii("\nendstream")).ToArray());
             }
+
             objects.Add(Ascii("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"));
-            using var ms = new MemoryStream(); ms.Write(Ascii("%PDF-1.4\n%CVPLUS\n"));
+            objects.Add(Ascii("<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>"));
+
+            using var ms = new MemoryStream();
+            ms.Write(Ascii("%PDF-1.4\n%CVPLUS\n"));
             var offsets = new List<long> { 0 };
-            for (int i=0;i<objects.Count;i++) { offsets.Add(ms.Position); ms.Write(Ascii($"{i+1} 0 obj\n")); ms.Write(objects[i]); ms.Write(Ascii("\nendobj\n")); }
-            long xref = ms.Position; ms.Write(Ascii($"xref\n0 {objects.Count+1}\n0000000000 65535 f \n"));
+            for (int i = 0; i < objects.Count; i++)
+            {
+                offsets.Add(ms.Position);
+                ms.Write(Ascii($"{i + 1} 0 obj\n"));
+                ms.Write(objects[i]);
+                ms.Write(Ascii("\nendobj\n"));
+            }
+            long xref = ms.Position;
+            ms.Write(Ascii($"xref\n0 {objects.Count + 1}\n0000000000 65535 f \n"));
             foreach (long off in offsets.Skip(1)) ms.Write(Ascii($"{off:0000000000} 00000 n \n"));
-            ms.Write(Ascii($"trailer\n<< /Size {objects.Count+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF")); return ms.ToArray();
+            ms.Write(Ascii($"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF"));
+            return ms.ToArray();
         }
-        private static IEnumerable<string> Wrap(string text, int max) { if (string.IsNullOrEmpty(text)) { yield return ""; yield break; } while (text.Length > max) { int p=text.LastIndexOf(' ', max); if (p<20) p=max; yield return text[..p]; text=text[p..].TrimStart(); } yield return text; }
-        private static string Clean(string s) => new string(s.Select(c => c >= 32 && c <= 126 ? c : c switch { 'à'=>'a','è'=>'e','é'=>'e','ì'=>'i','ò'=>'o','ù'=>'u','À'=>'A','È'=>'E','É'=>'E','Ì'=>'I','Ò'=>'O','Ù'=>'U', _=>' ' }).ToArray());
-        private static string Escape(string s) => s.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
+
+        private static IEnumerable<string> SplitLines(string text) => Regex.Split(text ?? "", "\\r?\\n");
+
+        private static IEnumerable<string> Wrap(string text, int max)
+        {
+            if (string.IsNullOrEmpty(text)) { yield return ""; yield break; }
+            while (text.Length > max)
+            {
+                int p = text.LastIndexOf(' ', max);
+                if (p < 20) p = max;
+                yield return text[..p];
+                text = text[p..].TrimStart();
+            }
+            yield return text;
+        }
+
+        private static IEnumerable<string> WrapCode(string text, int max)
+        {
+            if (text.Length <= max) { yield return text; yield break; }
+            string leading = new string(text.TakeWhile(c => c == ' ').ToArray());
+            string remaining = text;
+            bool first = true;
+            while (remaining.Length > max)
+            {
+                yield return remaining[..max];
+                remaining = (first ? leading : leading) + remaining[max..];
+                first = false;
+            }
+            yield return remaining;
+        }
+
+        private static string Clean(string s) => new string((s ?? "").Select(c => c >= 32 && c <= 126 ? c : c switch { 'à'=>'a','è'=>'e','é'=>'e','ì'=>'i','ò'=>'o','ù'=>'u','À'=>'A','È'=>'E','É'=>'E','Ì'=>'I','Ò'=>'O','Ù'=>'U', _=>' ' }).ToArray());
+        private static string CleanCode(string s) => new string((s ?? "").Select(c => c == '\t' ? ' ' : c >= 32 && c <= 126 ? c : c switch { 'à'=>'a','è'=>'e','é'=>'e','ì'=>'i','ò'=>'o','ù'=>'u','À'=>'A','È'=>'E','É'=>'E','Ì'=>'I','Ò'=>'O','Ù'=>'U', _=>' ' }).ToArray());
+        private static string Escape(string s) => (s ?? "").Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
         private static byte[] Ascii(string s) => Encoding.ASCII.GetBytes(s);
     }
+
 }

@@ -1,0 +1,22 @@
+VERIFICHE QUIZ - DOMANDE CON RISPOSTA CODICE
+
+Nuovo formato supportato:
+
+[DOMANDA 3][CODICE]
+Scrivere un programma C++ che ...
+[FINE]
+
+Il client mostra un editor di codice dedicato:
+- font Consolas monospaziato;
+- TAB = 4 spazi;
+- ENTER conserva il rientro della riga corrente;
+- dopo una riga che termina con { viene aggiunto automaticamente un livello di rientro;
+- nessun word-wrap del codice;
+- spazi, righe e indentazione della risposta vengono conservati all'invio.
+
+Distinzione importante:
+[DOMANDA N][CODICE] = lo STUDENTE deve scrivere codice come risposta.
+[CODICE] ... [/CODICE] = codice già presente nella DOMANDA del docente.
+
+Nel PDF finale della consegna, il codice dello studente viene scritto riga per riga
+con font Courier, mantenendo l'indentazione. Il PDF viene poi inviato al server.
