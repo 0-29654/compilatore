@@ -218,7 +218,7 @@ public partial class QuizVerificationWindow : Window
             {
                 string text = ContentOrderTextExtractor.GetText(page) ?? "";
                 foreach (string raw in Regex.Split(text, "\\r?\\n"))
-                    rawLines.Add(raw.Replace("\\t", "    ").TrimEnd());
+                    rawLines.Add(raw.Replace("\t", "    ").TrimEnd());
             }
         }
 
@@ -239,8 +239,8 @@ public partial class QuizVerificationWindow : Window
         var result = new List<QuizQuestion>();
         QuizQuestion? current = null;
         int autoNumber = 1;
-        var qrx = new Regex(@"^\\s*(\\d{1,3})\\s*[\\.\\)\\-:]\\s*(.+)$");
-        var orx = new Regex(@"^\\s*([A-Ha-h])\\s*[\\.\\)\\-:]\\s*(.+)$");
+        var qrx = new Regex(@"^\s*(\d{1,3})\s*[.\)\-:]\s*(.+)$");
+        var orx = new Regex(@"^\s*([A-Ha-h])\s*[.\)\-:]\s*(.+)$");
         foreach (string line in lines)
         {
             Match qm = qrx.Match(line);
@@ -282,8 +282,8 @@ public partial class QuizVerificationWindow : Window
         bool inCode = false;
         var code = new List<string>();
         var normalText = new List<string>();
-        var header = new Regex(@"^\\s*\\[DOMANDA\\s+(\\d{1,3})\\]\\s*\\[(MULTIPLA|APERTA)\\]\\s*$", RegexOptions.IgnoreCase);
-        var option = new Regex(@"^\\s*\\[([A-H])\\]\\s*(.+)$", RegexOptions.IgnoreCase);
+        var header = new Regex(@"^\s*\[DOMANDA\s+(\d{1,3})\]\s*\[(MULTIPLA|APERTA)\]\s*$", RegexOptions.IgnoreCase);
+        var option = new Regex(@"^\s*\[([A-H])\]\s*(.+)$", RegexOptions.IgnoreCase);
 
         void FlushNormal()
         {
