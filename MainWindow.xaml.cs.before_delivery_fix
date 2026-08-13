@@ -492,21 +492,6 @@ public partial class MainWindow : Window
                         return;
                     }
 
-                    // Notifica immediata di una nuova verifica Quiz assegnata dal docente.
-                    // Non contiene il PDF: serve solo a puntare con certezza al server Quiz
-                    // e a forzare subito il controllo dell'assegnazione, senza attendere il timer.
-                    if (command.Equals("quizAssigned", StringComparison.OrdinalIgnoreCase) ||
-                        command.Equals("quizReady", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _quizServerBase = NormalizeServerAddress($"{ip}:{port}");
-                        _quizSessionCode = session;
-                        _lastQuizServerSeenUtc = DateTime.UtcNow;
-                        _quizVerificationMode = true;
-                        StatusText.Text = $"Nuova verifica Quiz assegnata - ricezione da {ip}:{port}...";
-                        _ = CheckQuizAssignmentAsync();
-                        return;
-                    }
-
                     // Comando esplicito inviato dal server Verifiche Quiz quando il docente preme "Ferma server".
                     // Va gestito prima del filtro che ignora i broadcast del server normale.
                     if (command.Equals("quizStopped", StringComparison.OrdinalIgnoreCase) ||
@@ -1866,7 +1851,7 @@ public partial class MainWindow : Window
             }
             catch { }
 
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             using HttpResponseMessage response = await _http.GetAsync(
                 $"{baseAddress}/quiz-assignment?studentId={id}&clientIp={ip}&sessionCode={session}", timeout.Token);
             if (!response.IsSuccessStatusCode) return;
@@ -1886,6 +1871,7 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(tempFolder);
             string pdfPath = Path.Combine(tempFolder, $"{assignmentId}.pdf");
             File.WriteAllBytes(pdfPath, pdfBytes);
+            _lastQuizAssignmentId = assignmentId;
 
             await Dispatcher.InvokeAsync(() =>
             {
@@ -1902,80 +1888,50 @@ public partial class MainWindow : Window
             }
             catch { }
 
-            bool opened = false;
-            try
+            await Dispatcher.InvokeAsync(() =>
             {
-                await Dispatcher.InvokeAsync(() =>
+                // Il Quiz è una finestra indipendente: MainWindow resta normale dietro.
+                // Non usiamo ShowDialog() e non nascondiamo MainWindow, così il ciclo
+                // modale non può più aprire e richiudere immediatamente il form.
+                if (_activeQuizWindow != null)
                 {
-                    // Il Quiz è una finestra indipendente: MainWindow resta normale dietro.
-                    if (_activeQuizWindow != null)
+                    try { _activeQuizWindow.Activate(); } catch { }
+                    return;
+                }
+
+                var quiz = new QuizVerificationWindow(
+                    _http, baseAddress, assignmentId, pdfPath, type, minutes,
+                    StudentIdBox.Text.Trim(), StudentNameBox.Text.Trim(), ClassBox.Text.Trim(), GetLocalIpv4Address());
+
+                _activeQuizWindow = quiz;
+                _activeQuizOpenedUtc = DateTime.UtcNow;
+                _modalDialogOpen = true;
+
+                quiz.Closed += (_, _) =>
+                {
+                    Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        try { _activeQuizWindow.Activate(); } catch { }
-                        opened = true;
-                        return;
-                    }
-
-                    var quiz = new QuizVerificationWindow(
-                        _http, baseAddress, assignmentId, pdfPath, type, minutes,
-                        StudentIdBox.Text.Trim(), StudentNameBox.Text.Trim(), ClassBox.Text.Trim(), GetLocalIpv4Address());
-
-                    _activeQuizWindow = quiz;
-                    _activeQuizOpenedUtc = DateTime.UtcNow;
-                    _modalDialogOpen = true;
-
-                    quiz.Closed += (_, _) =>
-                    {
-                        Dispatcher.BeginInvoke(new Action(() =>
+                        if (ReferenceEquals(_activeQuizWindow, quiz))
                         {
-                            if (ReferenceEquals(_activeQuizWindow, quiz))
-                            {
-                                _activeQuizWindow = null;
-                                _activeQuizOpenedUtc = DateTime.MinValue;
-                            }
-                            _modalDialogOpen = false;
-                            if (_quizVerificationMode)
-                                StatusText.Text = "Verifica Quiz terminata";
-                        }));
-                    };
+                            _activeQuizWindow = null;
+                            _activeQuizOpenedUtc = DateTime.MinValue;
+                        }
+                        _modalDialogOpen = false;
+                        if (_quizVerificationMode)
+                            StatusText.Text = "Verifica Quiz terminata";
+                    }));
+                };
 
-                    quiz.Show();
-                    quiz.WindowState = WindowState.Maximized;
-                    quiz.Topmost = true;
-                    quiz.Activate();
-                    quiz.Focus();
-                    opened = true;
-                });
-            }
-            catch (Exception openEx)
-            {
-                // NON memorizziamo assignmentId: il timer deve riprovare finché il form
-                // non viene realmente creato. Rendiamo anche visibile l'errore, invece di
-                // inghiottirlo silenziosamente.
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    StatusText.Text = "Verifica ricevuta ma apertura non riuscita - nuovo tentativo automatico";
-                    OutputBox.Text = "Errore apertura Verifica Quiz: " + openEx.Message;
-                });
-                return;
-            }
-
-            if (opened)
-                _lastQuizAssignmentId = assignmentId;
+                quiz.Show();
+                quiz.WindowState = WindowState.Maximized;
+                quiz.Topmost = true;
+                quiz.Activate();
+                quiz.Focus();
+            });
         }
-        catch (Exception ex)
+        catch
         {
-            // Manteniamo il polling automatico, ma lasciamo una traccia diagnostica
-            // visibile: così un problema di rete/PDF non sembra una mancata assegnazione.
-            try
-            {
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    if (_quizVerificationMode)
-                        StatusText.Text = "Verifiche Quiz: nuovo tentativo di ricezione in corso";
-                    OutputBox.Text = "Ricezione Verifica Quiz: " + ex.Message;
-                });
-            }
-            catch { }
+            // Polling silenzioso: il client riprova automaticamente.
         }
         finally { _quizAssignmentCheckRunning = false; }
     }

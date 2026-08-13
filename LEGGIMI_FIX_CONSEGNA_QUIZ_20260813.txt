@@ -1,0 +1,8 @@
+FIX VERIFICHE QUIZ - RICEZIONE/CONSEGNA 2026-08-13
+
+- Il client non marca più una verifica come già ricevuta prima dell'apertura reale del form.
+- Se il parsing/apertura del form fallisce, il client ritenta automaticamente.
+- Gli errori di ricezione/apertura sono visibili nell'Output del compilatore.
+- Timeout download verifica aumentato.
+- Supporto notifica UDP quizAssigned per forzare immediatamente il controllo dell'assegnazione.
+- Restano presenti le correzioni precedenti: finestra Quiz separata, fullscreen persistente e marcatori [CODICE].
