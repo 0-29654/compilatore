@@ -1,0 +1,9 @@
+FIX RICEZIONE VERIFICHE QUIZ - 13/08/2026
+
+- Canale server Quiz separato dal ServerBox usato da Compiti alunni.
+- Heartbeat /quiz-live dedicato ogni ciclo di polling.
+- Polling /quiz-assignment sulla porta Quiz anche in presenza del server normale.
+- Quando arriva un PDF, la finestra principale del compilatore viene nascosta.
+- Il modulo Quiz appare a tutto schermo, senza cornice/minimizzazione, topmost.
+- Il timer resta visibile e allo scadere viene eseguita la consegna automatica.
+- Il server mostra la spunta verde soltanto dopo l'ACK reale /quiz-received.

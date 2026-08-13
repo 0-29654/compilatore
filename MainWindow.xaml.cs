@@ -52,6 +52,10 @@ public partial class MainWindow : Window
     private bool _quizVerificationMode;
     private string _lastQuizAssignmentId = "";
     private bool _quizAssignmentCheckRunning;
+    // Connessione Verifiche Quiz separata dal server normale Compiti alunni.
+    private string _quizServerBase = "";
+    private string _quizSessionCode = "";
+    private DateTime _lastQuizServerSeenUtc = DateTime.MinValue;
     private bool _allowClose;
     private bool _serverModeCheckRunning;
     private bool _liveMonitorSyncRunning;
@@ -485,14 +489,45 @@ public partial class MainWindow : Window
                         Close();
                         return;
                     }
-                    ServerBox.Text = $"{ip}:{port}";
-                    SetSessionCode(session);
-                    SetTeacherConnectionFieldsLocked(true);
-                    ApplySessionMode(mode);
-                    ApplyCompilationPermission(compileAllowed);
-                    ApplyHeaderManagementPermission(headerManagementAllowed);
-                    ApplyEditorAssistancePermission(editorAssistanceAllowed);
-                    StatusText.Text = $"Docente rilevato: {ip}:{port}";
+
+                    bool isQuizPacket = mode.Equals("quiz_verifica", StringComparison.OrdinalIgnoreCase) ||
+                                        mode.Equals("verifica_quiz", StringComparison.OrdinalIgnoreCase) ||
+                                        mode.Equals("quiz", StringComparison.OrdinalIgnoreCase) ||
+                                        (root.TryGetProperty("quizVerification", out JsonElement qv) && qv.ValueKind == JsonValueKind.True);
+
+                    if (isQuizPacket)
+                    {
+                        _quizServerBase = NormalizeServerAddress($"{ip}:{port}");
+                        _quizSessionCode = session;
+                        _lastQuizServerSeenUtc = DateTime.UtcNow;
+                        // Durante il Quiz il collegamento visibile segue il server quiz, ma viene
+                        // conservato anche in un canale dedicato che non può essere sovrascritto
+                        // dai broadcast del normale server Compiti alunni.
+                        ServerBox.Text = $"{ip}:{port}";
+                        SetSessionCode(session);
+                        SetTeacherConnectionFieldsLocked(true);
+                        ApplySessionMode("quiz_verifica");
+                        ApplyCompilationPermission(false);
+                        ApplyHeaderManagementPermission(false);
+                        ApplyEditorAssistancePermission(false);
+                        StatusText.Text = $"Verifica Quiz: collegato a {ip}:{port} - in attesa del PDF";
+                    }
+                    else
+                    {
+                        // Se il server Quiz è attivo, un broadcast del server normale non deve
+                        // far uscire il client dalla verifica né spostare il polling sulla porta sbagliata.
+                        if (_quizVerificationMode && (DateTime.UtcNow - _lastQuizServerSeenUtc) < TimeSpan.FromSeconds(8))
+                            return;
+
+                        ServerBox.Text = $"{ip}:{port}";
+                        SetSessionCode(session);
+                        SetTeacherConnectionFieldsLocked(true);
+                        ApplySessionMode(mode);
+                        ApplyCompilationPermission(compileAllowed);
+                        ApplyHeaderManagementPermission(headerManagementAllowed);
+                        ApplyEditorAssistancePermission(editorAssistanceAllowed);
+                        StatusText.Text = $"Docente rilevato: {ip}:{port}";
+                    }
                 });
             }
             catch (OperationCanceledException) { break; }
@@ -1738,19 +1773,57 @@ public partial class MainWindow : Window
 
     private async Task CheckQuizAssignmentAsync()
     {
-        if (!_quizVerificationMode || _quizAssignmentCheckRunning || string.IsNullOrWhiteSpace(ServerBox.Text)) return;
+        if (_quizAssignmentCheckRunning) return;
+
+        // Il Quiz usa un indirizzo dedicato: non dipende più dal ServerBox condiviso
+        // con Compiti alunni. Se il discovery Quiz è arrivato, continuiamo a cercare
+        // la verifica anche se un altro server trasmette contemporaneamente.
+        string baseAddress = _quizServerBase;
+        if (string.IsNullOrWhiteSpace(baseAddress))
+        {
+            if (!_quizVerificationMode || string.IsNullOrWhiteSpace(ServerBox.Text)) return;
+            baseAddress = NormalizeServerAddress(ServerBox.Text);
+        }
         if (string.IsNullOrWhiteSpace(StudentIdBox.Text) && string.IsNullOrWhiteSpace(StudentNameBox.Text)) return;
+
         _quizAssignmentCheckRunning = true;
         try
         {
-            string baseAddress = NormalizeServerAddress(ServerBox.Text);
             string id = Uri.EscapeDataString(StudentIdBox.Text.Trim());
             string ip = Uri.EscapeDataString(GetLocalIpv4Address());
-            string session = Uri.EscapeDataString(SessionBox.Text.Trim());
+            string sessionRaw = !string.IsNullOrWhiteSpace(_quizSessionCode) ? _quizSessionCode : SessionBox.Text.Trim();
+            string session = Uri.EscapeDataString(sessionRaw);
+
+            // Heartbeat dedicato Verifiche Quiz: mantiene l'alunno nella Vista alunni
+            // senza riutilizzare il monitor /live del server normale.
+            try
+            {
+                var live = new
+                {
+                    studentId = StudentIdBox.Text.Trim(),
+                    studentName = StudentNameBox.Text.Trim(),
+                    className = ClassBox.Text.Trim(),
+                    clientIp = GetLocalIpv4Address(),
+                    sessionCode = sessionRaw,
+                    isOnline = true
+                };
+                using var liveContent = new StringContent(JsonSerializer.Serialize(live), Encoding.UTF8, "application/json");
+                using var liveTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                using HttpResponseMessage liveResponse = await _http.PostAsync(baseAddress + "/quiz-live", liveContent, liveTimeout.Token);
+                if (liveResponse.IsSuccessStatusCode)
+                {
+                    _lastQuizServerSeenUtc = DateTime.UtcNow;
+                    if (!_quizVerificationMode)
+                        await Dispatcher.InvokeAsync(() => ApplySessionMode("quiz_verifica"));
+                }
+            }
+            catch { }
+
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             using HttpResponseMessage response = await _http.GetAsync(
                 $"{baseAddress}/quiz-assignment?studentId={id}&clientIp={ip}&sessionCode={session}", timeout.Token);
             if (!response.IsSuccessStatusCode) return;
+            _lastQuizServerSeenUtc = DateTime.UtcNow;
             string json = await response.Content.ReadAsStringAsync();
             using JsonDocument doc = JsonDocument.Parse(json);
             JsonElement root = doc.RootElement;
@@ -1768,6 +1841,8 @@ public partial class MainWindow : Window
             File.WriteAllBytes(pdfPath, pdfBytes);
             _lastQuizAssignmentId = assignmentId;
 
+            await Dispatcher.InvokeAsync(() => ApplySessionMode("quiz_verifica"));
+
             try
             {
                 var ack = new { assignmentId, studentId = StudentIdBox.Text.Trim(), studentName = StudentNameBox.Text.Trim(), className = ClassBox.Text.Trim(), clientIp = GetLocalIpv4Address() };
@@ -1783,16 +1858,19 @@ public partial class MainWindow : Window
                 bool oldTopmost = Topmost;
                 try
                 {
-                    Topmost = false;
+                    // L'editor non resta utilizzabile dietro la verifica: il form Quiz occupa
+                    // l'intero schermo, è topmost e non può essere minimizzato o chiuso.
+                    Hide();
                     var quiz = new QuizVerificationWindow(
                         _http, baseAddress, assignmentId, pdfPath, type, minutes,
                         StudentIdBox.Text.Trim(), StudentNameBox.Text.Trim(), ClassBox.Text.Trim(), GetLocalIpv4Address());
-                    quiz.Owner = this;
                     quiz.ShowDialog();
                     StatusText.Text = "Verifica Quiz consegnata";
                 }
                 finally
                 {
+                    Show();
+                    WindowState = WindowState.Maximized;
                     Topmost = oldTopmost;
                     _modalDialogOpen = false;
                     Activate();
@@ -1801,7 +1879,7 @@ public partial class MainWindow : Window
         }
         catch
         {
-            // Il polling è silenzioso: se la rete ha un'interruzione, il client riprova automaticamente.
+            // Polling silenzioso: il client riprova automaticamente.
         }
         finally { _quizAssignmentCheckRunning = false; }
     }
