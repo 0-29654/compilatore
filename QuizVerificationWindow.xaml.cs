@@ -29,6 +29,7 @@ public partial class QuizVerificationWindow : Window
     private readonly List<QuizQuestion> _questions;
     private readonly Dictionary<int, FrameworkElement> _answerControls = new();
     private bool _submitted;
+    private bool _forceCloseAllowed;
 
     public QuizVerificationWindow(HttpClient http, string serverBase, string assignmentId, string pdfPath, string type, int durationMinutes, string studentId, string studentName, string className, string clientIp)
     {
@@ -41,9 +42,24 @@ public partial class QuizVerificationWindow : Window
         BuildForm();
         _timer.Tick += Timer_Tick;
         _timer.Start();
-        Closing += (_, e) => { if (!_submitted) e.Cancel = true; };
+        Closing += (_, e) => { if (!_submitted && !_forceCloseAllowed) e.Cancel = true; };
         PreviewKeyDown += (_, e) => { if ((Keyboard.Modifiers & (System.Windows.Input.ModifierKeys.Alt | System.Windows.Input.ModifierKeys.Control)) != 0 && e.Key == System.Windows.Input.Key.F4) e.Handled = true; };
         Timer_Tick(this, EventArgs.Empty);
+    }
+
+    public void ForceCloseFromServer()
+    {
+        _forceCloseAllowed = true;
+        _timer.Stop();
+        try
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                StatusText.Text = "Verifica terminata dal docente.";
+                Close();
+            });
+        }
+        catch { }
     }
 
     private void BuildForm()
@@ -143,10 +159,32 @@ public partial class QuizVerificationWindow : Window
             foreach (var page in doc.GetPages())
             {
                 string text = ContentOrderTextExtractor.GetText(page) ?? "";
-                foreach (string line in Regex.Split(text, "\\r?\\n").Select(x => Regex.Replace(x, "\\s+", " ").Trim()).Where(x => x.Length > 0)) lines.Add(line);
+                foreach (string line in Regex.Split(text, "\\r?\\n")
+                    .Select(x => Regex.Replace(x, "\\s+", " ").Trim())
+                    .Where(x => x.Length > 0))
+                    lines.Add(line);
             }
         }
-        var result = new List<QuizQuestion>(); QuizQuestion? current = null; int autoNumber = 1;
+
+        // FORMATO STRUTTURATO CONSIGLIATO (creabile in Word/Google Docs e poi esportato in PDF):
+        // [DOMANDA 1][MULTIPLA]
+        // Testo della domanda
+        // [A] prima risposta
+        // [B] seconda risposta
+        // [C] terza risposta
+        // [D] quarta risposta
+        // [FINE]
+        // [DOMANDA 2][APERTA]
+        // Testo della domanda aperta
+        // [FINE]
+        // Qualunque testo fuori dai blocchi DOMANDA/FINE (titolo, classe, istruzioni) viene ignorato.
+        var structured = ParseStructuredQuestions(lines);
+        if (structured.Count > 0) return structured;
+
+        // Compatibilità con i vecchi PDF: 1. domanda / A) risposta / B) risposta...
+        var result = new List<QuizQuestion>();
+        QuizQuestion? current = null;
+        int autoNumber = 1;
         var qrx = new Regex(@"^\s*(\d{1,3})\s*[\.\)\-:]\s*(.+)$");
         var orx = new Regex(@"^\s*([A-Ha-h])\s*[\.\)\-:]\s*(.+)$");
         foreach (string line in lines)
@@ -156,11 +194,16 @@ public partial class QuizVerificationWindow : Window
             {
                 if (current != null) result.Add(current);
                 int n = int.TryParse(qm.Groups[1].Value, out int parsed) ? parsed : autoNumber;
-                current = new QuizQuestion { Number = n, Text = qm.Groups[2].Value.Trim() }; autoNumber = Math.Max(autoNumber, n + 1); continue;
+                current = new QuizQuestion { Number = n, Text = qm.Groups[2].Value.Trim() };
+                autoNumber = Math.Max(autoNumber, n + 1);
+                continue;
             }
             Match om = orx.Match(line);
             if (om.Success && current != null)
-            { current.Options.Add(om.Groups[1].Value.ToUpperInvariant() + ") " + om.Groups[2].Value.Trim()); continue; }
+            {
+                current.Options.Add(om.Groups[1].Value.ToUpperInvariant() + ") " + om.Groups[2].Value.Trim());
+                continue;
+            }
             if (current != null)
             {
                 if (current.Options.Count == 0) current.Text += " " + line;
@@ -168,11 +211,56 @@ public partial class QuizVerificationWindow : Window
             }
         }
         if (current != null) result.Add(current);
-        if (result.Count == 0)
+        return result.Where(q => !string.IsNullOrWhiteSpace(q.Text)).ToList();
+    }
+
+    private static List<QuizQuestion> ParseStructuredQuestions(List<string> lines)
+    {
+        var result = new List<QuizQuestion>();
+        QuizQuestion? current = null;
+        bool currentIsMultiple = false;
+        var header = new Regex(@"^\[DOMANDA\s+(\d{1,3})\]\s*\[(MULTIPLA|APERTA)\]$", RegexOptions.IgnoreCase);
+        var option = new Regex(@"^\[([A-H])\]\s*(.+)$", RegexOptions.IgnoreCase);
+
+        foreach (string line in lines)
         {
-            foreach (string line in lines.Where(x => x.Length > 12 && !x.Equals("VERIFICA", StringComparison.OrdinalIgnoreCase)).Take(30))
-                result.Add(new QuizQuestion { Number = autoNumber++, Text = line });
+            Match hm = header.Match(line);
+            if (hm.Success)
+            {
+                if (current != null && !string.IsNullOrWhiteSpace(current.Text)) result.Add(current);
+                current = new QuizQuestion
+                {
+                    Number = int.Parse(hm.Groups[1].Value),
+                    Text = ""
+                };
+                currentIsMultiple = hm.Groups[2].Value.Equals("MULTIPLA", StringComparison.OrdinalIgnoreCase);
+                continue;
+            }
+
+            if (line.Equals("[FINE]", StringComparison.OrdinalIgnoreCase))
+            {
+                if (current != null && !string.IsNullOrWhiteSpace(current.Text)) result.Add(current);
+                current = null;
+                currentIsMultiple = false;
+                continue;
+            }
+
+            if (current == null) continue; // Intestazioni/istruzioni fuori dalle domande vengono ignorate.
+
+            Match om = option.Match(line);
+            if (currentIsMultiple && om.Success)
+            {
+                current.Options.Add(om.Groups[1].Value.ToUpperInvariant() + ") " + om.Groups[2].Value.Trim());
+                continue;
+            }
+
+            if (currentIsMultiple && current.Options.Count > 0)
+                current.Options[current.Options.Count - 1] += " " + line;
+            else
+                current.Text = string.IsNullOrWhiteSpace(current.Text) ? line : current.Text + " " + line;
         }
+
+        if (current != null && !string.IsNullOrWhiteSpace(current.Text)) result.Add(current);
         return result;
     }
 

@@ -52,6 +52,7 @@ public partial class MainWindow : Window
     private bool _quizVerificationMode;
     private string _lastQuizAssignmentId = "";
     private bool _quizAssignmentCheckRunning;
+    private QuizVerificationWindow? _activeQuizWindow;
     // Connessione Verifiche Quiz separata dal server normale Compiti alunni.
     private string _quizServerBase = "";
     private string _quizSessionCode = "";
@@ -487,6 +488,23 @@ public partial class MainWindow : Window
                         _allowClose = true;
                         ClearLocalVerificationData();
                         Close();
+                        return;
+                    }
+
+                    // Comando esplicito inviato dal server Verifiche Quiz quando il docente preme "Ferma server".
+                    // Va gestito prima del filtro che ignora i broadcast del server normale.
+                    if (command.Equals("quizStopped", StringComparison.OrdinalIgnoreCase) ||
+                        command.Equals("stopQuiz", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _activeQuizWindow?.ForceCloseFromServer();
+                        _activeQuizWindow = null;
+                        _quizServerBase = "";
+                        _quizSessionCode = "";
+                        _lastQuizServerSeenUtc = DateTime.MinValue;
+                        ApplySessionMode("esercitazione");
+                        ApplyCompilationPermission(true);
+                        ApplyHeaderManagementPermission(true);
+                        StatusText.Text = "Server Verifiche Quiz fermato - modalità esercitazione ripristinata";
                         return;
                     }
 
@@ -1864,8 +1882,11 @@ public partial class MainWindow : Window
                     var quiz = new QuizVerificationWindow(
                         _http, baseAddress, assignmentId, pdfPath, type, minutes,
                         StudentIdBox.Text.Trim(), StudentNameBox.Text.Trim(), ClassBox.Text.Trim(), GetLocalIpv4Address());
+                    _activeQuizWindow = quiz;
                     quiz.ShowDialog();
-                    StatusText.Text = "Verifica Quiz consegnata";
+                    _activeQuizWindow = null;
+                    if (_quizVerificationMode)
+                        StatusText.Text = "Verifica Quiz consegnata";
                 }
                 finally
                 {

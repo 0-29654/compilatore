@@ -1,0 +1,38 @@
+FORMATO CONSIGLIATO PER VERIFICHE QUIZ
+
+Puoi scrivere il documento in Word o Google Docs e poi esportarlo in PDF.
+Il client ignora tutto ciò che sta fuori dai blocchi [DOMANDA ...] / [FINE].
+
+Esempio:
+
+VERIFICA DI INFORMATICA
+Classe 3A
+Nome: __________________________
+Istruzioni: rispondi a tutte le domande.
+
+[DOMANDA 1][MULTIPLA]
+Quale istruzione C++ stampa un testo sullo schermo?
+[A] cin
+[B] cout
+[C] if
+[D] for
+[FINE]
+
+[DOMANDA 2][APERTA]
+Spiega con parole tue a cosa serve un ciclo for.
+[FINE]
+
+[DOMANDA 3][MULTIPLA]
+Quale operatore verifica l'uguaglianza tra due valori?
+[A] =
+[B] ==
+[C] !=
+[D] <=
+[FINE]
+
+REGOLE IMPORTANTI
+1. Ogni domanda inizia esattamente con [DOMANDA numero][MULTIPLA] oppure [DOMANDA numero][APERTA].
+2. Ogni domanda termina con [FINE].
+3. Nelle domande multiple le risposte iniziano con [A], [B], [C], [D] (si possono usare anche lettere successive).
+4. Titolo, classe, nome, istruzioni e altre intestazioni vanno FUORI dai blocchi: così non diventano domande.
+5. Esporta il documento come PDF testuale, non come scansione/fotografia.
