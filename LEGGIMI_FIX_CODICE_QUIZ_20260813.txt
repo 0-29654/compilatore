@@ -1,0 +1,28 @@
+FIX VERIFICHE QUIZ - BLOCCHI CODICE C++
+Data: 13/08/2026
+
+Modificato SOLO il client Compilatore, partendo dalla versione quiz-stop-formato-fix.
+Tutte le funzioni precedenti restano inalterate.
+
+Formato riconosciuto:
+[DOMANDA 1][MULTIPLA]
+Testo...
+[CODICE]
+#include <iostream>
+using namespace std;
+int main() {
+    cout << "ciao" << endl;
+}
+[/CODICE]
+[A] ...
+[B] ...
+[FINE]
+
+Comportamento:
+- [CODICE] e [/CODICE] non vengono mostrati all'alunno.
+- Il codice viene visualizzato in un riquadro separato, font Consolas monospaziato.
+- I ritorni a capo vengono preservati.
+- Se il PDF perde gli spazi iniziali, il client ricostruisce l'indentazione C++ in base alle parentesi graffe.
+- Il testo normale della domanda resta separato dal codice.
+- Le risposte multiple e aperte continuano a funzionare come prima.
+- Il server C++ Visual NON necessita modifiche per questo fix.

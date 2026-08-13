@@ -74,63 +74,7 @@ public partial class QuizVerificationWindow : Window
         {
             var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(10), BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224)), BorderThickness = new Thickness(1), Padding = new Thickness(22), Margin = new Thickness(0, 0, 0, 18) };
             var stack = new StackPanel();
-
-            // Numero esercizio separato dal contenuto: i blocchi [CODICE] vengono
-            // visualizzati come vero codice monospaziato e non come testo continuo.
-            stack.Children.Add(new TextBlock
-            {
-                Text = $"Esercizio {q.Number}",
-                FontSize = 17,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(Color.FromRgb(32, 33, 36)),
-                Margin = new Thickness(0, 0, 0, 10)
-            });
-
-            if (q.Parts.Count > 0)
-            {
-                foreach (var part in q.Parts)
-                {
-                    if (part.IsCode)
-                    {
-                        var codeText = new TextBox
-                        {
-                            Text = part.Text,
-                            IsReadOnly = true,
-                            AcceptsReturn = true,
-                            AcceptsTab = true,
-                            TextWrapping = TextWrapping.NoWrap,
-                            FontFamily = new FontFamily("Consolas"),
-                            FontSize = 14,
-                            Background = new SolidColorBrush(Color.FromRgb(248, 249, 250)),
-                            Foreground = new SolidColorBrush(Color.FromRgb(32, 33, 36)),
-                            BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224)),
-                            BorderThickness = new Thickness(1),
-                            Padding = new Thickness(14),
-                            Margin = new Thickness(0, 4, 0, 14),
-                            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                            MinHeight = 42
-                        };
-                        stack.Children.Add(codeText);
-                    }
-                    else if (!string.IsNullOrWhiteSpace(part.Text))
-                    {
-                        stack.Children.Add(new TextBlock
-                        {
-                            Text = part.Text,
-                            FontSize = 16,
-                            Foreground = new SolidColorBrush(Color.FromRgb(32, 33, 36)),
-                            TextWrapping = TextWrapping.Wrap,
-                            Margin = new Thickness(0, 0, 0, 12)
-                        });
-                    }
-                }
-            }
-            else
-            {
-                stack.Children.Add(new TextBlock { Text = q.Text, FontSize = 16, Foreground = new SolidColorBrush(Color.FromRgb(32, 33, 36)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,14) });
-            }
-
+            stack.Children.Add(new TextBlock { Text = $"{q.Number}. {q.Text}", FontSize = 17, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(32, 33, 36)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,14) });
             if (q.Options.Count >= 2)
             {
                 var optionPanel = new StackPanel();
@@ -209,38 +153,40 @@ public partial class QuizVerificationWindow : Window
 
     private static List<QuizQuestion> ParseQuestions(string pdfPath)
     {
-        // IMPORTANTE: non comprimiamo subito gli spazi. Nei blocchi [CODICE]
-        // i ritorni a capo devono sopravvivere all'estrazione dal PDF.
-        var rawLines = new List<string>();
+        var lines = new List<string>();
         using (PdfDocument doc = PdfDocument.Open(pdfPath))
         {
             foreach (var page in doc.GetPages())
             {
                 string text = ContentOrderTextExtractor.GetText(page) ?? "";
-                foreach (string raw in Regex.Split(text, "\\r?\\n"))
-                    rawLines.Add(raw.Replace("\\t", "    ").TrimEnd());
+                foreach (string line in Regex.Split(text, "\\r?\\n")
+                    .Select(x => Regex.Replace(x, "\\s+", " ").Trim())
+                    .Where(x => x.Length > 0))
+                    lines.Add(line);
             }
         }
 
-        // Prima tentiamo il formato strutturato. Riconosce anche:
-        // [CODICE]
-        //   ...codice C++...
-        // [/CODICE]
-        var structured = ParseStructuredQuestions(rawLines);
+        // FORMATO STRUTTURATO CONSIGLIATO (creabile in Word/Google Docs e poi esportato in PDF):
+        // [DOMANDA 1][MULTIPLA]
+        // Testo della domanda
+        // [A] prima risposta
+        // [B] seconda risposta
+        // [C] terza risposta
+        // [D] quarta risposta
+        // [FINE]
+        // [DOMANDA 2][APERTA]
+        // Testo della domanda aperta
+        // [FINE]
+        // Qualunque testo fuori dai blocchi DOMANDA/FINE (titolo, classe, istruzioni) viene ignorato.
+        var structured = ParseStructuredQuestions(lines);
         if (structured.Count > 0) return structured;
 
-        // Compatibilità con vecchi PDF non strutturati: qui invece possiamo
-        // normalizzare gli spazi perché non esistono marcatori di codice.
-        var lines = rawLines
-            .Select(x => Regex.Replace(x, "\\s+", " ").Trim())
-            .Where(x => x.Length > 0)
-            .ToList();
-
+        // Compatibilità con i vecchi PDF: 1. domanda / A) risposta / B) risposta...
         var result = new List<QuizQuestion>();
         QuizQuestion? current = null;
         int autoNumber = 1;
-        var qrx = new Regex(@"^\\s*(\\d{1,3})\\s*[\\.\\)\\-:]\\s*(.+)$");
-        var orx = new Regex(@"^\\s*([A-Ha-h])\\s*[\\.\\)\\-:]\\s*(.+)$");
+        var qrx = new Regex(@"^\s*(\d{1,3})\s*[\.\)\-:]\s*(.+)$");
+        var orx = new Regex(@"^\s*([A-Ha-h])\s*[\.\)\-:]\s*(.+)$");
         foreach (string line in lines)
         {
             Match qm = qrx.Match(line);
@@ -249,7 +195,6 @@ public partial class QuizVerificationWindow : Window
                 if (current != null) result.Add(current);
                 int n = int.TryParse(qm.Groups[1].Value, out int parsed) ? parsed : autoNumber;
                 current = new QuizQuestion { Number = n, Text = qm.Groups[2].Value.Trim() };
-                current.Parts.Add(new QuizPart(false, current.Text));
                 autoNumber = Math.Max(autoNumber, n + 1);
                 continue;
             }
@@ -261,12 +206,7 @@ public partial class QuizVerificationWindow : Window
             }
             if (current != null)
             {
-                if (current.Options.Count == 0)
-                {
-                    current.Text += " " + line;
-                    if (current.Parts.Count > 0)
-                        current.Parts[current.Parts.Count - 1] = new QuizPart(false, current.Text);
-                }
+                if (current.Options.Count == 0) current.Text += " " + line;
                 else current.Options[current.Options.Count - 1] += " " + line;
             }
         }
@@ -274,165 +214,57 @@ public partial class QuizVerificationWindow : Window
         return result.Where(q => !string.IsNullOrWhiteSpace(q.Text)).ToList();
     }
 
-    private static List<QuizQuestion> ParseStructuredQuestions(List<string> rawLines)
+    private static List<QuizQuestion> ParseStructuredQuestions(List<string> lines)
     {
         var result = new List<QuizQuestion>();
         QuizQuestion? current = null;
         bool currentIsMultiple = false;
-        bool inCode = false;
-        var code = new List<string>();
-        var normalText = new List<string>();
-        var header = new Regex(@"^\\s*\\[DOMANDA\\s+(\\d{1,3})\\]\\s*\\[(MULTIPLA|APERTA)\\]\\s*$", RegexOptions.IgnoreCase);
-        var option = new Regex(@"^\\s*\\[([A-H])\\]\\s*(.+)$", RegexOptions.IgnoreCase);
+        var header = new Regex(@"^\[DOMANDA\s+(\d{1,3})\]\s*\[(MULTIPLA|APERTA)\]$", RegexOptions.IgnoreCase);
+        var option = new Regex(@"^\[([A-H])\]\s*(.+)$", RegexOptions.IgnoreCase);
 
-        void FlushNormal()
+        foreach (string line in lines)
         {
-            if (current == null || normalText.Count == 0) return;
-            string text = string.Join(" ", normalText.Select(x => Regex.Replace(x, "\\s+", " ").Trim()).Where(x => x.Length > 0));
-            normalText.Clear();
-            if (string.IsNullOrWhiteSpace(text)) return;
-            current.Parts.Add(new QuizPart(false, text));
-            current.Text = string.IsNullOrWhiteSpace(current.Text) ? text : current.Text + " " + text;
-        }
-
-        void FlushCode()
-        {
-            if (current == null) { code.Clear(); return; }
-            while (code.Count > 0 && string.IsNullOrWhiteSpace(code[0])) code.RemoveAt(0);
-            while (code.Count > 0 && string.IsNullOrWhiteSpace(code[^1])) code.RemoveAt(code.Count - 1);
-            if (code.Count == 0) return;
-
-            // Molti PDF perdono gli spazi iniziali. Ricostruiamo una normale
-            // indentazione C++ dalle parentesi graffe, lasciando intatte le righe.
-            string formatted = ReindentCpp(code);
-            current.Parts.Add(new QuizPart(true, formatted));
-            current.Text = string.IsNullOrWhiteSpace(current.Text) ? formatted : current.Text + "\n" + formatted;
-            code.Clear();
-        }
-
-        foreach (string rawLine in rawLines)
-        {
-            string trimmed = rawLine.Trim();
-            Match hm = header.Match(trimmed);
-            if (!inCode && hm.Success)
+            Match hm = header.Match(line);
+            if (hm.Success)
             {
-                if (current != null)
+                if (current != null && !string.IsNullOrWhiteSpace(current.Text)) result.Add(current);
+                current = new QuizQuestion
                 {
-                    FlushNormal();
-                    if (!string.IsNullOrWhiteSpace(current.Text)) result.Add(current);
-                }
-                current = new QuizQuestion { Number = int.Parse(hm.Groups[1].Value), Text = "" };
+                    Number = int.Parse(hm.Groups[1].Value),
+                    Text = ""
+                };
                 currentIsMultiple = hm.Groups[2].Value.Equals("MULTIPLA", StringComparison.OrdinalIgnoreCase);
-                normalText.Clear(); code.Clear(); inCode = false;
                 continue;
             }
 
-            if (current == null) continue;
-
-            if (!inCode && trimmed.Equals("[CODICE]", StringComparison.OrdinalIgnoreCase))
+            if (line.Equals("[FINE]", StringComparison.OrdinalIgnoreCase))
             {
-                FlushNormal();
-                inCode = true;
-                code.Clear();
-                continue;
-            }
-
-            if (inCode)
-            {
-                if (trimmed.Equals("[/CODICE]", StringComparison.OrdinalIgnoreCase))
-                {
-                    FlushCode();
-                    inCode = false;
-                }
-                else
-                {
-                    code.Add(rawLine);
-                }
-                continue;
-            }
-
-            if (trimmed.Equals("[FINE]", StringComparison.OrdinalIgnoreCase))
-            {
-                FlushNormal();
                 if (current != null && !string.IsNullOrWhiteSpace(current.Text)) result.Add(current);
                 current = null;
                 currentIsMultiple = false;
                 continue;
             }
 
-            Match om = option.Match(trimmed);
+            if (current == null) continue; // Intestazioni/istruzioni fuori dalle domande vengono ignorate.
+
+            Match om = option.Match(line);
             if (currentIsMultiple && om.Success)
             {
-                FlushNormal();
                 current.Options.Add(om.Groups[1].Value.ToUpperInvariant() + ") " + om.Groups[2].Value.Trim());
                 continue;
             }
 
-            // Una continuazione dopo un'opzione appartiene all'opzione; altrimenti
-            // fa parte del testo normale della domanda.
             if (currentIsMultiple && current.Options.Count > 0)
-                current.Options[current.Options.Count - 1] += " " + Regex.Replace(trimmed, "\\s+", " ");
-            else if (trimmed.Length > 0)
-                normalText.Add(rawLine);
+                current.Options[current.Options.Count - 1] += " " + line;
+            else
+                current.Text = string.IsNullOrWhiteSpace(current.Text) ? line : current.Text + " " + line;
         }
 
-        if (inCode) FlushCode();
-        FlushNormal();
         if (current != null && !string.IsNullOrWhiteSpace(current.Text)) result.Add(current);
         return result;
     }
 
-    private static string ReindentCpp(List<string> sourceLines)
-    {
-        var output = new List<string>();
-        int indent = 0;
-
-        foreach (string original in sourceLines)
-        {
-            string line = original.Trim();
-            if (line.Length == 0)
-            {
-                output.Add("");
-                continue;
-            }
-
-            // Chiude prima di stampare la riga quando la riga inizia con '}'.
-            int leadingClosers = 0;
-            for (int i = 0; i < line.Length && line[i] == '}'; i++) leadingClosers++;
-            int effectiveIndent = Math.Max(0, indent - leadingClosers);
-            output.Add(new string(' ', effectiveIndent * 4) + line);
-
-            // Conteggio semplice ma robusto per i normali esercizi didattici C++.
-            // Ignora le graffe dentro stringhe/caratteri e commenti //.
-            int opens = 0, closes = 0;
-            bool inString = false, inChar = false, escaped = false;
-            for (int i = 0; i < line.Length; i++)
-            {
-                char c = line[i];
-                if (!inString && !inChar && c == '/' && i + 1 < line.Length && line[i + 1] == '/') break;
-                if (escaped) { escaped = false; continue; }
-                if ((inString || inChar) && c == '\\') { escaped = true; continue; }
-                if (!inChar && c == '"') { inString = !inString; continue; }
-                if (!inString && c == '\'') { inChar = !inChar; continue; }
-                if (inString || inChar) continue;
-                if (c == '{') opens++;
-                else if (c == '}') closes++;
-            }
-            indent = Math.Max(0, indent + opens - closes);
-        }
-
-        return string.Join(Environment.NewLine, output);
-    }
-
-    private sealed class QuizQuestion
-    {
-        public int Number { get; set; }
-        public string Text { get; set; } = "";
-        public List<string> Options { get; } = new();
-        public List<QuizPart> Parts { get; } = new();
-    }
-
-    private sealed record QuizPart(bool IsCode, string Text);
+    private sealed class QuizQuestion { public int Number { get; set; } public string Text { get; set; } = ""; public List<string> Options { get; } = new(); }
     private sealed record PdfAnswerRow(int Number, string Question, List<string> Options, string Answer);
 
     private static class SimplePdf
