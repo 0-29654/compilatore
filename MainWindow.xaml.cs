@@ -1,4 +1,4 @@
-﻿using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.CodeCompletion;
@@ -2843,7 +2843,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             MessageBoxResult answer =
                 ShowVerificationSafeMessage(
                     $"È disponibile una Release più recente ({tag}).\n\n" +
-                    "Vuoi scaricarla e installarla automaticamente? CV+ verrà chiuso e l'installer partirà da solo.",
+                    "Vuoi installarla adesso? Dopo il download CV+ verrà chiuso e comparirà soltanto la barra di avanzamento dell'aggiornamento.",
                     "Aggiornamento disponibile",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question,
@@ -2930,7 +2930,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
                 ")\r\n" +
                 "timeout /t 1 /nobreak >NUL\r\n" +
                 "start \"\" /wait \"%INSTALLER%\" " +
-                "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART " +
+                "/SILENT /SUPPRESSMSGBOXES /NORESTART " +
                 "/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RESTARTAPPLICATIONS\r\n" +
                 "set \"SETUP_EXIT=%ERRORLEVEL%\"\r\n" +
                 "if %SETUP_EXIT% EQU 0 (\r\n" +

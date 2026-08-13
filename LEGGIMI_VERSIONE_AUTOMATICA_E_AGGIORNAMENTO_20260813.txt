@@ -1,0 +1,10 @@
+CV+ Compilatore Alunno - versione automatica e aggiornamento
+
+1. Il workflow GitHub legge l'ultima Release pubblica del repository.
+2. Estrae la versione semantica (es. 1.9.6) e crea automaticamente la successiva patch (1.9.7).
+3. La nuova versione viene iniettata anche in Version, AssemblyVersion e FileVersion della build.
+4. La Release usa il tag compilatore-alunni-vX.Y.Z.
+5. Ricerca aggiornamenti confronta la versione dell'eseguibile installato con l'ultima Release GitHub.
+6. Se trova un aggiornamento chiede Sì/No.
+7. Se si sceglie Sì, scarica l'installer, chiude CV+ e avvia Inno Setup in /SILENT: rimane visibile soltanto la finestra/barra di avanzamento dell'installazione.
+8. L'installazione sostituisce la versione esistente e registra l'ID della Release installata.

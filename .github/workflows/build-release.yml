@@ -25,17 +25,63 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Leggi versione dal progetto
+      - name: Calcola automaticamente la prossima versione pubblica
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $ErrorActionPreference = 'Stop'
+
+          # La versione della nuova Release NON resta più fissa nel .csproj.
+          # Legge l'ultima Release pubblicata nel repository e incrementa la PATCH:
+          # 1.9.6 -> 1.9.7 -> 1.9.8 ...
           [xml]$project = Get-Content '.\CppStudentClient.csproj' -Raw
-          $version = [string]$project.Project.PropertyGroup.Version | Select-Object -First 1
-          if ([string]::IsNullOrWhiteSpace($version) -or $version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "Versione non valida in CppStudentClient.csproj: '$version'"
+          $fallback = [string]$project.Project.PropertyGroup.Version | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($fallback) -or $fallback -notmatch '^\d+\.\d+\.\d+$') {
+            $fallback = '1.9.6'
           }
+
+          $latestTag = ''
+          try {
+            $latestJson = gh api "repos/${{ github.repository }}/releases/latest" 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($latestJson)) {
+              $latest = $latestJson | ConvertFrom-Json
+              $latestTag = [string]$latest.tag_name
+            }
+          } catch {
+            Write-Host "Nessuna Release precedente leggibile: uso la versione base $fallback"
+          }
+
+          if ($latestTag -match '(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)') {
+            $major = [int]$Matches[1]
+            $minor = [int]$Matches[2]
+            $patch = [int]$Matches[3] + 1
+            $version = "$major.$minor.$patch"
+            Write-Host "Ultima Release pubblica: $latestTag"
+          } else {
+            $base = [version]$fallback
+            $version = "$($base.Major).$($base.Minor).$($base.Build)"
+            Write-Host "Prima Release/versione non riconoscibile: uso $version"
+          }
+
           "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "Versione unica della build: $version"
+          Write-Host "Nuova versione automatica: $version"
+
+          # Aggiorna anche il progetto nel workspace della build, così AssemblyVersion/FileVersion
+          # e la versione mostrata dal programma corrispondono davvero alla Release.
+          $propertyGroup = $project.Project.PropertyGroup | Select-Object -First 1
+          $propertyGroup.Version = $version
+          if ($null -eq $propertyGroup.AssemblyVersion) {
+            $node = $project.CreateElement('AssemblyVersion')
+            [void]$propertyGroup.AppendChild($node)
+          }
+          $propertyGroup.AssemblyVersion = "$version.0"
+          if ($null -eq $propertyGroup.FileVersion) {
+            $node = $project.CreateElement('FileVersion')
+            [void]$propertyGroup.AppendChild($node)
+          }
+          $propertyGroup.FileVersion = "$version.0"
+          $project.Save((Resolve-Path '.\CppStudentClient.csproj'))
 
 
       - name: Setup MSYS2 UCRT64 con GCC C++17
@@ -90,7 +136,7 @@ jobs:
           New-Item -ItemType Directory -Force .\publish\compiler\ucrt64 | Out-Null
 
           dotnet restore .\CppStudentClient.csproj
-          dotnet publish .\CppStudentClient.csproj -c Release -r win-x64 --self-contained true -p:SelfContained=true -p:UseAppHost=true -p:PublishSingleFile=false -p:DebugType=None -p:DebugSymbols=false -o .\publish
+          dotnet publish .\CppStudentClient.csproj -c Release -r win-x64 --self-contained true -p:SelfContained=true -p:UseAppHost=true -p:PublishSingleFile=false -p:DebugType=None -p:DebugSymbols=false -p:Version=$env:APP_VERSION -p:AssemblyVersion=$env:APP_VERSION.0 -p:FileVersion=$env:APP_VERSION.0 -o .\publish
           if (-not (Test-Path '.\publish\Assets\google_oauth_client.json')) {
             throw 'google_oauth_client.json non incluso nella cartella publish.'
           }
@@ -278,8 +324,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-          $sha = '${{ github.sha }}'.Substring(0,7)
-          $tag = "compilatore-alunni-$env:APP_VERSION-$stamp-$sha"
-          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno $env:APP_VERSION - installer compatibile e verificato" --notes "Installer $env:APP_VERSION verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+          $tag = "compilatore-alunni-v$env:APP_VERSION"
+          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno $env:APP_VERSION" --notes "Aggiornamento automatico CV+ $env:APP_VERSION. Installer verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
 
