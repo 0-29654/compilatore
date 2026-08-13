@@ -1,0 +1,9 @@
+FIX QUIZ FINESTRA PERSISTENTE - 13/08/2026
+
+- Il form Verifiche Quiz non usa piu' ShowDialog().
+- MainWindow del compilatore resta nello stato normale dietro la verifica.
+- Il form Quiz e' una finestra indipendente, massimizzata, Topmost e protetta dalla chiusura.
+- Non viene piu' eseguito Hide()/Show() della finestra principale.
+- Aggiunta protezione contro pacchetti UDP quizStopped vecchi/in ritardo nei primi 4 secondi dall'apertura.
+- Ferma server continua a chiudere il form Quiz dopo la fase iniziale di apertura.
+- Nessuna modifica alla modalita' verifica C++ tradizionale.

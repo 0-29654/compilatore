@@ -53,6 +53,7 @@ public partial class MainWindow : Window
     private string _lastQuizAssignmentId = "";
     private bool _quizAssignmentCheckRunning;
     private QuizVerificationWindow? _activeQuizWindow;
+    private DateTime _activeQuizOpenedUtc = DateTime.MinValue;
     // Connessione Verifiche Quiz separata dal server normale Compiti alunni.
     private string _quizServerBase = "";
     private string _quizSessionCode = "";
@@ -496,8 +497,18 @@ public partial class MainWindow : Window
                     if (command.Equals("quizStopped", StringComparison.OrdinalIgnoreCase) ||
                         command.Equals("stopQuiz", StringComparison.OrdinalIgnoreCase))
                     {
+                        // Un vecchio datagramma UDP di arresto può arrivare subito dopo l'apertura
+                        // di una nuova verifica e chiuderla istantaneamente. Ignoriamo quindi
+                        // gli stop arrivati nei primissimi secondi di una nuova assegnazione.
+                        if (_activeQuizWindow != null &&
+                            (DateTime.UtcNow - _activeQuizOpenedUtc) < TimeSpan.FromSeconds(4))
+                        {
+                            return;
+                        }
+
                         _activeQuizWindow?.ForceCloseFromServer();
                         _activeQuizWindow = null;
+                        _activeQuizOpenedUtc = DateTime.MinValue;
                         _quizServerBase = "";
                         _quizSessionCode = "";
                         _lastQuizServerSeenUtc = DateTime.MinValue;
@@ -1879,30 +1890,43 @@ public partial class MainWindow : Window
 
             await Dispatcher.InvokeAsync(() =>
             {
+                // Il Quiz è una finestra indipendente: MainWindow resta normale dietro.
+                // Non usiamo ShowDialog() e non nascondiamo MainWindow, così il ciclo
+                // modale non può più aprire e richiudere immediatamente il form.
+                if (_activeQuizWindow != null)
+                {
+                    try { _activeQuizWindow.Activate(); } catch { }
+                    return;
+                }
+
+                var quiz = new QuizVerificationWindow(
+                    _http, baseAddress, assignmentId, pdfPath, type, minutes,
+                    StudentIdBox.Text.Trim(), StudentNameBox.Text.Trim(), ClassBox.Text.Trim(), GetLocalIpv4Address());
+
+                _activeQuizWindow = quiz;
+                _activeQuizOpenedUtc = DateTime.UtcNow;
                 _modalDialogOpen = true;
-                bool oldTopmost = Topmost;
-                try
+
+                quiz.Closed += (_, _) =>
                 {
-                    // L'editor non resta utilizzabile dietro la verifica: il form Quiz occupa
-                    // l'intero schermo, è topmost e non può essere minimizzato o chiuso.
-                    Hide();
-                    var quiz = new QuizVerificationWindow(
-                        _http, baseAddress, assignmentId, pdfPath, type, minutes,
-                        StudentIdBox.Text.Trim(), StudentNameBox.Text.Trim(), ClassBox.Text.Trim(), GetLocalIpv4Address());
-                    _activeQuizWindow = quiz;
-                    quiz.ShowDialog();
-                    _activeQuizWindow = null;
-                    if (_quizVerificationMode)
-                        StatusText.Text = "Verifica Quiz consegnata";
-                }
-                finally
-                {
-                    Show();
-                    WindowState = WindowState.Maximized;
-                    Topmost = oldTopmost;
-                    _modalDialogOpen = false;
-                    Activate();
-                }
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (ReferenceEquals(_activeQuizWindow, quiz))
+                        {
+                            _activeQuizWindow = null;
+                            _activeQuizOpenedUtc = DateTime.MinValue;
+                        }
+                        _modalDialogOpen = false;
+                        if (_quizVerificationMode)
+                            StatusText.Text = "Verifica Quiz terminata";
+                    }));
+                };
+
+                quiz.Show();
+                quiz.WindowState = WindowState.Maximized;
+                quiz.Topmost = true;
+                quiz.Activate();
+                quiz.Focus();
             });
         }
         catch
