@@ -1108,7 +1108,7 @@ public partial class MainWindow : Window
         return
             "powershell -NoProfile -Command \"Write-Host ('=' * [Console]::WindowWidth)\"\r\n" +
             $"echo CV+ MICROSOFT OUTPUT - {safeMode}\r\n" +
-            "echo Copyright Alessandro Barazzuol\r\n" +
+            "echo Copyright Prof. Alessandro Barazzuol\r\n" +
             "powershell -NoProfile -Command \"Write-Host ('-' * [Console]::WindowWidth)\"\r\n" +
             $"echo IP: {EscapeBatchEcho(localIp)}   ^|   Tempo esercizio: {EscapeBatchEcho(elapsed)}\r\n" +
             $"echo Compilatore: G++ C++17 - MinGW-w64 UCRT64   ^|   Tipologia: {taskType}   ^|   Esercizio: {exercise}\r\n" +
