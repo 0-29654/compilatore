@@ -48,6 +48,7 @@ public partial class MainWindow : Window
     private string _activeKey = "";
     private DateTime _activeStartedUtc = DateTime.UtcNow;
     private bool _loadingExercise;
+    private bool _refreshingExerciseList;
     private bool _verificationMode;
     private bool _quizVerificationMode;
     private string _lastQuizAssignmentId = "";
@@ -106,6 +107,7 @@ public partial class MainWindow : Window
         if (!File.Exists(BundledCompilerPath))
             OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
         ActivateExercise(GetTaskType(), GetExerciseNumber());
+        RefreshExerciseList();
 
         _clockTimer.Tick += (_, _) => UpdateExerciseClock();
         _clockTimer.Start();
@@ -3722,7 +3724,12 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             return;
 
         if (_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state))
+        {
+            bool wasEmpty = state.IsEmptySlot;
             state.HeaderCode = HeaderEditor.Text;
+            if (!string.IsNullOrWhiteSpace(HeaderEditor.Text)) state.IsEmptySlot = false;
+            if (wasEmpty != state.IsEmptySlot) RefreshExerciseList();
+        }
     }
 
     private void PreviousExercise_Click(object sender, RoutedEventArgs e) => SwitchExercise(-1);
@@ -3783,6 +3790,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         ExerciseBox.Text = next.ToString();
         ActivateExercise(GetTaskType(), next);
         SaveSettings();
+        RefreshExerciseList();
 
     }
 
@@ -3791,6 +3799,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         SaveCurrentExercise();
         ActivateExercise(GetTaskType(), GetExerciseNumber());
         SaveSettings();
+        RefreshExerciseList();
     }
 
     private void ActivateExercise(string type, int number)
@@ -3804,8 +3813,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             _exerciseStates[key] = state;
         }
         _loadingExercise = true;
-        Editor.Text = string.IsNullOrWhiteSpace(state.Code) ? DefaultCode : state.Code;
-        HeaderEditor.Text = state.HeaderCode ?? "";
+        Editor.Text = state.IsEmptySlot ? "" : (string.IsNullOrWhiteSpace(state.Code) ? DefaultCode : state.Code);
+        HeaderEditor.Text = state.IsEmptySlot ? "" : (state.HeaderCode ?? "");
         HeaderTab.Header = string.IsNullOrWhiteSpace(state.HeaderFileName)
             ? "esercizio.h"
             : state.HeaderFileName;
@@ -3814,8 +3823,11 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             : Visibility.Visible;
         _loadingExercise = false;
         _activeStartedUtc = DateTime.UtcNow;
-        StatusText.Text = $"Tipologia {type} - esercizio {number}";
+        StatusText.Text = state.IsEmptySlot
+            ? $"Tipologia {type} - esercizio {number} (vuoto)"
+            : $"Tipologia {type} - esercizio {number}";
         UpdateExerciseClock();
+        RefreshExerciseList();
     }
 
     private void SaveCurrentExercise()
@@ -3824,6 +3836,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         if (!_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state)) state = _exerciseStates[_activeKey] = new ExerciseState();
         state.Code = Editor.Text;
         state.HeaderCode = HeaderEditor.Text;
+        state.IsEmptySlot = string.IsNullOrWhiteSpace(Editor.Text) && string.IsNullOrWhiteSpace(HeaderEditor.Text);
         if (string.IsNullOrWhiteSpace(state.HeaderFileName))
             state.HeaderFileName = "esercizio.h";
         state.Elapsed += DateTime.UtcNow - _activeStartedUtc;
@@ -3834,7 +3847,99 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
     private void Editor_TextChanged(object? sender, EventArgs e)
     {
         if (_loadingExercise || string.IsNullOrWhiteSpace(_activeKey)) return;
-        if (_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state)) state.Code = Editor.Text;
+        if (_exerciseStates.TryGetValue(_activeKey, out ExerciseState? state))
+        {
+            bool wasEmpty = state.IsEmptySlot;
+            state.Code = Editor.Text;
+            if (!string.IsNullOrWhiteSpace(Editor.Text)) state.IsEmptySlot = false;
+            if (wasEmpty != state.IsEmptySlot) RefreshExerciseList();
+        }
+    }
+
+    private void RefreshExerciseList()
+    {
+        if (ExerciseListBox == null) return;
+        string type = GetTaskType();
+        string prefix = $"{SessionBox.Text.Trim().ToUpperInvariant()}|{type.Trim().ToUpperInvariant()}|";
+        int current = GetExerciseNumber();
+        int max = current;
+
+        foreach (string key in _exerciseStates.Keys)
+        {
+            if (!key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            string numberText = key.Substring(prefix.Length);
+            if (int.TryParse(numberText, out int n) && n > max) max = n;
+        }
+
+        var items = new List<ExerciseListItem>();
+        for (int n = 1; n <= max; n++)
+        {
+            string key = BuildExerciseKey(type, n);
+            bool empty = !_exerciseStates.TryGetValue(key, out ExerciseState? st) || st.IsEmptySlot;
+            items.Add(new ExerciseListItem
+            {
+                Number = n,
+                Label = empty ? $"Esercizio {n}  —  vuoto" : $"Esercizio {n}"
+            });
+        }
+
+        _refreshingExerciseList = true;
+        ExerciseListBox.ItemsSource = items;
+        ExerciseListBox.SelectedItem = items.FirstOrDefault(i => i.Number == current);
+        if (ExerciseListBox.SelectedItem != null) ExerciseListBox.ScrollIntoView(ExerciseListBox.SelectedItem);
+        _refreshingExerciseList = false;
+    }
+
+    private void ExerciseListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_refreshingExerciseList || ExerciseListBox.SelectedItem is not ExerciseListItem item) return;
+        int current = GetExerciseNumber();
+        if (item.Number == current) return;
+
+        SaveCurrentExercise();
+        ExerciseBox.Text = item.Number.ToString();
+        ActivateExercise(GetTaskType(), item.Number);
+        SaveSettings();
+    }
+
+    private void DeleteSelectedExercise_Click(object sender, RoutedEventArgs e)
+    {
+        if (ExerciseListBox.SelectedItem is not ExerciseListItem item)
+        {
+            MessageBox.Show(this, "Seleziona prima un esercizio nell'elenco.", "Elimina esercizio", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        MessageBoxResult answer = MessageBox.Show(this,
+            $"Vuoi eliminare il contenuto dell'esercizio {item.Number}?\n\nLa numerazione non verrà modificata: l'esercizio {item.Number} resterà come posizione vuota e gli esercizi successivi manterranno il loro numero.",
+            "Elimina esercizio", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes) return;
+
+        string key = BuildExerciseKey(GetTaskType(), item.Number);
+        _exerciseStates[key] = new ExerciseState
+        {
+            Code = "",
+            HeaderCode = "",
+            HeaderFileName = "esercizio.h",
+            Elapsed = TimeSpan.Zero,
+            CompileOutput = "",
+            ProgramOutput = "",
+            IsEmptySlot = true
+        };
+
+        if (item.Number == GetExerciseNumber())
+        {
+            _loadingExercise = true;
+            Editor.Text = "";
+            HeaderEditor.Text = "";
+            HeaderTab.Visibility = Visibility.Collapsed;
+            OutputBox.Text = "";
+            _loadingExercise = false;
+            StatusText.Text = $"Tipologia {GetTaskType()} - esercizio {item.Number} (vuoto)";
+        }
+
+        SaveExerciseStates();
+        RefreshExerciseList();
     }
 
     private TimeSpan GetElapsedForActive()
@@ -4337,5 +4442,12 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         public string ProgramOutput { get; set; } = "";
         public string HeaderFileName { get; set; } = "esercizio.h";
         public string HeaderCode { get; set; } = "";
+        public bool IsEmptySlot { get; set; }
+    }
+
+    public sealed class ExerciseListItem
+    {
+        public int Number { get; set; }
+        public string Label { get; set; } = "";
     }
 }

@@ -151,7 +151,8 @@
         <Border Grid.Row="2" Margin="16,0,16,0" CornerRadius="14" Background="#050B14" BorderBrush="#2B4567" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Background="#181818" BorderBrush="#333333" BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="400"/></Grid.ColumnDefinitions>
+                <Border Grid.ColumnSpan="2" Background="#181818" BorderBrush="#333333" BorderThickness="0,0,0,1">
                     <Grid Margin="10,0">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock Text="C++  ›  main.cpp" Foreground="#CCCCCC" FontFamily="Segoe UI" VerticalAlignment="Center"/>
@@ -163,7 +164,7 @@
                         </StackPanel>
                     </Grid>
                 </Border>
-                <TabControl x:Name="EditorTabs" Grid.Row="1" Background="#050B14" BorderThickness="0">
+                <TabControl x:Name="EditorTabs" Grid.Row="1" Grid.Column="0" Background="#050B14" BorderThickness="0">
                     <TabItem Header="main.cpp">
                         <avalonEdit:TextEditor x:Name="Editor" ShowLineNumbers="True" FontFamily="Cascadia Mono, Consolas" FontSize="16"
                                                Background="#1E1E1E" Foreground="#D4D4D4" LineNumbersForeground="#858585" Padding="10"
@@ -175,7 +176,29 @@
                                                TextChanged="HeaderEditor_TextChanged" PreviewMouseLeftButtonDown="HeaderEditor_PreviewMouseLeftButtonDown"/>
                     </TabItem>
                 </TabControl>
-                <Grid x:Name="ShellPanel" Grid.Row="1" Visibility="Collapsed" Background="#0C0C0C">
+
+                <Border Grid.Row="1" Grid.Column="1" Margin="8,8,8,8" CornerRadius="10" Background="#0B1729" BorderBrush="#2B4567" BorderThickness="1">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="ESERCIZI CREATI" Foreground="#69C7FF" FontSize="13" FontWeight="Bold"/>
+                            <TextBlock Text="Fai clic su un esercizio per aprirlo nell'editor." Foreground="#9CB4CF" FontSize="10" Margin="0,3,0,8" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ListBox x:Name="ExerciseListBox" Grid.Row="1" SelectionChanged="ExerciseListBox_SelectionChanged"
+                                 Background="#07101C" Foreground="#E7F4FF" BorderBrush="#243650" BorderThickness="1"
+                                 FontFamily="Cascadia Mono, Consolas" FontSize="13" Padding="4"
+                                 DisplayMemberPath="Label"/>
+                        <Button x:Name="DeleteExerciseButton" Grid.Row="2" Content="Elimina esercizio selezionato"
+                                Click="DeleteSelectedExercise_Click" Style="{StaticResource ModernButton}"
+                                Background="#7F1D1D" BorderBrush="#EF4444" Margin="0,8,0,0" Padding="10,7"/>
+                    </Grid>
+                </Border>
+
+                <Grid x:Name="ShellPanel" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed" Background="#0C0C0C">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
