@@ -69,7 +69,7 @@
             <RowDefinition Height="108"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition x:Name="OutputRow" Height="125"/>
+            <RowDefinition x:Name="OutputRow" Height="88"/>
             <RowDefinition Height="82"/>
         </Grid.RowDefinitions>
 
@@ -177,31 +177,7 @@
                     </TabItem>
                 </TabControl>
 
-                <Border Grid.Row="1" Grid.Column="1" Margin="8,8,8,8" CornerRadius="10" Background="#0B1729" BorderBrush="#2B4567" BorderThickness="1">
-                    <Grid Margin="10">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="ESERCIZI CREATI" Foreground="#69C7FF" FontSize="13" FontWeight="Bold"/>
-                            <TextBlock Text="Fai clic su un esercizio per aprirlo nell'editor." Foreground="#9CB4CF" FontSize="10" Margin="0,3,0,8" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <ListBox x:Name="ExerciseListBox" Grid.Row="1" SelectionChanged="ExerciseListBox_SelectionChanged"
-                                 Background="#07101C" Foreground="#E7F4FF" BorderBrush="#243650" BorderThickness="1"
-                                 FontFamily="Cascadia Mono, Consolas" FontSize="13" Padding="4"
-                                 DisplayMemberPath="Label"/>
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
-                            <Button x:Name="RenameExerciseButton" Content="Rinomina / cambia numero"
-                                    Click="RenameSelectedExercise_Click" Style="{StaticResource ModernButton}"
-                                    Background="#0E639C" BorderBrush="#2AAEFF" Margin="0,0,8,0" Padding="10,7"/>
-                            <Button x:Name="DeleteExerciseButton" Content="Elimina esercizio selezionato"
-                                    Click="DeleteSelectedExercise_Click" Style="{StaticResource ModernButton}"
-                                    Background="#7F1D1D" BorderBrush="#EF4444" Margin="0" Padding="10,7"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+
 
                 <Grid x:Name="ShellPanel" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed" Background="#0C0C0C">
                     <Grid.RowDefinitions>
@@ -223,7 +199,33 @@
             </Grid>
         </Border>
 
-        <Border x:Name="OutputPanel" Grid.Row="3" Margin="16,10,16,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
+        <Border Grid.Row="2" Grid.RowSpan="2" HorizontalAlignment="Right" Width="400" Margin="0,8,16,8" CornerRadius="10" Background="#0B1729" BorderBrush="#2B4567" BorderThickness="1">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="ESERCIZI CREATI" Foreground="#69C7FF" FontSize="13" FontWeight="Bold"/>
+                            <TextBlock Text="Fai clic su un esercizio per aprirlo nell'editor." Foreground="#9CB4CF" FontSize="10" Margin="0,3,0,8" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ListBox x:Name="ExerciseListBox" Grid.Row="1" SelectionChanged="ExerciseListBox_SelectionChanged"
+                                 Background="#07101C" Foreground="#E7F4FF" BorderBrush="#243650" BorderThickness="1"
+                                 FontFamily="Cascadia Mono, Consolas" FontSize="13" Padding="4"
+                                 DisplayMemberPath="Label"/>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="RenameExerciseButton" Content="Rinomina / cambia numero"
+                                    Click="RenameSelectedExercise_Click" Style="{StaticResource ModernButton}"
+                                    Background="#0E639C" BorderBrush="#2AAEFF" Margin="0,0,8,0" Padding="10,7"/>
+                            <Button x:Name="DeleteExerciseButton" Content="🗑" ToolTip="Elimina esercizio selezionato" Width="48"
+                                    Click="DeleteSelectedExercise_Click" Style="{StaticResource ModernButton}"
+                                    Background="#7F1D1D" BorderBrush="#EF4444" Margin="0" Padding="10,7"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+        <Border x:Name="OutputPanel" Grid.Row="3" Margin="16,8,424,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Border Background="#132139"><Grid Margin="13,0"><TextBlock Text="COMPILAZIONE ED ESECUZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/><TextBlock Text="SHIFT+CLICK: apri a tutto schermo" Foreground="#FFD166" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid></Border>

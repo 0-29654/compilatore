@@ -1,0 +1,7 @@
+MODIFICHE UI 2026-08-16
+
+- Ridotta l'altezza della sezione "COMPILAZIONE ED ESECUZIONE" da 125 a 88 px.
+- Il riquadro "ESERCIZI CREATI" ora si estende verticalmente anche accanto alla zona di output, fino quasi alla barra inferiore.
+- La sezione di output è limitata alla colonna sinistra, lasciando libera la colonna destra per l'elenco esercizi.
+- Il pulsante "Elimina esercizio selezionato" è stato sostituito da un pulsante compatto con icona cestino e tooltip descrittivo.
+- Restano incluse le correzioni precedenti: analisi divisione/modulo per zero tramite variabili e flusso aggiornamento con chiusura programma / testo "Preparazione aggiornamento".
