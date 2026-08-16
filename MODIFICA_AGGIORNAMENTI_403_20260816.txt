@@ -1,0 +1,9 @@
+MODIFICA AGGIORNAMENTI 403 - 16/08/2026
+
+- Eliminata la dipendenza dall'endpoint api.github.com/repos/0-29654/compilatore/releases/latest per il controllo aggiornamenti.
+- Il programma usa ora la pagina pubblica https://github.com/0-29654/compilatore/releases/latest e ricava il tag dalla destinazione finale del redirect.
+- In questo modo non viene consumato il limite anonimo delle GitHub REST API che causava l'errore 403 "rate limit exceeded".
+- Download dell'installer dalla Release pubblica con nome fisso CppStudentClient_Setup.exe.
+- Conservata la chiusura automatica di CV+ prima dell'aggiornamento e il testo "Preparazione aggiornamento...".
+- Messaggi di errore rete resi più comprensibili e senza esporre il messaggio tecnico "rate limit exceeded" all'alunno.
+- Restano tutte le modifiche precedenti: layout Esercizi creati, cestino compatto, estensione CV+ Grafici 3D preinstallata, analisi divisione/modulo per zero.

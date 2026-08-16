@@ -2780,93 +2780,84 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
 
         try
         {
-            using var request =
-                new HttpRequestMessage(
-                    HttpMethod.Get,
-                    "https://api.github.com/repos/0-29654/compilatore/releases/latest"
-                );
-
+            // NON usiamo l'API REST di GitHub per il controllo aggiornamenti.
+            // L'endpoint api.github.com ha un limite anonimo piuttosto basso e,
+            // soprattutto nelle reti scolastiche dove molti PC condividono lo stesso IP,
+            // può rispondere 403 "rate limit exceeded" anche se il programma funziona.
+            // La pagina pubblica /releases/latest non consuma quel limite: GitHub la
+            // reindirizza direttamente alla Release più recente e dal relativo URL
+            // ricaviamo il tag/versione.
             Version runningVersion =
                 Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 0);
 
-            request.Headers.UserAgent.ParseAdd(
+            using var latestRequest = new HttpRequestMessage(
+                HttpMethod.Get,
+                "https://github.com/0-29654/compilatore/releases/latest"
+            );
+
+            latestRequest.Headers.UserAgent.ParseAdd(
                 $"CVPlusCompilatoreAlunno/{runningVersion.Major}.{runningVersion.Minor}.{runningVersion.Build}"
             );
 
-            using HttpResponseMessage response =
-                await _http.SendAsync(request);
+            using HttpResponseMessage latestResponse =
+                await _http.SendAsync(latestRequest, HttpCompletionOption.ResponseHeadersRead);
 
-            response.EnsureSuccessStatusCode();
+            latestResponse.EnsureSuccessStatusCode();
 
-            string body =
-                await response.Content.ReadAsStringAsync();
+            Uri? finalReleaseUri = latestResponse.RequestMessage?.RequestUri;
+            string finalReleaseUrl = finalReleaseUri?.AbsoluteUri ?? "";
 
-            using JsonDocument document =
-                JsonDocument.Parse(body);
+            Match tagMatch = Regex.Match(
+                finalReleaseUrl,
+                @"/releases/tag/([^/?#]+)",
+                RegexOptions.IgnoreCase
+            );
 
-            JsonElement release =
-                document.RootElement;
+            if (!tagMatch.Success)
+            {
+                throw new InvalidOperationException(
+                    "GitHub non ha restituito il collegamento alla Release più recente. Riprova tra qualche istante."
+                );
+            }
 
-            string tag =
-                release.TryGetProperty(
-                    "tag_name",
-                    out JsonElement tagElement)
-                ? tagElement.GetString() ?? ""
-                : "";
+            string tag = Uri.UnescapeDataString(tagMatch.Groups[1].Value);
 
             Version currentVersion =
-                Assembly.GetExecutingAssembly()
-                    .GetName()
-                    .Version ??
-                new Version(1, 9, 0);
+                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 0);
 
-            Version? latestVersion =
-                ExtractVersionFromTag(tag);
-
-            long releaseId =
-                release.TryGetProperty("id", out JsonElement releaseIdElement) &&
-                releaseIdElement.TryGetInt64(out long parsedReleaseId)
-                    ? parsedReleaseId
-                    : 0;
+            Version? latestVersion = ExtractVersionFromTag(tag);
+            if (latestVersion == null)
+            {
+                throw new InvalidOperationException(
+                    $"La Release più recente ha un numero di versione non riconoscibile ({tag})."
+                );
+            }
 
             string updateStateDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "CVPlus");
 
-            string installedReleaseMarker = Path.Combine(
+            string installedTagMarker = Path.Combine(
                 updateStateDirectory,
-                "installed-release-id.txt");
+                "installed-release-tag.txt");
 
-            long installedReleaseId = 0;
-            if (File.Exists(installedReleaseMarker))
-            {
-                long.TryParse(
-                    File.ReadAllText(installedReleaseMarker).Trim(),
-                    out installedReleaseId);
-            }
+            string installedTag = File.Exists(installedTagMarker)
+                ? File.ReadAllText(installedTagMarker).Trim()
+                : "";
 
-            bool newerSemanticVersion = latestVersion != null && latestVersion > currentVersion;
-            bool sameSemanticVersionWithDifferentRelease =
-                latestVersion != null &&
-                latestVersion == currentVersion &&
-                releaseId > 0 &&
-                releaseId != installedReleaseId;
+            bool newerSemanticVersion = latestVersion > currentVersion;
 
-            bool unversionedDifferentRelease =
-                latestVersion == null &&
-                releaseId > 0 &&
-                releaseId != installedReleaseId;
-
-            if (!newerSemanticVersion &&
-                !sameSemanticVersionWithDifferentRelease &&
-                !unversionedDifferentRelease)
+            // Se l'eseguibile ha già la stessa versione, non forziamo un nuovo download.
+            // Il marker del tag serve soltanto a ricordare quale Release è stata installata
+            // dal meccanismo automatico, senza dover interrogare l'API GitHub.
+            if (!newerSemanticVersion)
             {
                 StatusText.Text = "Il programma è aggiornato";
 
                 if (!silentWhenCurrent)
                 {
                     ShowVerificationSafeMessage(
-                        $"La versione installata ({currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}) corrisponde all'ultima Release pubblicata nel repository principale.",
+                        $"La versione installata ({currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}) corrisponde all'ultima Release pubblicata ({tag}).",
                         "Nessun aggiornamento",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information,
@@ -2877,50 +2868,12 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
                 return;
             }
 
-            string? downloadUrl = null;
-
-            if (release.TryGetProperty(
-                    "assets",
-                    out JsonElement assets) &&
-                assets.ValueKind == JsonValueKind.Array)
-            {
-                foreach (
-                    JsonElement asset
-                    in assets.EnumerateArray())
-                {
-                    string name =
-                        asset.TryGetProperty(
-                            "name",
-                            out JsonElement nameElement)
-                        ? nameElement.GetString() ?? ""
-                        : "";
-
-                    if (!name.EndsWith(
-                            ".exe",
-                            StringComparison.OrdinalIgnoreCase) ||
-                        !name.Contains(
-                            "Setup",
-                            StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    downloadUrl =
-                        asset.TryGetProperty(
-                            "browser_download_url",
-                            out JsonElement urlElement)
-                        ? urlElement.GetString()
-                        : null;
-
-                    if (!string.IsNullOrWhiteSpace(downloadUrl))
-                        break;
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(downloadUrl))
-                throw new InvalidOperationException(
-                    "La Release più recente non contiene un installer .exe."
-                );
+            // Il workflow pubblica sempre l'installer con questo nome.
+            // Usiamo il link pubblico della Release, non api.github.com.
+            string downloadUrl =
+                "https://github.com/0-29654/compilatore/releases/download/" +
+                Uri.EscapeDataString(tag) +
+                "/CppStudentClient_Setup.exe";
 
             MessageBoxResult answer =
                 ShowVerificationSafeMessage(
@@ -2934,45 +2887,45 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
 
             if (answer != MessageBoxResult.Yes)
             {
-                StatusText.Text =
-                    "Aggiornamento annullato";
+                StatusText.Text = "Aggiornamento annullato";
                 return;
             }
 
-            StatusText.Text =
-                "Download aggiornamento...";
+            StatusText.Text = "Download aggiornamento...";
 
-            string installerPath =
-                Path.Combine(
-                    Path.GetTempPath(),
-                    "CppStudentClient_Update_" +
-                    latestVersion +
-                    ".exe"
+            string installerPath = Path.Combine(
+                Path.GetTempPath(),
+                "CppStudentClient_Update_" + latestVersion + ".exe"
+            );
+
+            using (HttpRequestMessage downloadRequest = new(HttpMethod.Get, downloadUrl))
+            {
+                downloadRequest.Headers.UserAgent.ParseAdd(
+                    $"CVPlusCompilatoreAlunno/{runningVersion.Major}.{runningVersion.Minor}.{runningVersion.Build}"
                 );
 
-            using (
-                HttpResponseMessage download =
-                    await _http.GetAsync(
-                        downloadUrl,
-                        HttpCompletionOption.ResponseHeadersRead
-                    ))
-            {
+                using HttpResponseMessage download =
+                    await _http.SendAsync(downloadRequest, HttpCompletionOption.ResponseHeadersRead);
+
+                if (download.StatusCode == HttpStatusCode.NotFound)
+                {
+                    throw new InvalidOperationException(
+                        "La Release è stata trovata, ma l'installer CppStudentClient_Setup.exe non è ancora disponibile. Riprova tra qualche minuto."
+                    );
+                }
+
                 download.EnsureSuccessStatusCode();
 
-                await using Stream source =
-                    await download.Content.ReadAsStreamAsync();
+                await using Stream source = await download.Content.ReadAsStreamAsync();
+                await using FileStream destination = new(
+                    installerPath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None
+                );
 
-                await using (
-                    FileStream destination =
-                        new FileStream(
-                            installerPath,
-                            FileMode.Create,
-                            FileAccess.Write,
-                            FileShare.None))
-                {
-                    await source.CopyToAsync(destination);
-                    await destination.FlushAsync();
-                }
+                await source.CopyToAsync(destination);
+                await destination.FlushAsync();
             }
 
             if (!File.Exists(installerPath) ||
@@ -2983,21 +2936,17 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
                 );
             }
 
-            StatusText.Text =
-                "Preparazione aggiornamento...";
+            StatusText.Text = "Preparazione aggiornamento...";
 
             Directory.CreateDirectory(updateStateDirectory);
 
-            string updaterScript =
-                Path.Combine(
-                    Path.GetTempPath(),
-                    "CVPlus_Aggiorna_" +
-                    Guid.NewGuid().ToString("N") +
-                    ".cmd"
-                );
+            string updaterScript = Path.Combine(
+                Path.GetTempPath(),
+                "CVPlus_Aggiorna_" + Guid.NewGuid().ToString("N") + ".cmd"
+            );
 
-            int currentProcessId =
-                Environment.ProcessId;
+            int currentProcessId = Environment.ProcessId;
+            string escapedTag = tag.Replace("%", "%%").Replace("\"", "");
 
             string script =
                 "@echo off\r\n" +
@@ -3016,17 +2965,13 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
                 "/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RESTARTAPPLICATIONS\r\n" +
                 "set \"SETUP_EXIT=%ERRORLEVEL%\"\r\n" +
                 "if %SETUP_EXIT% EQU 0 (\r\n" +
-                $"  >\"{installedReleaseMarker}\" echo {releaseId}\r\n" +
+                $"  >\"{installedTagMarker}\" echo {escapedTag}\r\n" +
                 ")\r\n" +
                 "del /f /q \"%INSTALLER%\" >NUL 2>&1\r\n" +
                 "del /f /q \"%~f0\" >NUL 2>&1\r\n" +
                 "exit /b %SETUP_EXIT%\r\n";
 
-            File.WriteAllText(
-                updaterScript,
-                script,
-                Encoding.Default
-            );
+            File.WriteAllText(updaterScript, script, Encoding.Default);
 
             Process.Start(
                 new ProcessStartInfo(updaterScript)
@@ -3040,10 +2985,29 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
             _allowClose = true;
             Application.Current.Shutdown();
         }
+        catch (HttpRequestException ex)
+        {
+            StatusText.Text = "Ricerca aggiornamenti non riuscita";
+
+            if (!automaticCheck)
+            {
+                string detail = ex.StatusCode.HasValue
+                    ? $"GitHub ha risposto con codice {(int)ex.StatusCode.Value} ({ex.StatusCode.Value})."
+                    : "Non è stato possibile raggiungere GitHub.";
+
+                ShowVerificationSafeMessage(
+                    "Non è stato possibile verificare o scaricare l'aggiornamento.\n\n" +
+                    detail + "\nControlla la connessione Internet e riprova.",
+                    "Errore aggiornamenti",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.OK
+                );
+            }
+        }
         catch (Exception ex)
         {
-            StatusText.Text =
-                "Ricerca aggiornamenti non riuscita";
+            StatusText.Text = "Ricerca aggiornamenti non riuscita";
 
             if (!automaticCheck)
             {
