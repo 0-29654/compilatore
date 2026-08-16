@@ -3802,6 +3802,40 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         RefreshExerciseList();
     }
 
+    private int GetActiveExerciseNumber()
+    {
+        if (!string.IsNullOrWhiteSpace(_activeKey))
+        {
+            int separator = _activeKey.LastIndexOf('|');
+            if (separator >= 0 && separator < _activeKey.Length - 1 &&
+                int.TryParse(_activeKey[(separator + 1)..], out int activeNumber) && activeNumber > 0)
+                return activeNumber;
+        }
+        return GetExerciseNumber();
+    }
+
+    private void ExerciseNumber_LostFocus(object sender, RoutedEventArgs e)
+    {
+        int oldNumber = GetActiveExerciseNumber();
+        string entered = ExerciseBox.Text.Trim();
+        if (!int.TryParse(entered, out int newNumber) || newNumber <= 0)
+        {
+            MessageBox.Show(this, "Il numero dell'esercizio deve essere un intero maggiore di zero.",
+                "Numero esercizio", MessageBoxButton.OK, MessageBoxImage.Information);
+            ExerciseBox.Text = oldNumber.ToString();
+            return;
+        }
+
+        if (newNumber == oldNumber)
+        {
+            ExerciseBox.Text = oldNumber.ToString();
+            SaveSettings();
+            return;
+        }
+
+        RenameExerciseNumber(oldNumber, newNumber, showConfirmation: true);
+    }
+
     private void ActivateExercise(string type, int number)
     {
         string key = BuildExerciseKey(type, number);
@@ -3900,6 +3934,171 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         ExerciseBox.Text = item.Number.ToString();
         ActivateExercise(GetTaskType(), item.Number);
         SaveSettings();
+    }
+
+    private void RenameSelectedExercise_Click(object sender, RoutedEventArgs e)
+    {
+        if (ExerciseListBox.SelectedItem is not ExerciseListItem item)
+        {
+            MessageBox.Show(this, "Seleziona prima un esercizio nell'elenco.", "Rinomina esercizio",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        int? requestedNumber = ShowExerciseNumberPrompt(item.Number);
+        if (requestedNumber == null) return;
+        RenameExerciseNumber(item.Number, requestedNumber.Value, showConfirmation: true);
+    }
+
+    private int? ShowExerciseNumberPrompt(int currentNumber)
+    {
+        var dialog = new Window
+        {
+            Title = "Rinomina esercizio",
+            Owner = this,
+            Width = 390,
+            Height = 205,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Color.FromRgb(11, 23, 41)),
+            ShowInTaskbar = false
+        };
+
+        var panel = new StackPanel { Margin = new Thickness(18) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = $"Nuovo numero per Esercizio {currentNumber}:",
+            Foreground = Brushes.White,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 8)
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Il numero deve essere positivo e non può essere già usato da un altro esercizio.",
+            Foreground = new SolidColorBrush(Color.FromRgb(156, 180, 207)),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 11,
+            Margin = new Thickness(0, 0, 0, 10)
+        });
+
+        var input = new TextBox { Text = currentNumber.ToString(), MinWidth = 120 };
+        input.SelectAll();
+        panel.Children.Add(input);
+
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
+        var ok = new Button { Content = "Rinomina", Width = 90, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+        var cancel = new Button { Content = "Annulla", Width = 90, IsCancel = true };
+        int? result = null;
+        ok.Click += (_, _) =>
+        {
+            if (!int.TryParse(input.Text.Trim(), out int n) || n <= 0)
+            {
+                MessageBox.Show(dialog, "Inserisci un numero intero maggiore di zero.", "Numero non valido",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                input.Focus();
+                input.SelectAll();
+                return;
+            }
+            result = n;
+            dialog.DialogResult = true;
+        };
+        buttons.Children.Add(ok);
+        buttons.Children.Add(cancel);
+        panel.Children.Add(buttons);
+        dialog.Content = panel;
+        dialog.Loaded += (_, _) => input.Focus();
+        dialog.ShowDialog();
+        return result;
+    }
+
+    private bool RenameExerciseNumber(int oldNumber, int newNumber, bool showConfirmation)
+    {
+        if (oldNumber <= 0 || newNumber <= 0) return false;
+        if (oldNumber == newNumber)
+        {
+            ExerciseBox.Text = newNumber.ToString();
+            RefreshExerciseList();
+            return true;
+        }
+
+        string type = GetTaskType();
+        string oldKey = BuildExerciseKey(type, oldNumber);
+        string newKey = BuildExerciseKey(type, newNumber);
+
+        // Salva prima il contenuto corrente usando _activeKey, così la modifica del TextBox
+        // non crea accidentalmente un secondo esercizio con lo stesso contenuto.
+        if (_activeKey.Equals(oldKey, StringComparison.OrdinalIgnoreCase))
+            SaveCurrentExercise();
+
+        if (!_exerciseStates.TryGetValue(oldKey, out ExerciseState? sourceState))
+        {
+            sourceState = new ExerciseState
+            {
+                Code = "",
+                HeaderCode = "",
+                HeaderFileName = "esercizio.h",
+                Elapsed = TimeSpan.Zero,
+                CompileOutput = "",
+                ProgramOutput = "",
+                IsEmptySlot = true
+            };
+        }
+
+        if (_exerciseStates.TryGetValue(newKey, out ExerciseState? destinationState) &&
+            destinationState != null && !destinationState.IsEmptySlot)
+        {
+            MessageBox.Show(this,
+                $"Esiste già un Esercizio {newNumber} con del contenuto.\n\n" +
+                "Per evitare esercizi con numeri duplicati, scegli un numero libero oppure elimina prima il contenuto dell'esercizio di destinazione.",
+                "Numero esercizio già utilizzato", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ExerciseBox.Text = oldNumber.ToString();
+            RefreshExerciseList();
+            return false;
+        }
+
+        if (showConfirmation)
+        {
+            MessageBoxResult answer = MessageBox.Show(this,
+                $"Vuoi cambiare il numero da Esercizio {oldNumber} a Esercizio {newNumber}?\n\n" +
+                $"La posizione {oldNumber} resterà vuota e l'esercizio verrà spostato nella posizione {newNumber}.",
+                "Rinomina esercizio", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+            if (answer != MessageBoxResult.Yes)
+            {
+                ExerciseBox.Text = oldNumber.ToString();
+                RefreshExerciseList();
+                return false;
+            }
+        }
+
+        _exerciseStates[newKey] = sourceState;
+        _exerciseStates[oldKey] = new ExerciseState
+        {
+            Code = "",
+            HeaderCode = "",
+            HeaderFileName = "esercizio.h",
+            Elapsed = TimeSpan.Zero,
+            CompileOutput = "",
+            ProgramOutput = "",
+            IsEmptySlot = true
+        };
+
+        _activeKey = newKey;
+        ExerciseBox.Text = newNumber.ToString();
+        _loadingExercise = true;
+        Editor.Text = sourceState.IsEmptySlot ? "" : (string.IsNullOrWhiteSpace(sourceState.Code) ? DefaultCode : sourceState.Code);
+        HeaderEditor.Text = sourceState.IsEmptySlot ? "" : (sourceState.HeaderCode ?? "");
+        HeaderTab.Header = string.IsNullOrWhiteSpace(sourceState.HeaderFileName) ? "esercizio.h" : sourceState.HeaderFileName;
+        HeaderTab.Visibility = string.IsNullOrWhiteSpace(sourceState.HeaderCode) ? Visibility.Collapsed : Visibility.Visible;
+        _loadingExercise = false;
+        _activeStartedUtc = DateTime.UtcNow;
+
+        SaveExerciseStates();
+        SaveSettings();
+        RefreshExerciseList();
+        StatusText.Text = sourceState.IsEmptySlot
+            ? $"Esercizio {oldNumber} rinominato in {newNumber} (vuoto)"
+            : $"Esercizio {oldNumber} rinominato in {newNumber}";
+        return true;
     }
 
     private void DeleteSelectedExercise_Click(object sender, RoutedEventArgs e)

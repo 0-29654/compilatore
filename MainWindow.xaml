@@ -135,7 +135,7 @@
                 <StackPanel Grid.Column="1" Margin="4"><TextBlock Text="NOME E COGNOME" Style="{StaticResource LabelStyle}"/><TextBox x:Name="StudentNameBox"/></StackPanel>
                 <StackPanel Grid.Column="2" Margin="4"><TextBlock Text="CLASSE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ClassBox"/></StackPanel>
                 <StackPanel Grid.Column="3" Margin="4"><TextBlock Text="TIPOLOGIA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="TaskTypeBox" Text="A" LostFocus="TaskIdentity_LostFocus"/></StackPanel>
-                <StackPanel Grid.Column="4" Margin="4"><TextBlock Text="N° ESERCIZIO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ExerciseBox" Text="1" LostFocus="TaskIdentity_LostFocus"/></StackPanel>
+                <StackPanel Grid.Column="4" Margin="4"><TextBlock Text="N° ESERCIZIO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ExerciseBox" Text="1" LostFocus="ExerciseNumber_LostFocus"/></StackPanel>
                 <StackPanel Grid.Column="5" Margin="4"><TextBlock Text="IP DOCENTE : PORTA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ServerBox" Text=""/></StackPanel>
                 <StackPanel Grid.Column="6" Margin="4"><TextBlock Text="CODICE SESSIONE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="SessionBox"/></StackPanel>
                 <StackPanel Grid.Column="7" Margin="4">
@@ -192,9 +192,14 @@
                                  Background="#07101C" Foreground="#E7F4FF" BorderBrush="#243650" BorderThickness="1"
                                  FontFamily="Cascadia Mono, Consolas" FontSize="13" Padding="4"
                                  DisplayMemberPath="Label"/>
-                        <Button x:Name="DeleteExerciseButton" Grid.Row="2" Content="Elimina esercizio selezionato"
-                                Click="DeleteSelectedExercise_Click" Style="{StaticResource ModernButton}"
-                                Background="#7F1D1D" BorderBrush="#EF4444" Margin="0,8,0,0" Padding="10,7"/>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="RenameExerciseButton" Content="Rinomina / cambia numero"
+                                    Click="RenameSelectedExercise_Click" Style="{StaticResource ModernButton}"
+                                    Background="#0E639C" BorderBrush="#2AAEFF" Margin="0,0,8,0" Padding="10,7"/>
+                            <Button x:Name="DeleteExerciseButton" Content="Elimina esercizio selezionato"
+                                    Click="DeleteSelectedExercise_Click" Style="{StaticResource ModernButton}"
+                                    Background="#7F1D1D" BorderBrush="#EF4444" Margin="0" Padding="10,7"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
