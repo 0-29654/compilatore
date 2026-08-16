@@ -1466,17 +1466,70 @@ public partial class MainWindow : Window
     private static string AnalyzeRuntimeRisks(string sourceCode)
     {
         var findings = new List<string>();
+        var knownNumericValues = new Dictionary<string, double>(StringComparer.Ordinal);
         string[] lines = sourceCode.Replace("\r\n", "\n").Split('\n');
 
         for (int i = 0; i < lines.Length; i++)
         {
-            string line = lines[i];
+            string line = System.Text.RegularExpressions.Regex.Replace(
+                lines[i],
+                "\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|//.*$",
+                string.Empty).Trim();
+            int lineNumber = i + 1;
+
+            var declaration = System.Text.RegularExpressions.Regex.Match(
+                line,
+                @"\b(?:const\s+)?(?:int|long|short|double|float|auto|size_t)\s+([A-Za-z_]\w*)\s*=\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+))\s*;");
+            if (declaration.Success &&
+                double.TryParse(declaration.Groups[2].Value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double declaredValue))
+            {
+                knownNumericValues[declaration.Groups[1].Value] = declaredValue;
+            }
+
+            var assignment = System.Text.RegularExpressions.Regex.Match(
+                line,
+                @"^\s*([A-Za-z_]\w*)\s*=\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+))\s*;");
+            if (assignment.Success &&
+                double.TryParse(assignment.Groups[2].Value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double assignedValue))
+            {
+                knownNumericValues[assignment.Groups[1].Value] = assignedValue;
+            }
+
+            foreach (System.Text.RegularExpressions.Match input in
+                     System.Text.RegularExpressions.Regex.Matches(line, @"cin\s*>>\s*([A-Za-z_]\w*)"))
+            {
+                knownNumericValues.Remove(input.Groups[1].Value);
+            }
+
+            foreach (System.Text.RegularExpressions.Match operation in
+                     System.Text.RegularExpressions.Regex.Matches(line, @"\b([A-Za-z_]\w*)\s*(?:\+\+|--|[+\-*/%]=)"))
+            {
+                knownNumericValues.Remove(operation.Groups[1].Value);
+            }
 
             if (System.Text.RegularExpressions.Regex.IsMatch(
                     line,
-                    @"(?:/|%)\s*0(?:\D|$)"))
+                    @"(?:/|%)\s*[-+]?0(?:\.0+)?(?:\D|$)"))
             {
-                findings.Add($"Riga {i + 1}: divisione o modulo per zero certo.");
+                findings.Add(
+                    $"ERRORE GRAVE - Riga {lineNumber}: divisione o modulo per zero. " +
+                    "Il programma può compilare correttamente, ma durante l'esecuzione può terminare in modo anomalo. " +
+                    "Usa un divisore diverso da zero oppure controlla il divisore prima dell'operazione.");
+            }
+
+            foreach (System.Text.RegularExpressions.Match division in
+                     System.Text.RegularExpressions.Regex.Matches(line, @"(?:/|%)\s*([A-Za-z_]\w*)\b"))
+            {
+                string divisor = division.Groups[1].Value;
+                if (knownNumericValues.TryGetValue(divisor, out double value) && Math.Abs(value) < double.Epsilon)
+                {
+                    findings.Add(
+                        $"ERRORE GRAVE - Riga {lineNumber}: divisione o modulo per zero tramite la variabile '{divisor}'. " +
+                        $"In questo punto '{divisor}' vale 0. Il codice compila, ma l'operazione può causare un errore durante l'esecuzione. " +
+                        $"Assegna a '{divisor}' un valore diverso da zero oppure verifica '{divisor} != 0' prima di eseguire l'operazione.");
+                }
             }
 
             var loopMatch = System.Text.RegularExpressions.Regex.Match(
@@ -1485,13 +1538,13 @@ public partial class MainWindow : Window
             if (loopMatch.Success &&
                 line.Contains("/ i", StringComparison.OrdinalIgnoreCase))
             {
-                findings.Add($"Riga {i + 1}: controlla che il divisore i non possa valere zero.");
+                findings.Add($"Riga {lineNumber}: controlla che il divisore i non possa valere zero.");
             }
 
             if (line.Contains("while(true)", StringComparison.OrdinalIgnoreCase) ||
                 line.Contains("for(;;)", StringComparison.OrdinalIgnoreCase))
             {
-                findings.Add($"Riga {i + 1}: possibile ciclo infinito.");
+                findings.Add($"Riga {lineNumber}: possibile ciclo infinito.");
             }
         }
 
@@ -2926,7 +2979,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             }
 
             StatusText.Text =
-                "Installazione automatica dell'aggiornamento...";
+                "Preparazione aggiornamento...";
 
             Directory.CreateDirectory(updateStateDirectory);
 
@@ -2954,7 +3007,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
                 ")\r\n" +
                 "timeout /t 1 /nobreak >NUL\r\n" +
                 "start \"\" /wait \"%INSTALLER%\" " +
-                "/SILENT /SUPPRESSMSGBOXES /NORESTART " +
+                "/SILENT /SUPPRESSMSGBOXES /NORESTART /UPDATE " +
                 "/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RESTARTAPPLICATIONS\r\n" +
                 "set \"SETUP_EXIT=%ERRORLEVEL%\"\r\n" +
                 "if %SETUP_EXIT% EQU 0 (\r\n" +

@@ -1,0 +1,16 @@
+MODIFICHE 16/08/2026 - DIVISIONE PER ZERO E AGGIORNAMENTO
+
+1) ANALISI ERRORI C++
+- Rilevata la divisione/modulo per zero anche quando il divisore è una variabile nota a zero.
+- Esempio riconosciuto: int n = 0; cout << 7 / n;
+- Il messaggio specifica la riga, il nome della variabile, il fatto che il codice compila ma può fallire a runtime e propone il controllo n != 0.
+- Rimane il controllo dei casi diretti / 0 e % 0.
+
+2) AGGIORNAMENTO AUTOMATICO
+- Prima dell'avvio dell'installer lo stato mostra "Preparazione aggiornamento...".
+- L'installer avviato dal meccanismo di update riceve il parametro /UPDATE.
+- Nella barra iniziale dell'installer, in modalità aggiornamento, compare "Attendere - preparazione aggiornamento..." invece di "preparazione dell'installazione".
+- Dopo la preparazione dell'aggiornamento viene avviato l'updater e CV+ viene chiuso prima che l'installer proceda.
+
+NOTA BUILD
+- In questo ambiente non era disponibile il comando dotnet, quindi non è stato possibile eseguire dotnet build. Le modifiche sono state verificate a livello sorgente.

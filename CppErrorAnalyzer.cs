@@ -208,8 +208,59 @@ internal static class CppErrorAnalyzer
                 warnings.Add($"Riga {lineNumber}: l'istruzione cout sembra incompleta o priva del punto e virgola finale.");
         }
 
-        if (Regex.IsMatch(sourceCode, @"(?:/|%)\s*0(?:\D|$)"))
-            warnings.Add("È presente una divisione o un modulo per zero certo: durante l'esecuzione il programma può terminare in modo anomalo.");
+        // Propagazione semplice dei valori costanti: permette di riconoscere anche casi
+        // come `int n = 0; cout << 7 / n;`, che compilano ma falliscono a runtime.
+        var knownNumericValues = new Dictionary<string, double>(StringComparer.Ordinal);
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string codeLine = StripStringsAndComments(lines[i]).Trim();
+            int lineNumber = i + 1;
+
+            // Dichiarazioni/assegnazioni semplici a costante numerica.
+            Match declaration = Regex.Match(codeLine,
+                @"\b(?:const\s+)?(?:int|long|short|double|float|auto|size_t)\s+([A-Za-z_]\w*)\s*=\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+))\s*;");
+            if (declaration.Success &&
+                double.TryParse(declaration.Groups[2].Value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double declaredValue))
+            {
+                knownNumericValues[declaration.Groups[1].Value] = declaredValue;
+            }
+
+            Match assignment = Regex.Match(codeLine,
+                @"^\s*([A-Za-z_]\w*)\s*=\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+))\s*;");
+            if (assignment.Success &&
+                double.TryParse(assignment.Groups[2].Value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double assignedValue))
+            {
+                knownNumericValues[assignment.Groups[1].Value] = assignedValue;
+            }
+
+            // Input o modifiche non costanti rendono sconosciuto il valore della variabile.
+            foreach (Match input in Regex.Matches(codeLine, @"(?:cin\s*>>|scanf\s*\([^;]*&)\s*([A-Za-z_]\w*)"))
+            {
+                if (input.Groups.Count > 1 && input.Groups[1].Success)
+                    knownNumericValues.Remove(input.Groups[1].Value);
+            }
+
+            foreach (Match operation in Regex.Matches(codeLine, @"\b([A-Za-z_]\w*)\s*(?:\+\+|--|[+\-*/%]=)"))
+                knownNumericValues.Remove(operation.Groups[1].Value);
+
+            // Divisione/modulo per zero scritto direttamente.
+            if (Regex.IsMatch(codeLine, @"(?:/|%)\s*[-+]?0(?:\.0+)?(?:\D|$)"))
+            {
+                warnings.Add($"Riga {lineNumber}: divisione o modulo per zero certo. Il programma può compilare correttamente, ma durante l'esecuzione può terminare in modo anomalo. Usa un divisore diverso da zero oppure controllane il valore prima dell'operazione.");
+            }
+
+            // Divisione/modulo tramite una variabile che in quel punto vale certamente zero.
+            foreach (Match division in Regex.Matches(codeLine, @"(?:/|%)\s*([A-Za-z_]\w*)\b"))
+            {
+                string divisor = division.Groups[1].Value;
+                if (knownNumericValues.TryGetValue(divisor, out double value) && Math.Abs(value) < double.Epsilon)
+                {
+                    warnings.Add($"Riga {lineNumber}: divisione o modulo per zero tramite la variabile '{divisor}'. In questo punto '{divisor}' vale 0: il codice compila, ma l'operazione può causare un errore durante l'esecuzione. Assegna a '{divisor}' un valore diverso da zero oppure verifica '{divisor} != 0' prima di dividere.");
+                }
+            }
+        }
 
         bool hasVisibleOutput = Regex.IsMatch(sourceCode,
             @"\b(cout|cerr|clog)\s*<<|\bprintf\s*\(",

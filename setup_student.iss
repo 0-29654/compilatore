@@ -1,4 +1,4 @@
-#define MyAppName "CV+ Compilatore Alunno"
+﻿#define MyAppName "CV+ Compilatore Alunno"
 #ifndef MyAppVersion
   #define MyAppVersion "1.9.6"
 #endif
@@ -84,6 +84,21 @@ function SetWindowLong(hWnd: HWND; nIndex: Integer; dwNewLong: Longint): Longint
 function SetLayeredWindowAttributes(hWnd: HWND; crKey: Cardinal; bAlpha: Byte; dwFlags: Cardinal): Boolean;
   external 'SetLayeredWindowAttributes@user32.dll stdcall';
 
+function IsUpdateMode: Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+  begin
+    if CompareText(ParamStr(I), '/UPDATE') = 0 then
+    begin
+      Result := True;
+      exit;
+    end;
+  end;
+end;
+
 procedure ShowPreparationWindow;
 var
   ExStyle: Longint;
@@ -110,7 +125,10 @@ begin
   PreparationText.Top := ScaleY(7);
   PreparationText.Width := ScaleX(330);
   PreparationText.Height := ScaleY(18);
-  PreparationText.Caption := 'Attendere - preparazione dell''installazione...';
+  if IsUpdateMode then
+    PreparationText.Caption := 'Attendere - preparazione aggiornamento...'
+  else
+    PreparationText.Caption := 'Attendere - preparazione dell''installazione...';
   PreparationText.Font.Name := 'Segoe UI';
   PreparationText.Font.Size := 9;
   PreparationText.Font.Style := [fsBold];
