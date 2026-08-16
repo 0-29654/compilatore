@@ -1,0 +1,9 @@
+MODIFICA ESTENSIONI C++ - 16/08/2026
+
+- Riattivato il pulsante ESTENSIONI C++ in modalità esercitazione.
+- Disattivata la possibilità di installare/importare/rimuovere estensioni esterne.
+- Aggiunta CV+ Grafici 3D come estensione predefinita e sempre disponibile.
+- Aggiunto header cvplus_3d.hpp generato automaticamente.
+- Aggiunta guida HTML con esempio z = x*y^5 + x*log(y) + x*y.
+- Il grafico è HTML locale, interattivo (rotazione/zoom), senza dipendenze esterne.
+- In modalità verifica il pulsante Estensioni rimane disabilitato.

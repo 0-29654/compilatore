@@ -208,7 +208,7 @@ public partial class MainWindow : Window
         PreviousExerciseButton.IsEnabled = editorActionsEnabled;
         NextExerciseButton.IsEnabled = editorActionsEnabled;
 
-        CppExtensionsButton.IsEnabled = false;
+        CppExtensionsButton.IsEnabled = editorActionsEnabled && !_verificationMode;
         ShellButton.IsEnabled = !_verificationMode;
     }
 
@@ -2194,82 +2194,125 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private static readonly CppExtensionDefinition[] CppExtensionCatalog =
     {
-        new("stl-snippets", "C++ STL Essentials", "Snippet e completamenti per vector, list, map, set, stack e queue.", "Guida_CPP_STL_Essentials.pdf", new[]
+        new("cvplus-grafici3d", "CV+ Grafici 3D", "Estensione didattica predefinita: disegna superfici z=f(x,y) in un grafico 3D interattivo, senza installare componenti esterni.", "Guida_CVPlus_Grafici3D.html", new[]
         {
-            ("vecfor", "vector + ciclo", "vector<int> valori;\nfor (const int valore : valori)\n{\n    cout << valore << endl;\n}", "Vector e ciclo range-based"),
-            ("mapfor", "map + ciclo", "map<string, int> valori;\nfor (const auto& [chiave, valore] : valori)\n{\n    cout << chiave << \": \" << valore << endl;\n}", "Map e structured binding"),
-            ("queue", "queue completa", "queue<int> coda;\ncoda.push(valore);\nint primo = coda.front();\ncoda.pop();", "Operazioni principali su queue")
-        }),
-        new("algorithms", "C++ Algorithms", "Completamenti per sort, find, count, transform e accumulate.", "Guida_CPP_Algorithms.pdf", new[]
-        {
-            ("accumulate", "std::accumulate", "int somma = accumulate(valori.begin(), valori.end(), 0);", "Somma degli elementi; richiede <numeric>"),
-            ("transform", "std::transform", "transform(valori.begin(), valori.end(), valori.begin(), [](int x) { return x * 2; });", "Trasforma gli elementi"),
-            ("countif", "std::count_if", "int quanti = count_if(valori.begin(), valori.end(), [](int x) { return x > 0; });", "Conta gli elementi che rispettano una condizione")
-        }),
-        new("cpp-math", "C++ Math", "Snippet per cmath, numeri casuali e semplici calcoli.", "Guida_CPP_Math.pdf", new[]
-        {
-            ("random", "random C++17", "random_device rd;\nmt19937 gen(rd());\nuniform_int_distribution<int> distribuzione(minimo, massimo);\nint casuale = distribuzione(gen);", "Generatore casuale C++17; richiede <random>"),
-            ("distance2d", "distanza 2D", "double distanza = hypot(x2 - x1, y2 - y1);", "Distanza euclidea; richiede <cmath>")
-        }),
-        new("cvplus-header", "CV+ Utility Header", "Installa una libreria header-only locale con funzioni didattiche sicure.", "Guida_CVPlus_Utility_Header.pdf", new[]
-        {
-            ("cvread", "cvplus::leggi", "int valore = cvplus::leggi<int>(\"Inserisci valore: \");", "Input controllato dalla libreria CV+"),
-            ("cvprint", "cvplus::stampa", "cvplus::stampa(valore);", "Output semplice dalla libreria CV+")
+            ("grafico3d", "cvplus3d::grafico", "cvplus3d::grafico([](double x, double y) { return x * pow(y, 5) + x * log(y) + x * y; }, -2.0, 2.0, 0.25, 1.5, \"z = x*y^5 + x*log(y) + x*y\");", "Disegna una superficie 3D z=f(x,y); richiede #include <cvplus_3d.hpp> e <cmath>"),
+            ("grafico3dinclude", "include CV+ Grafici 3D", "#include <cvplus_3d.hpp>\n#include <cmath>", "Include necessari per i grafici 3D")
         })
     };
 
     private void LoadCppExtensions()
     {
-        try
-        {
-            if (File.Exists(CppExtensionsSettingsPath))
-            {
-                string[]? ids = JsonSerializer.Deserialize<string[]>(File.ReadAllText(CppExtensionsSettingsPath));
-                if (ids != null) foreach (string id in ids) _installedCppExtensions.Add(id);
-            }
-            EnsureCvPlusHeader();
-        }
-        catch { _installedCppExtensions.Clear(); }
+        // L'estensione 3D è integrata e sempre disponibile in esercitazione.
+        // Non è possibile installare, rimuovere o caricare estensioni aggiuntive.
+        _installedCppExtensions.Clear();
+        _installedCppExtensions.Add("cvplus-grafici3d");
+        EnsureCvPlus3DHeader();
     }
 
     private void SaveCppExtensions()
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(CppExtensionsSettingsPath)!);
-        File.WriteAllText(CppExtensionsSettingsPath, JsonSerializer.Serialize(_installedCppExtensions.OrderBy(x => x), new JsonSerializerOptions { WriteIndented = true }));
-        EnsureCvPlusHeader();
+        // Catalogo bloccato: CV+ Grafici 3D rimane sempre installata.
+        _installedCppExtensions.Clear();
+        _installedCppExtensions.Add("cvplus-grafici3d");
+        EnsureCvPlus3DHeader();
     }
 
     private IEnumerable<(string Trigger, string Display, string Insert, string Description)> GetInstalledExtensionCompletions() =>
-        CppExtensionCatalog.Where(x => _installedCppExtensions.Contains(x.Id)).SelectMany(x => x.Completions);
+        CppExtensionCatalog.SelectMany(x => x.Completions);
 
     private string CppExtensionsIncludePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CVPlus", "CppExtensions", "include");
 
-    private void EnsureCvPlusHeader()
+    private void EnsureCvPlus3DHeader()
     {
-        if (!_installedCppExtensions.Contains("cvplus-header")) return;
         Directory.CreateDirectory(CppExtensionsIncludePath);
-        string headerText = string.Join(Environment.NewLine, new[]
-        {
-            "#pragma once",
-            "#include <iostream>",
-            "#include <limits>",
-            "#include <string>",
-            "namespace cvplus {",
-            "template<class T> T leggi(const std::string& messaggio) {",
-            "    T valore{};",
-            "    while (true) {",
-            "        std::cout << messaggio;",
-            "        if (std::cin >> valore) return valore;",
-            "        std::cin.clear();",
-            "        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');",
-            "        std::cout << \"Valore non valido. Riprova.\\n\";",
-            "    }",
-            "}",
-            "template<class T> void stampa(const T& valore) { std::cout << valore << std::endl; }",
-            "}",
-            string.Empty
-        });
-        File.WriteAllText(Path.Combine(CppExtensionsIncludePath, "cvplus_utils.hpp"), headerText, new UTF8Encoding(false));
+        string headerText = """
+#pragma once
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+namespace cvplus3d {
+
+inline std::string escape_js(const std::string& s) {
+    std::string r;
+    r.reserve(s.size() + 16);
+    for (char c : s) {
+        if (c == '\\' || c == '\"') { r += '\\'; r += c; }
+        else if (c == '\n') r += "\\n";
+        else if (c == '\r') { }
+        else r += c;
+    }
+    return r;
+}
+
+template<class F>
+void grafico(F funzione,
+             double xmin = -2.0, double xmax = 2.0,
+             double ymin = -2.0, double ymax = 2.0,
+             const std::string& titolo = "z = f(x,y)",
+             int campioni = 45)
+{
+    if (!(xmin < xmax) || !(ymin < ymax))
+        throw std::invalid_argument("Intervalli non validi per il grafico 3D");
+    campioni = std::max(12, std::min(campioni, 90));
+
+    std::vector<double> valori;
+    valori.reserve(static_cast<size_t>(campioni) * static_cast<size_t>(campioni));
+    double zmin = std::numeric_limits<double>::infinity();
+    double zmax = -std::numeric_limits<double>::infinity();
+
+    for (int j = 0; j < campioni; ++j) {
+        double y = ymin + (ymax - ymin) * j / (campioni - 1.0);
+        for (int i = 0; i < campioni; ++i) {
+            double x = xmin + (xmax - xmin) * i / (campioni - 1.0);
+            double z = funzione(x, y);
+            if (!std::isfinite(z)) z = std::numeric_limits<double>::quiet_NaN();
+            valori.push_back(z);
+            if (std::isfinite(z)) { zmin = std::min(zmin, z); zmax = std::max(zmax, z); }
+        }
+    }
+    if (!std::isfinite(zmin) || !std::isfinite(zmax)) { zmin = -1; zmax = 1; }
+    if (std::abs(zmax-zmin) < 1e-12) { zmin -= 1; zmax += 1; }
+
+    std::string file = "cvplus_grafico_3d.html";
+    std::ofstream out(file, std::ios::binary);
+    if (!out) throw std::runtime_error("Impossibile creare cvplus_grafico_3d.html");
+
+    out << R"CVHTML(<!doctype html><html lang='it'><head><meta charset='utf-8'><title>CV+ Grafico 3D</title>
+<style>html,body{margin:0;height:100%;background:#07111f;color:#eaf4ff;font-family:Segoe UI,Arial,sans-serif;overflow:hidden}#bar{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:#0c1b30;border-bottom:1px solid #28496f;box-sizing:border-box}#title{font-size:21px;font-weight:700}.hint{font-size:13px;color:#9fc5ee}canvas{display:block;width:100%;height:calc(100% - 64px);cursor:grab}canvas:active{cursor:grabbing}</style></head><body><div id='bar'><div><div id='title'></div><div class='hint'>Trascina per ruotare · rotellina per zoom · doppio clic per ripristinare</div></div><div class='hint'>CV+ Grafici 3D</div></div><canvas id='c'></canvas><script>
+const N=)CVHTML" << campioni << R"CVHTML(, xmin=)CVHTML" << std::setprecision(17) << xmin << R"CVHTML(, xmax=)CVHTML" << xmax << R"CVHTML(, ymin=)CVHTML" << ymin << R"CVHTML(, ymax=)CVHTML" << ymax << R"CVHTML(, zmin=)CVHTML" << zmin << R"CVHTML(, zmax=)CVHTML" << zmax << R"CVHTML(;
+const Z=[)CVHTML";
+    for (size_t k=0;k<valori.size();++k) {
+        if (k) out << ',';
+        if (std::isfinite(valori[k])) out << std::setprecision(17) << valori[k]; else out << "null";
+    }
+    out << R"CVHTML(];
+document.getElementById('title').textContent=')CVHTML" << escape_js(titolo) << R"CVHTML(';
+const c=document.getElementById('c'),ctx=c.getContext('2d');let ax=-0.75,ay=0.72,zoom=1,drag=false,lx=0,ly=0;
+function resize(){c.width=innerWidth*devicePixelRatio;c.height=(innerHeight-64)*devicePixelRatio;draw()} addEventListener('resize',resize);
+function P(x,y,z){let X=(x-(xmin+xmax)/2)/((xmax-xmin)/2),Y=(y-(ymin+ymax)/2)/((ymax-ymin)/2),Zz=(z-(zmin+zmax)/2)/((zmax-zmin)/2);let ca=Math.cos(ax),sa=Math.sin(ax),cb=Math.cos(ay),sb=Math.sin(ay);let x1=X*cb-Zz*sb,z1=X*sb+Zz*cb,y1=Y;let y2=y1*ca-z1*sa;let s=Math.min(c.width,c.height)*0.32*zoom;return[c.width/2+x1*s,c.height/2-y2*s]}
+function line(a,b,alpha=1,w=1){ctx.strokeStyle=`rgba(70,190,255,${alpha})`;ctx.lineWidth=w*devicePixelRatio;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+function draw(){if(!c.width)return;ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#07111f';ctx.fillRect(0,0,c.width,c.height);for(let j=0;j<N;j++){for(let i=0;i<N-1;i++){let k=j*N+i,a=Z[k],b=Z[k+1];if(a!==null&&b!==null){let x1=xmin+(xmax-xmin)*i/(N-1),x2=xmin+(xmax-xmin)*(i+1)/(N-1),y=ymin+(ymax-ymin)*j/(N-1);line(P(x1,y,a),P(x2,y,b),.52,.7)}}}for(let i=0;i<N;i++){for(let j=0;j<N-1;j++){let k=j*N+i,a=Z[k],b=Z[k+N];if(a!==null&&b!==null){let x=xmin+(xmax-xmin)*i/(N-1),y1=ymin+(ymax-ymin)*j/(N-1),y2=ymin+(ymax-ymin)*(j+1)/(N-1);line(P(x,y1,a),P(x,y2,b),.35,.65)}}}line(P(xmin,0,0),P(xmax,0,0),.95,1.5);line(P(0,ymin,0),P(0,ymax,0),.95,1.5);line(P(0,0,zmin),P(0,0,zmax),.95,1.5)}
+c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;onmousemove=e=>{if(!drag)return;ay+=(e.clientX-lx)*.008;ax+=(e.clientY-ly)*.008;lx=e.clientX;ly=e.clientY;draw()};c.onwheel=e=>{e.preventDefault();zoom*=e.deltaY<0?1.1:.9;zoom=Math.max(.35,Math.min(3,zoom));draw()};c.ondblclick=()=>{ax=-.75;ay=.72;zoom=1;draw()};resize();
+</script></body></html>)CVHTML";
+    out.close();
+#ifdef _WIN32
+    std::string comando = "start \"\" \"" + file + "\"";
+    std::system(comando.c_str());
+#endif
+}
+
+} // namespace cvplus3d
+""";
+        File.WriteAllText(Path.Combine(CppExtensionsIncludePath, "cvplus_3d.hpp"), headerText, new UTF8Encoding(false));
     }
 
     private string CppGuidesDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "CppGuides");
@@ -2526,77 +2569,39 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             return;
         }
 
-        var panel = new StackPanel { Margin = new Thickness(8) };
+        EnsureCvPlus3DHeader();
+        var panel = new StackPanel { Margin = new Thickness(12) };
         panel.Children.Add(new TextBlock { Text = "ESTENSIONI C++ PER CV+", Foreground = Brushes.White, FontSize = 24, FontWeight = FontWeights.Bold, Margin = new Thickness(0,0,0,8) });
-        panel.Children.Add(new TextBlock { Text = "Snippet, librerie header-only, statiche MinGW (.a) e dinamiche Windows (.dll + .dll.a). Installare solo pacchetti attendibili.", Foreground = new SolidColorBrush(Color.FromRgb(180,180,180)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,14) });
-
-        var actions = new WrapPanel { Margin = new Thickness(0,0,0,14) };
-        Button installLocal = new() { Content = "INSTALLA LIBRERIA LOCALE", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(14,99,156)), Foreground = Brushes.White };
-        installLocal.Click += (_, _) => { InstallLocalCppLibrary(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
-        Button installGit = new() { Content = "INSTALLA LIBRERIA DA GIT", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(30,136,229)), Foreground = Brushes.White, ToolTip = "Accede alla cartella librerie del repository GitHub e permette di scegliere un pacchetto da installare." };
-        installGit.Click += async (_, _) => { await InstallCppLibraryFromGitAsync(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
-        Button importFiles = new() { Content = "IMPORTA .A / .DLL + HEADER + PDF", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(104,75,145)), Foreground = Brushes.White };
-        importFiles.Click += (_, _) => { ImportLooseCppLibrary(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
-        Button generalGuide = new() { Content = "GUIDA LIBRERIE PDF", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(70,70,70)), Foreground = Brushes.White };
-        generalGuide.Click += (_, _) => OpenPdfGuide(Path.Combine(CppGuidesDirectory, "Guida_Librerie_CVPlus.pdf"));
-        Button sample = new() { Content = "INSTALLA ESEMPIO DETERMINANTE", Margin = new Thickness(0,0,8,8), Padding = new Thickness(12,7,12,7), Background = new SolidColorBrush(Color.FromRgb(19,130,85)), Foreground = Brushes.White };
-        sample.Click += (_, _) => { InstallDeterminantSample(); CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
-        Button importHeader = new()
+        panel.Children.Add(new TextBlock
         {
-            Content = "IMPORTA .H / .HPP",
-            Margin = new Thickness(0,0,8,8),
-            Padding = new Thickness(12,7,12,7),
-            Background = new SolidColorBrush(Color.FromRgb(15,118,110)),
-            Foreground = Brushes.White,
-            IsEnabled = ImportHeaderButton.IsEnabled,
-            ToolTip = ImportHeaderButton.IsEnabled
-                ? "Importa un file header locale nell'editor C++."
-                : "Gestione dei file header disabilitata dal docente."
+            Text = "Le estensioni sono gestite dal programma. Per sicurezza non è possibile caricare, installare, importare o rimuovere estensioni esterne.",
+            Foreground = new SolidColorBrush(Color.FromRgb(190,190,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,16)
+        });
+
+        var row = new Grid { Margin = new Thickness(0,0,0,14), Background = new SolidColorBrush(Color.FromRgb(37,37,38)) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var text = new StackPanel { Margin = new Thickness(14,12,14,12) };
+        text.Children.Add(new TextBlock { Text = "CV+ Grafici 3D", Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 17 });
+        text.Children.Add(new TextBlock { Text = "PREINSTALLATA · Disegna superfici z = f(x,y) in un grafico 3D interattivo. Nessun componente aggiuntivo da installare.", Foreground = new SolidColorBrush(Color.FromRgb(170,220,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,4,0,0) });
+        row.Children.Add(text);
+        var guide = new Button { Content = "GUIDA + ESEMPIO", Margin = new Thickness(10), Padding = new Thickness(14,7,14,7), Background = new SolidColorBrush(Color.FromRgb(14,99,156)), Foreground = Brushes.White };
+        guide.Click += (_, _) => OpenPdfGuide(Path.Combine(CppGuidesDirectory, "Guida_CVPlus_Grafici3D.html"));
+        Grid.SetColumn(guide,1); row.Children.Add(guide); panel.Children.Add(row);
+
+        panel.Children.Add(new TextBlock { Text = "ESEMPIO RAPIDO", Foreground = Brushes.White, FontSize = 19, FontWeight = FontWeights.Bold, Margin = new Thickness(0,8,0,8) });
+        var example = new TextBox
+        {
+            Text = "#include <iostream>\n#include <cmath>\n#include <cvplus_3d.hpp>\nusing namespace std;\n\nint main()\n{\n    cvplus3d::grafico([](double x, double y)\n    {\n        return x * pow(y, 5) + x * log(y) + x * y;\n    }, -2.0, 2.0, 0.25, 1.5, \"z = x*y^5 + x*log(y) + x*y\");\n\n    return 0;\n}",
+            IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap,
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 14,
+            Foreground = Brushes.White, Background = new SolidColorBrush(Color.FromRgb(30,30,30)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(70,90,115)), Padding = new Thickness(10), Height = 300,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
         };
-        importHeader.Click += (_, _) =>
-        {
-            CloseActiveOverlay();
-            ImportHeader_Click(importHeader, new RoutedEventArgs());
-        };
-        actions.Children.Add(installLocal);
-        actions.Children.Add(installGit);
-        actions.Children.Add(importFiles);
-        actions.Children.Add(generalGuide);
-        actions.Children.Add(sample);
-        actions.Children.Add(importHeader);
-        panel.Children.Add(actions);
+        panel.Children.Add(example);
+        panel.Children.Add(new TextBlock { Text = "Nota: per log(y) usa un intervallo con y > 0. Il grafico viene creato come pagina HTML locale e si apre nel browser; puoi trascinare per ruotare e usare la rotellina per lo zoom.", Foreground = new SolidColorBrush(Color.FromRgb(205,205,205)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,10,0,0) });
 
-        foreach (CppExtensionDefinition extension in CppExtensionCatalog)
-        {
-            var row = new Grid { Margin = new Thickness(0,0,0,9), Background = new SolidColorBrush(Color.FromRgb(37,37,38)) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var text = new StackPanel { Margin = new Thickness(12,9,12,9) };
-            text.Children.Add(new TextBlock { Text = extension.Name, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 15 });
-            text.Children.Add(new TextBlock { Text = extension.Description, Foreground = new SolidColorBrush(Color.FromRgb(190,190,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,3,0,0) });
-            row.Children.Add(text);
-            var guide = new Button { Content = "GUIDA", Margin = new Thickness(8), Padding = new Thickness(12,6,12,6), MinWidth = 82, Background = new SolidColorBrush(Color.FromRgb(70,70,70)), Foreground = Brushes.White };
-            guide.Click += (_, _) => OpenPdfGuide(Path.Combine(CppGuidesDirectory, extension.GuideFile)); Grid.SetColumn(guide,1); row.Children.Add(guide);
-            bool installed = _installedCppExtensions.Contains(extension.Id);
-            var button = new Button { Content = installed ? "RIMUOVI" : "INSTALLA", Tag = extension.Id, Margin = new Thickness(8), Padding = new Thickness(12,6,12,6), MinWidth = 92, Background = new SolidColorBrush(installed ? Color.FromRgb(90,90,90) : Color.FromRgb(14,99,156)), Foreground = Brushes.White };
-            Grid.SetColumn(button, 2);
-            button.Click += (_, _) => { string id=(string)button.Tag; if (_installedCppExtensions.Contains(id)) _installedCppExtensions.Remove(id); else _installedCppExtensions.Add(id); SaveCppExtensions(); StatusText.Text="Estensioni C++ aggiornate"; CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); };
-            row.Children.Add(button); panel.Children.Add(row);
-        }
-
-        panel.Children.Add(new TextBlock { Text = "LIBRERIE INSTALLATE", Foreground = Brushes.White, FontSize = 19, FontWeight = FontWeights.Bold, Margin = new Thickness(0,18,0,8) });
-        var libraries = CppLibraryManager.LoadInstalled();
-        if (libraries.Count == 0) panel.Children.Add(new TextBlock { Text = "Nessuna libreria aggiuntiva installata.", Foreground = new SolidColorBrush(Color.FromRgb(180,180,180)), Margin = new Thickness(4,4,4,10) });
-        foreach (InstalledCppLibrary library in libraries)
-        {
-            var row = new Grid { Margin = new Thickness(0,0,0,9), Background = new SolidColorBrush(Color.FromRgb(37,37,38)) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1,GridUnitType.Star) }); row.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto }); row.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto });
-            var text = new StackPanel { Margin=new Thickness(12,9,12,9) }; text.Children.Add(new TextBlock { Text=$"{library.Manifest.Name} {library.Manifest.Version}", Foreground=Brushes.White, FontWeight=FontWeights.SemiBold }); text.Children.Add(new TextBlock { Text=$"{library.Manifest.Type} - {library.Manifest.Description}", Foreground=new SolidColorBrush(Color.FromRgb(190,190,190)), TextWrapping=TextWrapping.Wrap }); row.Children.Add(text);
-            var guides=CppLibraryManager.GetGuideFiles(library); var g=new Button { Content="GUIDA", IsEnabled=guides.Count>0, Margin=new Thickness(8), Padding=new Thickness(12,6,12,6), Foreground=Brushes.White, Background=new SolidColorBrush(Color.FromRgb(70,70,70)) }; g.Click += (_,_) => { if(guides.Count>0) OpenPdfGuide(guides[0]); }; Grid.SetColumn(g,1); row.Children.Add(g);
-            var remove=new Button { Content="RIMUOVI", Margin=new Thickness(8), Padding=new Thickness(12,6,12,6), Foreground=Brushes.White, Background=new SolidColorBrush(Color.FromRgb(120,60,60)) }; remove.Click += (_,_) => { CppLibraryManager.Uninstall(library.Manifest.Id); StatusText.Text="Libreria rimossa"; CloseActiveOverlay(); OpenCppExtensions_Click(sender,e); }; Grid.SetColumn(remove,2); row.Children.Add(remove);
-            panel.Children.Add(row);
-        }
         var scroll = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         ShowFullscreenOverlay("Estensioni C++", scroll);
     }
@@ -2733,8 +2738,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         ShowInTaskbar = true;
         UpdateButton.IsEnabled = true;
         GuideButton.IsEnabled = true;
-        CppExtensionsButton.IsEnabled = false;
-        CppExtensionsButton.ToolTip = "Estensioni C++ disabilitate.";
+        CppExtensionsButton.IsEnabled = true;
+        CppExtensionsButton.ToolTip = "Apri l’estensione didattica predefinita per grafici 3D.";
         ShellButton.IsEnabled = true;
         ShellButton.ToolTip = "Apri la shell CMD nella cartella Documenti con G++ già nel PATH";
         ImportHeaderButton.IsEnabled = AddHeaderButton.IsEnabled;
@@ -4268,7 +4273,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         AddGuideItem(content, "Rinomina .h", "#9333EA", "Rinomina il file header aperto mantenendo l'estensione .h.");
         AddGuideItem(content, "Elimina .h", "#B91C1C", "Elimina il file header corrente dopo la conferma.");
         AddGuideItem(content, "Shell", "#166534", "Apre una shell CMD reale integrata nella cartella Documenti. G++ è già disponibile nel PATH; puoi usare i normali comandi Windows/DOS, help, creare cartelle e file, aprire Notepad e compilare sorgenti C++ e header.");
-        AddGuideItem(content, "Estensioni C++", "#0F766E", "Apre la gestione delle estensioni. Da qui puoi installare pacchetti ZIP, importare file .h/.hpp, librerie statiche .a, librerie dinamiche .dll e guide PDF. Le estensioni installate vengono collegate automaticamente durante la compilazione quando previsto dal pacchetto.");
+        AddGuideItem(content, "Estensioni C++", "#0F766E", "Apre CV+ Grafici 3D, l’estensione didattica preinstallata per disegnare superfici z=f(x,y). Le estensioni esterne non possono essere caricate, installate o rimosse.");
 
         AddGuideSection(content, "SALVATAGGIO E INVIO");
         AddGuideItem(content, "Invia al docente", "#0E8FE8", "Invia codice, dati dell'alunno, esercizio e risultati al server del docente.");

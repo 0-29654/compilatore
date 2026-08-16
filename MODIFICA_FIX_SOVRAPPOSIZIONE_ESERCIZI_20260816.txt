@@ -1,0 +1,8 @@
+FIX MASCHERA ESERCIZI CREATI - 16/08/2026
+
+- Conservata estensione CV+ Grafici 3D preinstallata.
+- Conservato pulsante ESTENSIONI C++ attivo in esercitazione.
+- La maschera ESERCIZI CREATI ora parte sotto la barra superiore dell editor.
+- Non copre più i pulsanti SHELL ed ESTENSIONI C++.
+- La maschera continua a estendersi verso il basso fino alla barra comandi.
+- Conservato pulsante cestino compatto per eliminazione esercizio.
