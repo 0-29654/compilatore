@@ -3906,16 +3906,15 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         }
 
         var items = new List<ExerciseListItem>();
-        for (int n = 1; n <= max; n++)
+        foreach (var pair in _exerciseStates)
         {
-            string key = BuildExerciseKey(type, n);
-            bool empty = !_exerciseStates.TryGetValue(key, out ExerciseState? st) || st.IsEmptySlot;
-            items.Add(new ExerciseListItem
-            {
-                Number = n,
-                Label = empty ? $"Esercizio {n}  —  vuoto" : $"Esercizio {n}"
-            });
+            if (!pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            string numberText = pair.Key.Substring(prefix.Length);
+            if (!int.TryParse(numberText, out int n)) continue;
+            if (pair.Value == null || pair.Value.IsEmptySlot) continue;
+            items.Add(new ExerciseListItem { Number = n, Label = $"Esercizio {n}" });
         }
+        items = items.OrderBy(i => i.Number).ToList();
 
         _refreshingExerciseList = true;
         ExerciseListBox.ItemsSource = items;
@@ -4071,16 +4070,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         }
 
         _exerciseStates[newKey] = sourceState;
-        _exerciseStates[oldKey] = new ExerciseState
-        {
-            Code = "",
-            HeaderCode = "",
-            HeaderFileName = "esercizio.h",
-            Elapsed = TimeSpan.Zero,
-            CompileOutput = "",
-            ProgramOutput = "",
-            IsEmptySlot = true
-        };
+        _exerciseStates.Remove(oldKey);
 
         _activeKey = newKey;
         ExerciseBox.Text = newNumber.ToString();
@@ -4110,35 +4100,52 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         }
 
         MessageBoxResult answer = MessageBox.Show(this,
-            $"Vuoi eliminare il contenuto dell'esercizio {item.Number}?\n\nLa numerazione non verrà modificata: l'esercizio {item.Number} resterà come posizione vuota e gli esercizi successivi manterranno il loro numero.",
-            "Elimina esercizio", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+            $"Vuoi eliminare definitivamente Esercizio {item.Number}?\n\n" +
+            "L'esercizio verrà rimosso dall'elenco. Gli altri esercizi manterranno il loro numero e non verranno rinumerati.",
+            "Conferma eliminazione esercizio", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
         if (answer != MessageBoxResult.Yes) return;
 
-        string key = BuildExerciseKey(GetTaskType(), item.Number);
-        _exerciseStates[key] = new ExerciseState
-        {
-            Code = "",
-            HeaderCode = "",
-            HeaderFileName = "esercizio.h",
-            Elapsed = TimeSpan.Zero,
-            CompileOutput = "",
-            ProgramOutput = "",
-            IsEmptySlot = true
-        };
+        string type = GetTaskType();
+        string key = BuildExerciseKey(type, item.Number);
+        _exerciseStates.Remove(key);
 
-        if (item.Number == GetExerciseNumber())
+        // Cerca un altro esercizio realmente esistente senza rinumerare nulla.
+        string prefix = $"{SessionBox.Text.Trim().ToUpperInvariant()}|{type.Trim().ToUpperInvariant()}|";
+        var remaining = _exerciseStates
+            .Where(p => p.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && p.Value != null && !p.Value.IsEmptySlot)
+            .Select(p => int.TryParse(p.Key.Substring(prefix.Length), out int n) ? n : -1)
+            .Where(n => n > 0)
+            .OrderBy(n => n)
+            .ToList();
+
+        int? next = remaining.FirstOrDefault(n => n > item.Number);
+        if (next == 0) next = remaining.LastOrDefault(n => n < item.Number);
+        if (next == 0) next = null;
+
+        _loadingExercise = true;
+        if (next.HasValue)
         {
-            _loadingExercise = true;
+            ExerciseBox.Text = next.Value.ToString();
+            _loadingExercise = false;
+            ActivateExercise(type, next.Value);
+        }
+        else
+        {
+            // Nessun esercizio rimasto: prepara una nuova posizione senza crearla nell'elenco.
+            ExerciseBox.Text = "1";
             Editor.Text = "";
             HeaderEditor.Text = "";
             HeaderTab.Visibility = Visibility.Collapsed;
             OutputBox.Text = "";
             _loadingExercise = false;
-            StatusText.Text = $"Tipologia {GetTaskType()} - esercizio {item.Number} (vuoto)";
+            _activeKey = BuildExerciseKey(type, 1);
+            _activeStartedUtc = DateTime.UtcNow;
         }
 
         SaveExerciseStates();
+        SaveSettings();
         RefreshExerciseList();
+        StatusText.Text = $"Esercizio {item.Number} eliminato definitivamente";
     }
 
     private TimeSpan GetElapsedForActive()
