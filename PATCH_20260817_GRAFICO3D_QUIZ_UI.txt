@@ -1,0 +1,7 @@
+PATCH CV+ 17/08/2026
+- Grafico 3D semplificato: formula testuale z=f(x,y), intervalli automatici e vista robusta.
+- Assi X/Y/Z più visibili e superficie 3D colorata.
+- Copyright estensione: Alessandro Barazzuol.
+- Pulsante Estensioni sostituito da GRAFICO 3D con guida ed esempio.
+- Zoom editor +/- più grandi e colorati, ulteriormente distanziati dal numero esercizio.
+- In attesa Verifica Quiz: popup centrato e sempre in primo piano; campi N° registro, nome/cognome e classe lampeggiano finché mancanti.

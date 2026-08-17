@@ -170,9 +170,9 @@
                             <ColumnDefinition Width="34"/>
                             <ColumnDefinition Width="70"/>
                             <ColumnDefinition Width="34"/>
-                            <ColumnDefinition Width="14"/>
-                            <ColumnDefinition Width="30"/>
-                            <ColumnDefinition Width="30"/>
+                            <ColumnDefinition Width="28"/>
+                            <ColumnDefinition Width="38"/>
+                            <ColumnDefinition Width="38"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- La didascalia è centrata esattamente sopra la casella del numero. -->
@@ -188,11 +188,11 @@
                                 Background="#0E78C7" BorderBrush="#2AAEFF"/>
 
                         <!-- Zoom volutamente staccato dalle frecce di navigazione esercizio. -->
-                        <Button x:Name="EditorZoomOutButton" Grid.Row="1" Grid.Column="4" Content="−" Width="27" Height="32"
-                                Click="EditorZoomOut_Click" Style="{StaticResource ModernButton}" Padding="2" Margin="0,0,2,0"
+                        <Button x:Name="EditorZoomOutButton" Grid.Row="1" Grid.Column="4" Content="−" Width="34" Height="34"
+                                Click="EditorZoomOut_Click" Style="{StaticResource ModernButton}" Padding="2" Margin="0,0,4,0" Background="#7C3AED" BorderBrush="#A78BFA" Foreground="White" FontSize="17" FontWeight="Bold"
                                 ToolTip="Riduci la dimensione del codice nell'editor"/>
-                        <Button x:Name="EditorZoomInButton" Grid.Row="1" Grid.Column="5" Content="+" Width="27" Height="32"
-                                Click="EditorZoomIn_Click" Style="{StaticResource ModernButton}" Padding="2" Margin="1,0,0,0"
+                        <Button x:Name="EditorZoomInButton" Grid.Row="1" Grid.Column="5" Content="+" Width="34" Height="34"
+                                Click="EditorZoomIn_Click" Style="{StaticResource ModernButton}" Padding="2" Margin="3,0,0,0" Background="#0284C7" BorderBrush="#38BDF8" Foreground="White" FontSize="17" FontWeight="Bold"
                                 ToolTip="Aumenta la dimensione del codice nell'editor"/>
                     </Grid>
                 </Grid>
@@ -243,7 +243,7 @@
                         <TextBlock Grid.Column="1" Text="CV+ EDITOR — C++17" Foreground="#858585" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
                             <Button x:Name="ShellButton" Content=">_ SHELL" Click="Shell_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#166534" BorderBrush="#22C55E" ToolTip="Apri la shell CMD nella cartella Documenti con G++ già nel PATH"/>
-                            <Button x:Name="CppExtensionsButton" Content="▣ ESTENSIONI C++" IsEnabled="True" Click="OpenCppExtensions_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#0E639C" BorderBrush="#1177BB" ToolTip="Apri l’estensione didattica predefinita per grafici 3D"/>
+                            <Button x:Name="CppExtensionsButton" Content="▦ GRAFICO 3D" IsEnabled="True" Click="OpenCppExtensions_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#0E639C" BorderBrush="#1177BB" ToolTip="Apri CV+ Grafico 3D e la relativa guida"/>
                             <TextBlock Text="SHIFT+CLICK: TUTTO SCHERMO" Foreground="#D7BA7D" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
