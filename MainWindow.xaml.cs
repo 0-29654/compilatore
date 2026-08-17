@@ -2344,19 +2344,11 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private static readonly CppExtensionDefinition[] CppExtensionCatalog =
     {
-        new("mate", "Mate", "Libreria matematica didattica integrata: grafici 2D/3D, derivate e integrali simbolici, tangenti, aree, semplificazione, equazioni e disequazioni.", "Guida_Mate.html", new[]
+        new("mate", "Mate", "Libreria matematica didattica integrata dedicata esclusivamente ai grafici 2D e 3D.", "Guida_Mate.html", new[]
         {
             ("mateinclude", "include Mate", "#include <mate.hpp>", "Include della libreria matematica Mate"),
             ("grafico2d", "mate::grafico2d", "mate::grafico2d(\"y = x^2 - 4*x + 3\");", "Grafico 2D con assi, griglia ed etichette automatiche"),
-            ("grafico3d", "mate::grafico3d", "mate::grafico3d(\"z = x*y + log(x)*x^2*y^4\", 0.2, 2.5, -2.0, 2.0);", "Grafico 3D interattivo con assi X/Y/Z evidenziati"),
-            ("derivata", "mate::derivata", "cout << mate::derivata(\"x^3 + sin(x)\") << endl;", "Calcola la derivata simbolica"),
-            ("integrale", "mate::integrale", "cout << mate::integrale(\"3*x^2 + 2*x\") << endl;", "Calcola un integrale indefinito simbolico quando riconosciuto"),
-            ("tangente2d", "mate::grafico_derivata", "mate::grafico_derivata(\"x^3 - 2*x\", 1.0);", "Disegna curva e retta tangente nel punto scelto"),
-            ("tangente3d", "mate::grafico_derivata3d", "mate::grafico_derivata3d(\"z = x^2 + y^2\", 1.0, 1.0);", "Disegna superficie e piano tangente"),
-            ("areaintegrale", "mate::grafico_integrale", "mate::grafico_integrale(\"x^2\", 0.0, 2.0);", "Mostra graficamente l'area sotto la curva"),
-            ("semplifica", "mate::semplifica", "cout << mate::semplifica(\"2*x + 0\") << endl;", "Semplifica un'espressione"),
-            ("equazione", "mate::risolvi_equazione", "cout << mate::risolvi_equazione(\"x^2 - 4 = 0\") << endl;", "Trova le soluzioni reali nell'intervallo di ricerca"),
-            ("disequazione", "mate::risolvi_disequazione", "cout << mate::risolvi_disequazione(\"x^2 - 4 >= 0\", -10, 10) << endl;", "Trova gli intervalli soluzione reali")
+            ("grafico3d", "mate::grafico3d", "mate::grafico3d(\"z = x*y + log(x)*x^2*y^4\", 0.2, 2.5, -2.0, 2.0);", "Grafico 3D interattivo con assi X/Y/Z evidenziati")
         })
     };
 
@@ -2664,7 +2656,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var text = new StackPanel { Margin = new Thickness(14,12,14,12) };
         text.Children.Add(new TextBlock { Text = "Mate", Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 20 });
-        text.Children.Add(new TextBlock { Text = "Libreria matematica CV+ · Grafici 2D/3D · Derivate · Integrali · Tangenti · Aree · Equazioni · Disequazioni · Semplificazione", Foreground = new SolidColorBrush(Color.FromRgb(170,220,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,4,0,0) });
+        text.Children.Add(new TextBlock { Text = "Libreria matematica CV+ · Solo grafici 2D e 3D", Foreground = new SolidColorBrush(Color.FromRgb(170,220,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,4,0,0) });
         text.Children.Add(new TextBlock { Text = "© Prof. Alessandro Barazzuol", Foreground = new SolidColorBrush(Color.FromRgb(125,180,225)), Margin = new Thickness(0,5,0,0) });
         row.Children.Add(text);
         var guide = new Button { Content = "GUIDA", Margin = new Thickness(10), Padding = new Thickness(18,8,18,8), Background = new SolidColorBrush(Color.FromRgb(14,99,156)), Foreground = Brushes.White };
@@ -2674,7 +2666,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         panel.Children.Add(new TextBlock { Text = "ESEMPI RAPIDI", Foreground = Brushes.White, FontSize = 19, FontWeight = FontWeights.Bold, Margin = new Thickness(0,8,0,8) });
         var example = new TextBox
         {
-            Text = "#include <iostream>\n#include <mate.hpp>\nusing namespace std;\n\nint main()\n{\n    // Grafico 2D: intervallo e scala sono automatici\n    mate::grafico2d(\"y = x^2 - 4*x + 3\");\n\n    // Grafico 3D: formula semplice z = f(x,y)\n    mate::grafico3d(\"z = x*y + log(x)*x^2*y^4\", 0.2, 2.5, -2.0, 2.0);\n\n    cout << \"Derivata: \" << mate::derivata(\"x^3 + sin(x)\") << endl;\n    cout << \"Integrale: \" << mate::integrale(\"3*x^2 + 2*x\") << endl;\n    cout << \"Semplificata: \" << mate::semplifica(\"2*x + 0\") << endl;\n    cout << mate::risolvi_equazione(\"x^2 - 4 = 0\") << endl;\n    cout << mate::risolvi_disequazione(\"x^2 - 4 >= 0\", -10, 10) << endl;\n\n    // Retta tangente 2D e piano tangente 3D\n    mate::grafico_derivata(\"x^3 - 2*x\", 1.0);\n    mate::grafico_derivata3d(\"z = x^2 + y^2\", 1.0, 1.0);\n\n    // Area sotto la curva tra a e b\n    mate::grafico_integrale(\"x^2\", 0.0, 2.0);\n    return 0;\n}",
+            Text = "#include <iostream>\n#include <mate.hpp>\nusing namespace std;\n\nint main()\n{\n    // Grafico 2D: intervallo e scala sono automatici\n    mate::grafico2d(\"y = x^2 - 4*x + 3\");\n\n    // Grafico 3D: z = f(x,y)\n    mate::grafico3d(\"z = x*y + log(x)*x^2*y^4\", 0.2, 2.5, -2.0, 2.0);\n    return 0;\n}",
             IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap,
             FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 14,
             Foreground = Brushes.White, Background = new SolidColorBrush(Color.FromRgb(30,30,30)),
@@ -2684,7 +2676,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         panel.Children.Add(example);
         panel.Children.Add(new TextBlock
         {
-            Text = "Mate accetta formule come y = x^2 + sin(x) oppure z = x*y + log(x)*x^2*y^4. Nei grafici 2D scala, griglia e tacche degli assi vengono adattate automaticamente; nei grafici 3D puoi trascinare per ruotare e usare la rotellina per lo zoom. Gli integrali simbolici coprono le forme didattiche più comuni; per forme non riconosciute Mate segnala chiaramente il limite.",
+            Text = "Mate è dedicata esclusivamente ai grafici 2D e 3D. Accetta formule come y = x^2 + sin(x) oppure z = x*y + log(x)*x^2*y^4. Nei grafici 2D scala, griglia e tacche degli assi vengono adattate automaticamente; nei grafici 3D puoi trascinare per ruotare e usare la rotellina per lo zoom.",
             Foreground = new SolidColorBrush(Color.FromRgb(205,205,205)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,10,0,0)
         });
 
@@ -4628,7 +4620,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         AddGuideItem(content, "Rinomina .h", "#9333EA", "Rinomina il file header aperto mantenendo l'estensione .h.");
         AddGuideItem(content, "Elimina .h", "#B91C1C", "Elimina il file header corrente dopo la conferma.");
         AddGuideItem(content, "Shell", "#166534", "Apre una shell CMD reale integrata nella cartella Documenti. G++ è già disponibile nel PATH; puoi usare i normali comandi Windows/DOS, help, creare cartelle e file, aprire Notepad e compilare sorgenti C++ e header.");
-        AddGuideItem(content, "Estensioni C++", "#0F766E", "Apre Mate, la libreria matematica didattica integrata per grafici 2D/3D, derivate, integrali, tangenti, aree, equazioni, disequazioni e semplificazione. Le estensioni esterne non possono essere caricate, installate o rimosse.");
+        AddGuideItem(content, "Estensioni C++", "#0F766E", "Apre Mate, la libreria matematica didattica integrata dedicata esclusivamente ai grafici 2D e 3D. Le estensioni esterne non possono essere caricate, installate o rimosse.");
 
         AddGuideSection(content, "SALVATAGGIO E INVIO");
         AddGuideItem(content, "Invia al docente", "#0E8FE8", "Invia codice, dati dell'alunno, esercizio e risultati al server del docente.");

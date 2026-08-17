@@ -1,0 +1,7 @@
+MODIFICA ESTENSIONI C++ — 17/08/2026
+
+- Estensioni C++ / Mate ora presenta esclusivamente Grafico 2D e Grafico 3D.
+- Rimossi dall'interfaccia e dall'autocompletamento Mate: derivate, integrali, tangenti, area, semplificazione, equazioni e disequazioni.
+- Aggiornati esempi rapidi e Guida Mate.
+- Mantenuto il caricamento di estensioni esterne disabilitato.
+- Nessun'altra modifica funzionale apportata.
