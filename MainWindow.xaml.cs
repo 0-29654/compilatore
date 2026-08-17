@@ -3467,10 +3467,13 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
     private bool ValidateSubmission(out int registerNumber, out int exerciseNumber)
     {
         registerNumber = 0; exerciseNumber = 0;
-        if (string.IsNullOrWhiteSpace(StudentIdBox.Text) || string.IsNullOrWhiteSpace(StudentNameBox.Text) || string.IsNullOrWhiteSpace(TaskTypeBox.Text) || string.IsNullOrWhiteSpace(ExerciseBox.Text))
+        // La tipologia può arrivare dal server; se il campo non è ancora valorizzato
+        // GetTaskType() usa correttamente il valore predefinito A. Non deve quindi
+        // bloccare l'invio quando registro, nome e numero esercizio sono presenti.
+        if (string.IsNullOrWhiteSpace(StudentIdBox.Text) || string.IsNullOrWhiteSpace(StudentNameBox.Text) || string.IsNullOrWhiteSpace(ExerciseBox.Text))
         {
             ShowVerificationSafeMessage(
-                "Compila N° registro, nome e cognome, tipologia e N° esercizio.",
+                "Compila N° registro, nome e cognome e N° esercizio.",
                 "Dati mancanti",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning,
@@ -3536,6 +3539,47 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
 
     private const string DefaultHeaderCode =
         "#ifndef ESERCIZIO_H\n#define ESERCIZIO_H\n\n// Dichiarazioni e funzioni dell'esercizio\n\n#endif // ESERCIZIO_H\n";
+
+    private static string HeaderGuardFromFileName(string? fileName)
+    {
+        string normalized = NormalizeHeaderFileName(fileName);
+        string guard = System.Text.RegularExpressions.Regex.Replace(
+            normalized.ToUpperInvariant(),
+            @"[^A-Z0-9_]",
+            "_"
+        );
+        if (string.IsNullOrWhiteSpace(guard)) guard = "ESERCIZIO_H";
+        if (char.IsDigit(guard[0])) guard = "_" + guard;
+        return guard;
+    }
+
+    private static string RenameHeaderGuard(string headerCode, string oldFileName, string newFileName)
+    {
+        if (string.IsNullOrWhiteSpace(headerCode)) return headerCode;
+
+        string oldGuard = HeaderGuardFromFileName(oldFileName);
+        string newGuard = HeaderGuardFromFileName(newFileName);
+        if (oldGuard.Equals(newGuard, StringComparison.Ordinal)) return headerCode;
+
+        // Cambia soltanto il simbolo della guardia del file, senza toccare
+        // eventuali altre occorrenze casuali nel codice.
+        string result = System.Text.RegularExpressions.Regex.Replace(
+            headerCode,
+            @"(?m)^(\s*#ifndef\s+)" + System.Text.RegularExpressions.Regex.Escape(oldGuard) + @"(\s*)$",
+            "$1" + newGuard + "$2"
+        );
+        result = System.Text.RegularExpressions.Regex.Replace(
+            result,
+            @"(?m)^(\s*#define\s+)" + System.Text.RegularExpressions.Regex.Escape(oldGuard) + @"(\s*)$",
+            "$1" + newGuard + "$2"
+        );
+        result = System.Text.RegularExpressions.Regex.Replace(
+            result,
+            @"(?m)^(\s*#endif\s*//\s*)" + System.Text.RegularExpressions.Regex.Escape(oldGuard) + @"(\s*)$",
+            "$1" + newGuard + "$2"
+        );
+        return result;
+    }
 
     private void AddHeader_Click(object sender, RoutedEventArgs e)
     {
@@ -3739,8 +3783,15 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
                 StringComparison.OrdinalIgnoreCase
             );
 
+            string renamedHeaderCode = RenameHeaderGuard(
+                HeaderEditor.Text,
+                oldName,
+                newName
+            );
+            HeaderEditor.Text = renamedHeaderCode;
             state.HeaderFileName = newName;
-            state.HeaderCode = HeaderEditor.Text;
+            state.HeaderCode = renamedHeaderCode;
+            state.IsEmptySlot = false;
             HeaderTab.Header = newName;
             SaveCurrentExercise();
 
@@ -3814,11 +3865,13 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
         state.HeaderCode = "";
         state.HeaderFileName = "";
         state.Code = DefaultCode;
+        state.IsEmptySlot = false;
 
         HeaderEditor.Text = "";
         HeaderTab.Header = "esercizio.h";
         HeaderTab.Visibility = Visibility.Collapsed;
         Editor.Text = DefaultCode;
+        EditorTabs.SelectedIndex = 0;
 
         SaveCurrentExercise();
         StatusText.Text =
