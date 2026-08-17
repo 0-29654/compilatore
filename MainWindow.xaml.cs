@@ -54,6 +54,7 @@ public partial class MainWindow : Window
     private string _lastQuizAssignmentId = "";
     private bool _quizAssignmentCheckRunning;
     private QuizVerificationWindow? _activeQuizWindow;
+    private Window? _quizWaitingWindow;
     private DateTime _activeQuizOpenedUtc = DateTime.MinValue;
     // Connessione Verifiche Quiz separata dal server normale Compiti alunni.
     private string _quizServerBase = "";
@@ -193,7 +194,7 @@ public partial class MainWindow : Window
         // La Shell ha priorità assoluta sullo stato dei controlli: il server CPPVisual
         // può aggiornare i permessi, ma non può riattivare questi pulsanti finché
         // la Shell è visibile. In modalità verifica la Shell è sempre disabilitata.
-        bool editorActionsEnabled = !_shellVisible;
+        bool editorActionsEnabled = !_shellVisible && !_quizVerificationMode;
 
         RunButton.IsEnabled = editorActionsEnabled && _compilationAllowed;
         AddHeaderButton.IsEnabled = editorActionsEnabled && _headerManagementAllowed;
@@ -209,7 +210,7 @@ public partial class MainWindow : Window
         NextExerciseButton.IsEnabled = editorActionsEnabled;
 
         CppExtensionsButton.IsEnabled = editorActionsEnabled && !_verificationMode;
-        ShellButton.IsEnabled = !_verificationMode;
+        ShellButton.IsEnabled = !_verificationMode && !_quizVerificationMode;
     }
 
     private void StartShell()
@@ -541,12 +542,11 @@ public partial class MainWindow : Window
                         _quizSessionCode = "";
                         _lastQuizServerSeenUtc = DateTime.MinValue;
                         _lastQuizAssignmentId = "";
-                        _quizVerificationMode = false;
+                        ExitQuizWaitingMode();
 
-                        // Il Quiz non modifica piu' la modalita' C++ tradizionale.
-                        // Fermare il server Quiz chiude quindi soltanto il form Quiz
-                        // e lascia il compilatore nel suo stato normale precedente.
-                        StatusText.Text = "Server Verifiche Quiz fermato";
+                        // Arrestando il server Quiz il client torna completamente
+                        // alla normale modalità C++ precedente.
+                        StatusText.Text = "Server Verifiche Quiz fermato - modalità normale ripristinata";
                         return;
                     }
 
@@ -567,10 +567,7 @@ public partial class MainWindow : Window
                         SetSessionCode(session);
                         SetTeacherConnectionFieldsLocked(true);
                         ApplySessionMode("quiz_verifica");
-                        // Non blocchiamo/trasformiamo il compilatore mentre il docente
-                        // prepara o assegna il Quiz. Il blocco fullscreen appartiene
-                        // esclusivamente a QuizVerificationWindow dopo la ricezione.
-                        StatusText.Text = $"Verifica Quiz: collegato a {ip}:{port} - in attesa del PDF";
+                        StatusText.Text = $"Verifica Quiz: collegato a {ip}:{port} - attendi verifica";
                     }
                     else
                     {
@@ -1982,7 +1979,17 @@ public partial class MainWindow : Window
             if (!_quizVerificationMode || string.IsNullOrWhiteSpace(ServerBox.Text)) return;
             baseAddress = NormalizeServerAddress(ServerBox.Text);
         }
-        if (string.IsNullOrWhiteSpace(StudentIdBox.Text) && string.IsNullOrWhiteSpace(StudentNameBox.Text)) return;
+        if (string.IsNullOrWhiteSpace(StudentIdBox.Text) ||
+            string.IsNullOrWhiteSpace(StudentNameBox.Text) ||
+            string.IsNullOrWhiteSpace(ClassBox.Text))
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                StatusText.Text = "Verifica Quiz: compila N° registro, nome e cognome e classe";
+                ShowQuizWaitingWindow();
+            });
+            return;
+        }
 
         _quizAssignmentCheckRunning = true;
         try
@@ -2041,6 +2048,7 @@ public partial class MainWindow : Window
             await Dispatcher.InvokeAsync(() =>
             {
                 _quizVerificationMode = true;
+                CloseQuizWaitingWindow();
                 StatusText.Text = "Verifica Quiz ricevuta - apertura modulo...";
             });
 
@@ -2728,6 +2736,134 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
             : tooltip;
     }
 
+    private void EnterQuizWaitingMode()
+    {
+        _quizVerificationMode = true;
+
+        if (_shellVisible)
+            HideShell();
+
+        // Durante l'attesa della verifica l'alunno può compilare soltanto i dati
+        // identificativi richiesti dal docente. Tutto il resto del compilatore è bloccato.
+        StudentIdBox.IsEnabled = true;
+        StudentNameBox.IsEnabled = true;
+        ClassBox.IsEnabled = true;
+
+        TaskTypeBox.IsEnabled = false;
+        ExerciseBox.IsEnabled = false;
+        PreviousExerciseButton.IsEnabled = false;
+        NextExerciseButton.IsEnabled = false;
+        EditorZoomOutButton.IsEnabled = false;
+        EditorZoomInButton.IsEnabled = false;
+        ExerciseListBox.IsEnabled = false;
+        RenameExerciseButton.IsEnabled = false;
+        DeleteExerciseButton.IsEnabled = false;
+        Editor.IsReadOnly = true;
+        HeaderEditor.IsReadOnly = true;
+
+        RunButton.IsEnabled = false;
+        AddHeaderButton.IsEnabled = false;
+        RenameHeaderButton.IsEnabled = false;
+        DeleteHeaderButton.IsEnabled = false;
+        ImportHeaderButton.IsEnabled = false;
+        SendButton.IsEnabled = false;
+        GoogleDriveButton.IsEnabled = false;
+        TestServerButton.IsEnabled = false;
+        UpdateButton.IsEnabled = false;
+        GuideButton.IsEnabled = false;
+        CppExtensionsButton.IsEnabled = false;
+        ShellButton.IsEnabled = false;
+
+        ShowQuizWaitingWindow();
+    }
+
+    private void ExitQuizWaitingMode()
+    {
+        _quizVerificationMode = false;
+        CloseQuizWaitingWindow();
+
+        TaskTypeBox.IsEnabled = true;
+        ExerciseBox.IsEnabled = true;
+        EditorZoomOutButton.IsEnabled = true;
+        EditorZoomInButton.IsEnabled = true;
+        ExerciseListBox.IsEnabled = true;
+        RenameExerciseButton.IsEnabled = true;
+        DeleteExerciseButton.IsEnabled = true;
+        Editor.IsReadOnly = false;
+        HeaderEditor.IsReadOnly = false;
+
+        ApplyCompilationPermission(_compilationAllowed);
+        ApplyHeaderManagementPermission(_headerManagementAllowed);
+        ApplyShellUiLock();
+        UpdateButton.IsEnabled = !_verificationMode;
+        GuideButton.IsEnabled = !_verificationMode;
+        CppExtensionsButton.IsEnabled = !_verificationMode;
+        GoogleDriveButton.IsEnabled = !_verificationMode && !_googleDriveOperationRunning;
+        TestServerButton.IsEnabled = true;
+    }
+
+    private void ShowQuizWaitingWindow()
+    {
+        if (_quizWaitingWindow != null)
+            return;
+
+        var panel = new StackPanel { Margin = new Thickness(24) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Attendi verifica",
+            FontSize = 24,
+            FontWeight = FontWeights.Bold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Foreground = Brushes.White
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Compila N° registro, nome e cognome e classe.\nIl resto del programma rimane bloccato fino alla verifica.",
+            Margin = new Thickness(0, 12, 0, 0),
+            FontSize = 14,
+            TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Color.FromRgb(190, 210, 232))
+        });
+
+        var waiting = new Window
+        {
+            Title = "Attendi verifica",
+            Width = 430,
+            Height = 175,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Owner = this,
+            Left = Math.Max(SystemParameters.WorkArea.Left + 20, SystemParameters.WorkArea.Right - 455),
+            Top = SystemParameters.WorkArea.Top + 80,
+            Topmost = false,
+            Background = new SolidColorBrush(Color.FromRgb(10, 24, 42)),
+            Content = panel,
+            ShowInTaskbar = false
+        };
+        waiting.Closing += (_, e) =>
+        {
+            if (_quizVerificationMode && !Equals(waiting.Tag, "force-close") && _activeQuizWindow == null)
+                e.Cancel = true;
+        };
+        _quizWaitingWindow = waiting;
+        waiting.Show();
+    }
+
+    private void CloseQuizWaitingWindow()
+    {
+        if (_quizWaitingWindow == null) return;
+        var window = _quizWaitingWindow;
+        _quizWaitingWindow = null;
+        try
+        {
+            window.Tag = "force-close";
+            window.Hide();
+            window.Close();
+        }
+        catch { }
+    }
+
     private void ApplySessionMode(string mode)
     {
         bool quiz = mode.Equals("quiz_verifica", StringComparison.OrdinalIgnoreCase) ||
@@ -2740,8 +2876,8 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
         // occupa lo schermo quando il PDF viene realmente ricevuto.
         if (quiz)
         {
-            _quizVerificationMode = true;
-            StatusText.Text = "Verifica Quiz collegata - in attesa del PDF";
+            EnterQuizWaitingMode();
+            StatusText.Text = "Verifica Quiz collegata - attendi verifica";
             return;
         }
 

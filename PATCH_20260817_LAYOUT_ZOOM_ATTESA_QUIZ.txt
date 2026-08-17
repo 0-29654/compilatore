@@ -1,0 +1,13 @@
+PATCH 2026-08-17 - CLIENT COMPILATORE ALUNNO
+
+- N° ESERCIZIO centrato sopra la sola casella numerica.
+- Pulsanti zoom -/+ separati visivamente dalle frecce precedente/successivo.
+- In modalità server Verifiche Quiz restano attivi soltanto:
+  * N° registro
+  * Nome e cognome
+  * Classe
+- Tutti gli altri controlli/editor vengono bloccati durante l'attesa.
+- Finestra non modale "Attendi verifica" visualizzata durante l'attesa.
+- N° registro, nome/cognome e classe sono tutti obbligatori prima del polling/ricezione Quiz.
+- Alla ricezione della verifica il popup viene chiuso e si apre la finestra Quiz.
+- Alla fermata del server Quiz viene ripristinata la modalità normale del compilatore.
