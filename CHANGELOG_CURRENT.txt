@@ -1,0 +1,5 @@
+﻿MODIFICHE PRINCIPALI
+
+• Guida visuale aggiornata con la spiegazione dei pulsanti Zoom − / Zoom + dell'editor.
+• Guida aggiornata con la voce “Ricerca aggiornamenti” e il nuovo comportamento dell'update.
+• Quando viene trovata una nuova versione, prima di installarla il programma mostra le principali modifiche pubblicate nella Release.

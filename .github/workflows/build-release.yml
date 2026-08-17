@@ -398,7 +398,13 @@ jobs:
               '--clobber'
             ) | Out-Null
           } else {
-            $releaseNotes = "Aggiornamento automatico CV+ $env:APP_VERSION. Installer verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+            if (Test-Path '.\CHANGELOG_CURRENT.txt') {
+              $releaseNotes = Get-Content '.\CHANGELOG_CURRENT.txt' -Raw
+            } else {
+              $releaseNotes = "Aggiornamento CV+ $env:APP_VERSION."
+            }
+            $releaseNotes = $releaseNotes.Trim() + "`n`nInstaller verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+
             Invoke-GhWithRetry -Arguments @(
               'release', 'create', $tag,
               $setup,

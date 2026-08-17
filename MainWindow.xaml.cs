@@ -3149,6 +3149,54 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             if (string.IsNullOrWhiteSpace(tag))
                 throw new InvalidOperationException("GitHub non ha restituito il tag dell'ultima Release pubblica.");
 
+            // Recupera le note della Release per mostrare all'utente cosa cambia
+            // PRIMA di confermare l'aggiornamento. Se GitHub non risponde, l'update
+            // continua comunque con un riepilogo locale essenziale.
+            string releaseNotes = "";
+            try
+            {
+                using var notesRequest = new HttpRequestMessage(
+                    HttpMethod.Get,
+                    "https://api.github.com/repos/0-29654/compilatore/releases/tags/" +
+                    Uri.EscapeDataString(tag)
+                );
+                notesRequest.Headers.UserAgent.ParseAdd(
+                    $"CVPlusCompilatoreAlunno/{runningVersion.Major}.{runningVersion.Minor}.{runningVersion.Build}"
+                );
+                notesRequest.Headers.Accept.ParseAdd("application/vnd.github+json");
+                notesRequest.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue
+                {
+                    NoCache = true,
+                    NoStore = true
+                };
+
+                using HttpResponseMessage notesResponse = await githubHttp.SendAsync(notesRequest);
+                if (notesResponse.IsSuccessStatusCode)
+                {
+                    string notesJson = await notesResponse.Content.ReadAsStringAsync();
+                    using JsonDocument notesDoc = JsonDocument.Parse(notesJson);
+                    if (notesDoc.RootElement.TryGetProperty("body", out JsonElement bodyNode))
+                        releaseNotes = bodyNode.GetString() ?? "";
+                }
+            }
+            catch
+            {
+                // Le note sono informative: un problema temporaneo dell'API
+                // non deve impedire il download dell'aggiornamento.
+            }
+
+            if (string.IsNullOrWhiteSpace(releaseNotes))
+            {
+                releaseNotes =
+                    "• Guida visuale aggiornata, compresi i pulsanti Zoom − / Zoom +.\n" +
+                    "• La finestra di aggiornamento mostra le principali modifiche della nuova versione.";
+            }
+
+            // Evita finestre eccessivamente grandi se una futura Release avrà note molto lunghe.
+            releaseNotes = releaseNotes.Trim();
+            if (releaseNotes.Length > 1800)
+                releaseNotes = releaseNotes[..1800].TrimEnd() + "\n…";
+
             Version currentVersion =
                 Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 20);
 
@@ -3205,6 +3253,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             MessageBoxResult answer =
                 ShowVerificationSafeMessage(
                     $"È disponibile una Release più recente ({tag}).\n\n" +
+                    "MODIFICHE PRINCIPALI:\n" +
+                    releaseNotes + "\n\n" +
                     "Vuoi installarla adesso? Dopo il download CV+ verrà chiuso e comparirà soltanto la barra di avanzamento dell'aggiornamento.",
                     "Aggiornamento disponibile",
                     MessageBoxButton.YesNo,
@@ -4590,12 +4640,14 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         AddGuideItem(content, "Tipologia / N° esercizio", "#24344D", "Indicano il tipo di attività e il numero dell'esercizio attualmente aperto.");
         AddGuideItem(content, "IP docente : porta", "#24344D", "Indirizzo del computer del docente e porta del server. Può essere rilevato automaticamente sulla rete.");
         AddGuideItem(content, "◀  ▶", "#0E78C7", "Passano all'esercizio precedente o successivo salvando lo stato dell'editor.");
+        AddGuideItem(content, "Zoom − / Zoom +", "#4C3F91", "Riducono o aumentano la dimensione del testo nell'editor del codice senza modificare il contenuto del programma.");
 
         AddGuideSection(content, "MODALITÀ E ASSISTENZA");
         AddGuideItem(content, "STANDARD C++17", "#0F3550", "Il compilatore usa lo standard C++17 e include la toolchain GCC nell'installazione.");
         AddGuideItem(content, "ESERCITAZIONE", "#102D25", "Modalità normale: consente guida, aggiornamenti e strumenti autorizzati dal docente.");
         AddGuideItem(content, "VERIFICA", "#4B260F", "Modalità controllata dal docente: alcune funzioni vengono bloccate e la finestra resta a schermo intero.");
         AddGuideItem(content, "Aiuto scrittura C++", "#155E75", "Quando il docente lo abilita, propone completamenti C++, costrutti e rientri automatici nell'editor.");
+        AddGuideItem(content, "Ricerca aggiornamenti", "#2563EB", "Controlla se è disponibile una nuova versione. Prima dell'installazione mostra anche le principali modifiche della nuova Release; dopo la conferma il programma viene chiuso e parte la finestra di aggiornamento.");
 
         AddGuideSection(content, "OUTPUT");
         AddGuideItem(content, "Output compilazione", "#10243A", "Mostra messaggi del compilatore ed eventuali errori. L'output prodotto dal programma viene visualizzato in bianco.");
