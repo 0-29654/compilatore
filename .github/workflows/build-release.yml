@@ -66,12 +66,29 @@ jobs:
           } catch { Write-Host "Lettura tag Git non disponibile: $($_.Exception.Message)" }
 
           $highest = $versions | Sort-Object -Descending | Select-Object -First 1
-          if ($highest -gt $base) {
-            $version = "$($highest.Major).$($highest.Minor).$($highest.Build + 1)"
-          } elseif ($highest -eq $base -and ((git tag --list "*${fallback}*").Count -gt 0)) {
-            $version = "$($base.Major).$($base.Minor).$($base.Build + 1)"
+
+          # La versione del progetto rappresenta la versione minima richiesta da questo commit.
+          # Se GitHub ha già una versione uguale o superiore, genera SEMPRE la successiva.
+          # Così ogni nuova build pubblicata può essere rilevata dai client già installati.
+          if ($highest -ge $base) {
+            $publicVersions = New-Object System.Collections.Generic.List[version]
+            try {
+              $releaseJson2 = gh api "repos/${{ github.repository }}/releases?per_page=100" 2>$null
+              if ($LASTEXITCODE -eq 0 -and $releaseJson2) {
+                foreach ($r in ($releaseJson2 | ConvertFrom-Json)) {
+                  if ([string]$r.tag_name -match '(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)') {
+                    $publicVersions.Add([version]"$($Matches[1]).$($Matches[2]).$($Matches[3])")
+                  }
+                }
+              }
+            } catch {}
+            $publicHighest = $publicVersions | Sort-Object -Descending | Select-Object -First 1
+            if ($null -ne $publicHighest -and $publicHighest -ge $base) {
+              $version = "$($publicHighest.Major).$($publicHighest.Minor).$($publicHighest.Build + 1)"
+            } else {
+              $version = "$($base.Major).$($base.Minor).$($base.Build)"
+            }
           } else {
-            # Prima pubblicazione con questa base: usa esattamente la versione del progetto.
             $version = "$($base.Major).$($base.Minor).$($base.Build)"
           }
 

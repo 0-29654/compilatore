@@ -3127,7 +3127,7 @@ Add-Type -AssemblyName WindowsBase
                            Foreground="#68798A" HorizontalAlignment="Center" Margin="0,5,0,0"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="4" Text="© Prof. Alessandro Barazzuol" FontFamily="Segoe UI" FontSize="15"
+            <TextBlock Grid.Row="4" Text="© Alessandro Barazzuol" FontFamily="Segoe UI" FontSize="15"
                        Foreground="#707070" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
         </Grid>
     </Border>
@@ -3327,13 +3327,22 @@ $window.Add_Closed({
 
         try
         {
+            // GitHub deve usare le impostazioni di rete di Windows (proxy incluso).
+            // _http viene invece usato per il server del docente e volutamente non usa proxy.
+            using var githubHttp = new HttpClient(new HttpClientHandler
+            {
+                AllowAutoRedirect = true,
+                UseProxy = true
+            });
+            githubHttp.Timeout = TimeSpan.FromSeconds(15);
+
             // Il controllo manuale e quello automatico passano ESATTAMENTE da qui.
             // Prima proviamo l'URL pubblico /releases/latest (nessun token necessario).
             // Se una rete/proxy non mantiene il redirect finale, usiamo come fallback
             // l'API pubblica GitHub. In questo modo il pulsante "Ricerca aggiornamenti"
             // e il controllo all'avvio non possono divergere.
             Version runningVersion =
-                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 21);
+                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 20);
 
             string? tag = null;
             Exception? redirectError = null;
@@ -3354,7 +3363,7 @@ $window.Add_Closed({
                 };
 
                 using HttpResponseMessage latestResponse =
-                    await _http.SendAsync(latestRequest, HttpCompletionOption.ResponseHeadersRead);
+                    await githubHttp.SendAsync(latestRequest, HttpCompletionOption.ResponseHeadersRead);
                 latestResponse.EnsureSuccessStatusCode();
 
                 string finalReleaseUrl = latestResponse.RequestMessage?.RequestUri?.AbsoluteUri ?? "";
@@ -3389,7 +3398,7 @@ $window.Add_Closed({
                         NoStore = true
                     };
 
-                    using HttpResponseMessage apiResponse = await _http.SendAsync(apiRequest);
+                    using HttpResponseMessage apiResponse = await githubHttp.SendAsync(apiRequest);
                     apiResponse.EnsureSuccessStatusCode();
                     string json = await apiResponse.Content.ReadAsStringAsync();
                     using JsonDocument releaseDoc = JsonDocument.Parse(json);
@@ -3412,7 +3421,7 @@ $window.Add_Closed({
                 throw new InvalidOperationException("GitHub non ha restituito il tag dell'ultima Release pubblica.");
 
             Version currentVersion =
-                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 21);
+                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 20);
 
             Version? latestVersion = ExtractVersionFromTag(tag);
             if (latestVersion == null)
@@ -3494,7 +3503,7 @@ $window.Add_Closed({
                 );
 
                 using HttpResponseMessage download =
-                    await _http.SendAsync(downloadRequest, HttpCompletionOption.ResponseHeadersRead);
+                    await githubHttp.SendAsync(downloadRequest, HttpCompletionOption.ResponseHeadersRead);
 
                 if (download.StatusCode == HttpStatusCode.NotFound)
                 {

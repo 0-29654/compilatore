@@ -1,6 +1,6 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.9.21"
+  #define MyAppVersion "1.9.20"
 #endif
 #define MyAppPublisher "Prof. Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
