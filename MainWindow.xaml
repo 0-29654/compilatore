@@ -208,8 +208,8 @@
                             <ColumnDefinition Width="70"/>
                             <ColumnDefinition Width="34"/>
                             <ColumnDefinition Width="14"/>
-                            <ColumnDefinition Width="30"/>
-                            <ColumnDefinition Width="30"/>
+                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="40"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- La didascalia è centrata esattamente sopra la casella del numero. -->
@@ -225,7 +225,7 @@
                                 Background="#0E78C7" BorderBrush="#2AAEFF"/>
 
                         <!-- Zoom: icone lente più/meno, più grandi e ben separate dalla navigazione esercizio. -->
-                        <Button x:Name="EditorZoomOutButton" Grid.Row="1" Grid.Column="4" Width="34" Height="34"
+                        <Button x:Name="EditorZoomOutButton" Grid.Row="1" Grid.Column="4" Width="36" Height="34"
                                 Click="EditorZoomOut_Click" Style="{StaticResource ZoomButton}" Padding="3" Margin="0,0,4,0"
                                 Background="#4C3F91" BorderBrush="#8B7CF6"
                                 ToolTip="Zoom out — riduci la dimensione del codice">
@@ -238,7 +238,7 @@
                                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                             </Grid>
                         </Button>
-                        <Button x:Name="EditorZoomInButton" Grid.Row="1" Grid.Column="5" Width="34" Height="34"
+                        <Button x:Name="EditorZoomInButton" Grid.Row="1" Grid.Column="5" Width="36" Height="34"
                                 Click="EditorZoomIn_Click" Style="{StaticResource ZoomButton}" Padding="3" Margin="3,0,0,0"
                                 Background="#087EBD" BorderBrush="#38BDF8"
                                 ToolTip="Zoom in — aumenta la dimensione del codice">

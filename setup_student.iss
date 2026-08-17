@@ -1,8 +1,8 @@
 ﻿#define MyAppName "CV+ Compilatore Alunno"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.9.6"
+  #define MyAppVersion "1.9.20"
 #endif
-#define MyAppPublisher "Alessandro Barazzuol"
+#define MyAppPublisher "Prof. Alessandro Barazzuol"
 #define MyAppExeName "CppStudentClient.exe"
 
 [Setup]
@@ -14,7 +14,7 @@ AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=Editor e compilatore C++17 per l'invio degli esercizi al docente
-VersionInfoCopyright=Copyright (C) Alessandro Barazzuol
+VersionInfoCopyright=Copyright (C) Prof. Alessandro Barazzuol
 DefaultDirName={localappdata}\Programs\CVPlusCompilatoreAlunno
 DefaultGroupName={#MyAppName}
 PrivilegesRequired=lowest

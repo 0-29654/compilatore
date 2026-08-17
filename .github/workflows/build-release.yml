@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
@@ -32,53 +34,60 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
 
-          # La versione della nuova Release NON resta più fissa nel .csproj.
-          # Legge l'ultima Release pubblicata nel repository e incrementa la PATCH:
-          # 1.9.6 -> 1.9.7 -> 1.9.8 ...
           [xml]$project = Get-Content '.\CppStudentClient.csproj' -Raw
-          $fallback = [string]$project.Project.PropertyGroup.Version | Select-Object -First 1
+          $fallback = [string]($project.Project.PropertyGroup | Select-Object -First 1).Version
           if ([string]::IsNullOrWhiteSpace($fallback) -or $fallback -notmatch '^\d+\.\d+\.\d+$') {
-            $fallback = '1.9.6'
+            $fallback = '1.9.20'
           }
+          $base = [version]$fallback
 
-          $latestTag = ''
+          # Raccoglie sia Releases sia tag Git. Se una build precedente ha creato il tag
+          # ma non la Release, non riutilizziamo mai lo stesso numero.
+          $versions = New-Object System.Collections.Generic.List[version]
+          $versions.Add($base)
+
           try {
-            $latestJson = gh api "repos/${{ github.repository }}/releases/latest" 2>$null
-            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($latestJson)) {
-              $latest = $latestJson | ConvertFrom-Json
-              $latestTag = [string]$latest.tag_name
+            $releaseJson = gh api "repos/${{ github.repository }}/releases?per_page=100" 2>$null
+            if ($LASTEXITCODE -eq 0 -and $releaseJson) {
+              foreach ($r in ($releaseJson | ConvertFrom-Json)) {
+                if ([string]$r.tag_name -match '(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)') {
+                  $versions.Add([version]"$($Matches[1]).$($Matches[2]).$($Matches[3])")
+                }
+              }
             }
-          } catch {
-            Write-Host "Nessuna Release precedente leggibile: uso la versione base $fallback"
-          }
+          } catch { Write-Host "Lettura Releases non disponibile: $($_.Exception.Message)" }
 
-          if ($latestTag -match '(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)') {
-            $major = [int]$Matches[1]
-            $minor = [int]$Matches[2]
-            $patch = [int]$Matches[3] + 1
-            $version = "$major.$minor.$patch"
-            Write-Host "Ultima Release pubblica: $latestTag"
+          try {
+            foreach ($t in (git tag --list)) {
+              if ([string]$t -match '(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)') {
+                $versions.Add([version]"$($Matches[1]).$($Matches[2]).$($Matches[3])")
+              }
+            }
+          } catch { Write-Host "Lettura tag Git non disponibile: $($_.Exception.Message)" }
+
+          $highest = $versions | Sort-Object -Descending | Select-Object -First 1
+          if ($highest -gt $base) {
+            $version = "$($highest.Major).$($highest.Minor).$($highest.Build + 1)"
+          } elseif ($highest -eq $base -and ((git tag --list "*${fallback}*").Count -gt 0)) {
+            $version = "$($base.Major).$($base.Minor).$($base.Build + 1)"
           } else {
-            $base = [version]$fallback
+            # Prima pubblicazione con questa base: usa esattamente la versione del progetto.
             $version = "$($base.Major).$($base.Minor).$($base.Build)"
-            Write-Host "Prima Release/versione non riconoscibile: uso $version"
           }
 
           "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "Nuova versione automatica: $version"
+          Write-Host "Versione base progetto : $fallback"
+          Write-Host "Versione più alta nota: $highest"
+          Write-Host "Nuova Release         : $version"
 
-          # Aggiorna anche il progetto nel workspace della build, così AssemblyVersion/FileVersion
-          # e la versione mostrata dal programma corrispondono davvero alla Release.
           $propertyGroup = $project.Project.PropertyGroup | Select-Object -First 1
           $propertyGroup.Version = $version
           if ($null -eq $propertyGroup.AssemblyVersion) {
-            $node = $project.CreateElement('AssemblyVersion')
-            [void]$propertyGroup.AppendChild($node)
+            $node = $project.CreateElement('AssemblyVersion'); [void]$propertyGroup.AppendChild($node)
           }
           $propertyGroup.AssemblyVersion = "$version.0"
           if ($null -eq $propertyGroup.FileVersion) {
-            $node = $project.CreateElement('FileVersion')
-            [void]$propertyGroup.AppendChild($node)
+            $node = $project.CreateElement('FileVersion'); [void]$propertyGroup.AppendChild($node)
           }
           $propertyGroup.FileVersion = "$version.0"
           $project.Save((Resolve-Path '.\CppStudentClient.csproj'))
@@ -318,12 +327,37 @@ jobs:
           path: installer/CppStudentClient_Setup.exe
           if-no-files-found: error
 
-      - name: Crea GitHub Release
+      - name: Crea GitHub Release e verifica asset aggiornamento
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $ErrorActionPreference = 'Stop'
           $tag = "compilatore-alunni-v$env:APP_VERSION"
-          gh release create $tag .\installer\CppStudentClient_Setup.exe .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --title "CV+ Compilatore Alunno $env:APP_VERSION" --notes "Aggiornamento automatico CV+ $env:APP_VERSION. Installer verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+          $setup = '.\installer\CppStudentClient_Setup.exe'
+          if (-not (Test-Path $setup)) { throw 'CppStudentClient_Setup.exe non trovato prima della Release.' }
+
+          # Se per qualche motivo esiste già una Release con lo stesso tag, aggiorna gli asset
+          # invece di lasciare il repository in uno stato senza installer utilizzabile.
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag già esistente: sostituisco gli asset."
+            gh release upload $tag $setup .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --clobber
+          } else {
+            gh release create $tag $setup .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt `
+              --title "CV+ Compilatore Alunno $env:APP_VERSION" `
+              --notes "Aggiornamento automatico CV+ $env:APP_VERSION. Installer verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Creazione/aggiornamento Release $tag fallita." }
+
+          $latest = gh api "repos/${{ github.repository }}/releases/latest" | ConvertFrom-Json
+          if ([string]$latest.tag_name -ne $tag) {
+            throw "La Release latest non corrisponde a quella appena creata. Attesa=$tag Trovata=$($latest.tag_name)"
+          }
+          $assetNames = @($latest.assets | ForEach-Object { [string]$_.name })
+          if ($assetNames -notcontains 'CppStudentClient_Setup.exe') {
+            throw 'Release creata ma CppStudentClient_Setup.exe non risulta tra gli asset.'
+          }
+          Write-Host "Release pubblica verificata: $tag con CppStudentClient_Setup.exe"
 
