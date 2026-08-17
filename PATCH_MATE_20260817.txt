@@ -1,0 +1,13 @@
+PATCH MATE - 17/08/2026
+
+- Il pulsante principale resta "ESTENSIONI C++".
+- L'estensione matematica integrata si chiama "Mate".
+- Aggiunti grafici 2D con scala automatica, griglia e valori sugli assi.
+- Migliorati grafici 3D con assi X/Y/Z evidenziati, etichette, rotazione e zoom.
+- Aggiunte derivate simboliche anche con parametri.
+- Aggiunti integrali indefiniti simbolici per le forme didattiche supportate, anche con parametri costanti.
+- Aggiunta visualizzazione retta tangente 2D e piano tangente 3D.
+- Aggiunta visualizzazione area sotto la curva per un intervallo di integrazione.
+- Aggiunte semplificazione, soluzione numerica di equazioni e disequazioni reali su intervallo.
+- Copyright dell'estensione: Alessandro Barazzuol.
+- Conservata compatibilita dell'include storico cvplus_3d.hpp.

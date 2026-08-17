@@ -1,7 +1,20 @@
-<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Guida CV+ Grafico 3D</title><style>body{font-family:Segoe UI,Arial,sans-serif;background:#081421;color:#edf6ff;max-width:900px;margin:36px auto;padding:0 26px;line-height:1.6}h1,h2{color:#67c8ff}pre,code{background:#14253a;color:#fff;border:1px solid #345676;border-radius:8px}pre{padding:16px;overflow:auto}code{padding:2px 6px}.box{background:#10243b;border-left:4px solid #35b9ff;padding:14px 18px;border-radius:7px;margin:16px 0}.copy{margin-top:36px;color:#7fcfff;border-top:1px solid #29455f;padding-top:16px}</style></head><body><h1>CV+ Grafico 3D</h1><p>Estensione didattica inclusa nel Compilatore Alunno. Non richiede installazioni esterne.</p><h2>Uso semplice</h2><pre>#include &lt;cvplus_3d.hpp&gt;
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Guida CV+ Grafici 3D</title><style>body{font-family:Segoe UI,Arial,sans-serif;background:#0b1626;color:#eaf2ff;max-width:980px;margin:40px auto;padding:0 24px;line-height:1.55}h1,h2{color:#69c3ff}code,pre{background:#172235;color:#fff;border:1px solid #334a68;border-radius:8px}code{padding:2px 5px}pre{padding:16px;overflow:auto}.box{background:#10233b;border-left:4px solid #2aaeff;padding:14px 18px;border-radius:7px;margin:16px 0}</style></head><body><h1>CV+ Grafici 3D</h1><p>Questa estensione è già inclusa in CV+ Compilatore Alunno. Non devi installare nulla.</p><h2>1. Include</h2><pre>#include &lt;cmath&gt;
+#include &lt;cvplus_3d.hpp&gt;</pre><h2>2. Disegnare z = f(x,y)</h2><p>Usa <code>cvplus3d::grafico</code> passando una funzione con due variabili <code>x</code> e <code>y</code>.</p><pre>cvplus3d::grafico([](double x, double y)
+{
+    return x * pow(y, 5) + x * log(y) + x * y;
+}, -2.0, 2.0, 0.25, 1.5,
+   "z = x*y^5 + x*log(y) + x*y");</pre><div class="box"><b>Attenzione:</b> <code>log(y)</code> richiede <code>y &gt; 0</code>, per questo nell'esempio l'intervallo di y parte da 0.25.</div><h2>3. Significato dei parametri</h2><pre>grafico(funzione, xmin, xmax, ymin, ymax, titolo, campioni);</pre><p><b>xmin/xmax</b>: intervallo dell'asse X. <b>ymin/ymax</b>: intervallo dell'asse Y. <b>titolo</b>: formula mostrata sopra il grafico. <b>campioni</b> è facoltativo e controlla la definizione della superficie.</p><h2>4. Interazione</h2><p>Dopo la compilazione si apre un grafico 3D locale nel browser. Trascina con il mouse per ruotare, usa la rotellina per ingrandire/ridurre e fai doppio clic per ripristinare la vista.</p><h2>5. Programma completo</h2><pre>#include &lt;iostream&gt;
+#include &lt;cmath&gt;
+#include &lt;cvplus_3d.hpp&gt;
+using namespace std;
 
 int main()
 {
-    cvplus3d::grafico("z = x*y + log(x)*x^2*y^4");
+    cvplus3d::grafico([](double x, double y)
+    {
+        return x * pow(y, 5) + x * log(y) + x * y;
+    }, -2.0, 2.0, 0.25, 1.5,
+       "z = x*y^5 + x*log(y) + x*y");
+
     return 0;
-}</pre><div class="box">Scrivi la formula come in matematica: usa <b>x</b>, <b>y</b>, +, -, *, /, ^ e parentesi. Sono disponibili sin, cos, tan, log/ln, log10, sqrt, abs, exp e pow.</div><h2>Vista automatica</h2><p>Se indichi soltanto la formula, CV+ sceglie automaticamente gli intervalli X/Y e ridimensiona Z eliminando l'effetto degli estremi anomali, così il grafico resta leggibile. Con <code>log(x)</code>, <code>log(y)</code>, <code>sqrt(x)</code> o <code>sqrt(y)</code> viene scelto automaticamente un dominio positivo.</p><h2>Intervalli manuali (facoltativi)</h2><pre>cvplus3d::grafico("z = sin(x)*cos(y)", -6, 6, -6, 6);</pre><h2>Comandi del grafico</h2><p>Trascina per ruotare, usa la rotellina per zoomare e fai doppio clic per ripristinare la vista iniziale. Gli assi X, Y e Z sono evidenziati con colori diversi.</p><p class="copy">CV+ Grafico 3D — Copyright © Alessandro Barazzuol</p></body></html>
+}</pre></body></html>

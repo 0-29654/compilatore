@@ -1,0 +1,23 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Mate - Guida CV+</title>
+<style>body{font-family:Segoe UI,Arial,sans-serif;background:#081423;color:#eaf4ff;max-width:1050px;margin:0 auto;padding:32px;line-height:1.55}h1,h2{color:#5ed5ff}code,pre{font-family:Consolas,monospace;background:#111f31;border:1px solid #294a6b;border-radius:8px}code{padding:2px 5px}pre{padding:14px;overflow:auto}.box{background:#0e1d30;border:1px solid #294a6b;padding:16px;border-radius:10px;margin:14px 0}.copy{color:#9bc9ef;font-size:13px}</style></head><body>
+<h1>Mate</h1><p class="copy">Libreria matematica didattica per CV+ · © Alessandro Barazzuol</p>
+<div class="box"><b>Include:</b> <code>#include &lt;mate.hpp&gt;</code><br>Le formule si scrivono come normali stringhe matematiche: <code>y = x^2 + sin(x)</code> oppure <code>z = x*y + log(x)*x^2*y^4</code>.</div>
+<h2>Grafico 2D</h2><pre>mate::grafico2d("y = x^2 - 4*x + 3");
+// opzionale: intervallo manuale
+mate::grafico2d("y = sin(x)", -10, 10);</pre><p>La scala verticale, la griglia e le etichette numeriche sugli assi vengono adattate automaticamente.</p>
+<h2>Grafico 3D</h2><pre>mate::grafico3d("z = x^2 + y^2");
+mate::grafico3d("z = x*y + log(x)*x^2*y^4", 0.2, 2.5, -2, 2);</pre><p>Gli assi X, Y e Z sono evidenziati e riportano i valori estremi. Trascina per ruotare, usa la rotellina per lo zoom e doppio clic per ripristinare.</p>
+<h2>Derivate simboliche</h2><pre>cout &lt;&lt; mate::derivata("x^3 + sin(x)") &lt;&lt; endl;
+cout &lt;&lt; mate::derivata("a*x^3 + b*sin(x)", "x") &lt;&lt; endl;</pre><p>I simboli diversi dalla variabile scelta sono trattati come parametri.</p>
+<h2>Retta tangente e piano tangente</h2><pre>mate::grafico_derivata("x^3 - 2*x", 1.0);
+mate::grafico_derivata3d("z = x^2 + y^2", 1.0, 1.0);</pre><p>Nel primo caso Mate disegna la curva e la retta tangente nel punto scelto. Nel secondo disegna la superficie e il piano tangente.</p>
+<h2>Integrali indefiniti</h2><pre>cout &lt;&lt; mate::integrale("3*x^2 + 2*x") &lt;&lt; endl;
+cout &lt;&lt; mate::integrale("a*x^2 + b*x", "x") &lt;&lt; endl;</pre><p>Il motore simbolico copre le forme didattiche più comuni: somme, polinomi, multipli/parametri costanti, 1/x, sin(ax+b), cos(ax+b), exp(ax+b). Se una forma non è riconosciuta viene mostrato un messaggio esplicito.</p>
+<h2>Area sotto la curva</h2><pre>mate::grafico_integrale("x^2", 0, 2);</pre><p>La zona compresa tra la curva e l'asse x nell'intervallo scelto viene evidenziata.</p>
+<h2>Semplificazione</h2><pre>cout &lt;&lt; mate::semplifica("2*x + 0") &lt;&lt; endl;</pre>
+<h2>Equazioni</h2><pre>cout &lt;&lt; mate::risolvi_equazione("x^2 - 4 = 0") &lt;&lt; endl;
+// intervallo di ricerca opzionale
+cout &lt;&lt; mate::risolvi_equazione("sin(x)=0", -10, 10) &lt;&lt; endl;</pre>
+<h2>Disequazioni</h2><pre>cout &lt;&lt; mate::risolvi_disequazione("x^2 - 4 &gt;= 0", -10, 10) &lt;&lt; endl;</pre><p>Equazioni e disequazioni vengono risolte nel dominio reale nell'intervallo indicato.</p>
+<h2>Funzioni supportate nelle formule</h2><p><code>sin</code>, <code>cos</code>, <code>tan</code>, <code>log</code>/<code>ln</code>, <code>exp</code>, <code>sqrt</code>, <code>abs</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, potenze con <code>^</code>, costanti <code>pi</code> ed <code>e</code>.</p>
+</body></html>

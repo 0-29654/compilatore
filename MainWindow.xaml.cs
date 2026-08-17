@@ -40,8 +40,6 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _modeTimer = new() { Interval = TimeSpan.FromSeconds(7) };
     private readonly DispatcherTimer _quizAssignmentTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _liveMonitorTimer = new() { Interval = TimeSpan.FromSeconds(2) };
-    private readonly DispatcherTimer _quizIdentityBlinkTimer = new() { Interval = TimeSpan.FromMilliseconds(520) };
-    private bool _quizIdentityBlinkOn;
     private readonly Dictionary<string, ExerciseState> _exerciseStates = new(StringComparer.OrdinalIgnoreCase);
 
     private string _compileOutput = "";
@@ -106,7 +104,7 @@ public partial class MainWindow : Window
         LoadCppExtensions();
         ResetClientStateOnStartup();
         StartTeacherDiscoveryListener();
-        Closed += (_, _) => { _liveMonitorTimer.Stop(); _quizAssignmentTimer.Stop(); _quizIdentityBlinkTimer.Stop(); StopTeacherDiscoveryListener(); StopShell(); };
+        Closed += (_, _) => { _liveMonitorTimer.Stop(); _quizAssignmentTimer.Stop(); StopTeacherDiscoveryListener(); StopShell(); };
         if (!File.Exists(BundledCompilerPath))
             OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
         ActivateExercise(GetTaskType(), GetExerciseNumber());
@@ -120,7 +118,6 @@ public partial class MainWindow : Window
         _quizAssignmentTimer.Start();
         _liveMonitorTimer.Tick += async (_, _) => await SyncLiveMonitorAsync();
         _liveMonitorTimer.Start();
-        _quizIdentityBlinkTimer.Tick += (_, _) => UpdateQuizIdentityBlink();
 
         StudentNameBox.TextChanged += (_, _) => UpdateWindowTitle();
 
@@ -1084,13 +1081,12 @@ public partial class MainWindow : Window
         var zoomOutButton = new System.Windows.Controls.Button
         {
             Content = "−",
-            Width = 48,
-            Height = 40,
-            Margin = new Thickness(8),
-            Background = new SolidColorBrush(Color.FromRgb(124, 58, 237)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(167, 139, 250)),
+            Width = 44,
+            Height = 38,
+            Margin = new Thickness(6),
+            Background = new SolidColorBrush(Color.FromRgb(36, 52, 77)),
             Foreground = Brushes.White,
-            FontSize = 21,
+            FontSize = 20,
             FontWeight = FontWeights.Bold,
             ToolTip = "Riduci la dimensione del codice"
         };
@@ -1098,13 +1094,12 @@ public partial class MainWindow : Window
         var zoomInButton = new System.Windows.Controls.Button
         {
             Content = "+",
-            Width = 48,
-            Height = 40,
-            Margin = new Thickness(8),
-            Background = new SolidColorBrush(Color.FromRgb(2, 132, 199)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(56, 189, 248)),
+            Width = 44,
+            Height = 38,
+            Margin = new Thickness(6),
+            Background = new SolidColorBrush(Color.FromRgb(36, 52, 77)),
             Foreground = Brushes.White,
-            FontSize = 21,
+            FontSize = 20,
             FontWeight = FontWeights.Bold,
             ToolTip = "Aumenta la dimensione del codice"
         };
@@ -2292,28 +2287,34 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private static readonly CppExtensionDefinition[] CppExtensionCatalog =
     {
-        new("cvplus-grafici3d", "CV+ Grafici 3D", "Estensione didattica predefinita: disegna superfici z=f(x,y) in un grafico 3D interattivo, senza installare componenti esterni.", "Guida_CVPlus_Grafici3D.html", new[]
+        new("mate", "Mate", "Libreria matematica didattica integrata: grafici 2D/3D, derivate e integrali simbolici, tangenti, aree, semplificazione, equazioni e disequazioni.", "Guida_Mate.html", new[]
         {
-            ("grafico3d", "cvplus3d::grafico", "cvplus3d::grafico([](double x, double y) { return x * pow(y, 5) + x * log(y) + x * y; }, -2.0, 2.0, 0.25, 1.5, \"z = x*y^5 + x*log(y) + x*y\");", "Disegna una superficie 3D z=f(x,y); richiede #include <cvplus_3d.hpp> e <cmath>"),
-            ("grafico3dinclude", "include CV+ Grafici 3D", "#include <cvplus_3d.hpp>\n#include <cmath>", "Include necessari per i grafici 3D")
+            ("mateinclude", "include Mate", "#include <mate.hpp>", "Include della libreria matematica Mate"),
+            ("grafico2d", "mate::grafico2d", "mate::grafico2d(\"y = x^2 - 4*x + 3\");", "Grafico 2D con assi, griglia ed etichette automatiche"),
+            ("grafico3d", "mate::grafico3d", "mate::grafico3d(\"z = x*y + log(x)*x^2*y^4\", 0.2, 2.5, -2.0, 2.0);", "Grafico 3D interattivo con assi X/Y/Z evidenziati"),
+            ("derivata", "mate::derivata", "cout << mate::derivata(\"x^3 + sin(x)\") << endl;", "Calcola la derivata simbolica"),
+            ("integrale", "mate::integrale", "cout << mate::integrale(\"3*x^2 + 2*x\") << endl;", "Calcola un integrale indefinito simbolico quando riconosciuto"),
+            ("tangente2d", "mate::grafico_derivata", "mate::grafico_derivata(\"x^3 - 2*x\", 1.0);", "Disegna curva e retta tangente nel punto scelto"),
+            ("tangente3d", "mate::grafico_derivata3d", "mate::grafico_derivata3d(\"z = x^2 + y^2\", 1.0, 1.0);", "Disegna superficie e piano tangente"),
+            ("areaintegrale", "mate::grafico_integrale", "mate::grafico_integrale(\"x^2\", 0.0, 2.0);", "Mostra graficamente l'area sotto la curva"),
+            ("semplifica", "mate::semplifica", "cout << mate::semplifica(\"2*x + 0\") << endl;", "Semplifica un'espressione"),
+            ("equazione", "mate::risolvi_equazione", "cout << mate::risolvi_equazione(\"x^2 - 4 = 0\") << endl;", "Trova le soluzioni reali nell'intervallo di ricerca"),
+            ("disequazione", "mate::risolvi_disequazione", "cout << mate::risolvi_disequazione(\"x^2 - 4 >= 0\", -10, 10) << endl;", "Trova gli intervalli soluzione reali")
         })
     };
 
     private void LoadCppExtensions()
     {
-        // L'estensione 3D è integrata e sempre disponibile in esercitazione.
-        // Non è possibile installare, rimuovere o caricare estensioni aggiuntive.
         _installedCppExtensions.Clear();
-        _installedCppExtensions.Add("cvplus-grafici3d");
-        EnsureCvPlus3DHeader();
+        _installedCppExtensions.Add("mate");
+        EnsureMateHeader();
     }
 
     private void SaveCppExtensions()
     {
-        // Catalogo bloccato: CV+ Grafici 3D rimane sempre installata.
         _installedCppExtensions.Clear();
-        _installedCppExtensions.Add("cvplus-grafici3d");
-        EnsureCvPlus3DHeader();
+        _installedCppExtensions.Add("mate");
+        EnsureMateHeader();
     }
 
     private IEnumerable<(string Trigger, string Display, string Insert, string Description)> GetInstalledExtensionCompletions() =>
@@ -2321,144 +2322,21 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private string CppExtensionsIncludePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CVPlus", "CppExtensions", "include");
 
-    private void EnsureCvPlus3DHeader()
+    private void EnsureMateHeader()
     {
         Directory.CreateDirectory(CppExtensionsIncludePath);
-        string headerText = """
-#pragma once
-#include <algorithm>
-#include <cctype>
-#include <cmath>
-#include <cstdlib>
-#include <fstream>
-#include <iomanip>
-#include <limits>
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <vector>
+        string assetDir = Path.Combine(AppContext.BaseDirectory, "Assets", "CppExtensions");
+        string source = Path.Combine(assetDir, "mate.hpp");
+        string destination = Path.Combine(CppExtensionsIncludePath, "mate.hpp");
+        if (File.Exists(source))
+            File.Copy(source, destination, true);
+        else if (!File.Exists(destination))
+            throw new FileNotFoundException("Header Mate non trovato nell'installazione CV+.", source);
 
-// CV+ Grafici 3D
-// Copyright (c) Alessandro Barazzuol
-// Estensione didattica inclusa in CV+ Compilatore Alunno.
-namespace cvplus3d {
-
-inline std::string escape_js(const std::string& s) {
-    std::string r; r.reserve(s.size()+16);
-    for (char c : s) {
-        if (c == '\\' || c == '\"') { r += '\\'; r += c; }
-        else if (c == '\n') r += "\\n";
-        else if (c != '\r') r += c;
-    }
-    return r;
-}
-
-class Expression {
-    std::string src; size_t p = 0; double xv = 0, yv = 0;
-    void ws(){ while(p<src.size() && std::isspace((unsigned char)src[p])) ++p; }
-    bool eat(char c){ ws(); if(p<src.size() && src[p]==c){++p; return true;} return false; }
-    std::string ident(){ ws(); size_t b=p; while(p<src.size() && (std::isalpha((unsigned char)src[p]) || src[p]=='_')) ++p; return src.substr(b,p-b); }
-    double number(){ ws(); size_t b=p; bool dot=false; while(p<src.size() && (std::isdigit((unsigned char)src[p]) || src[p]=='.' || src[p]=='e' || src[p]=='E' || ((src[p]=='+'||src[p]=='-') && p>b && (src[p-1]=='e'||src[p-1]=='E')))){ if(src[p]=='.') dot=true; ++p; } if(b==p) throw std::runtime_error("Numero atteso"); return std::stod(src.substr(b,p-b)); }
-    double primary(){
-        ws();
-        if(eat('(')){ double v=expr(); if(!eat(')')) throw std::runtime_error("Parentesi ) mancante"); return v; }
-        if(eat('+')) return primary();
-        if(eat('-')) return -primary();
-        if(p<src.size() && (std::isdigit((unsigned char)src[p]) || src[p]=='.')) return number();
-        std::string id=ident();
-        if(id=="x" || id=="X") return xv;
-        if(id=="y" || id=="Y") return yv;
-        if(id=="pi" || id=="PI") return 3.14159265358979323846;
-        if(id=="e") return 2.71828182845904523536;
-        if(id.empty()) throw std::runtime_error("Espressione non valida");
-        if(!eat('(')) throw std::runtime_error("Funzione senza parentesi: "+id);
-        double a=expr(); double b=0; bool hasB=false; if(eat(',')){ b=expr(); hasB=true; }
-        if(!eat(')')) throw std::runtime_error("Parentesi ) mancante dopo "+id);
-        if(id=="sin") return std::sin(a); if(id=="cos") return std::cos(a); if(id=="tan") return std::tan(a);
-        if(id=="log" || id=="ln") return std::log(a); if(id=="log10") return std::log10(a);
-        if(id=="sqrt") return std::sqrt(a); if(id=="abs") return std::abs(a); if(id=="exp") return std::exp(a);
-        if(id=="pow" && hasB) return std::pow(a,b);
-        throw std::runtime_error("Funzione non riconosciuta: "+id);
-    }
-    double power(){ double a=primary(); if(eat('^')) return std::pow(a,power()); return a; }
-    double term(){ double a=power(); for(;;){ if(eat('*')) a*=power(); else if(eat('/')) a/=power(); else break; } return a; }
-    double expr(){ double a=term(); for(;;){ if(eat('+')) a+=term(); else if(eat('-')) a-=term(); else break; } return a; }
-public:
-    explicit Expression(std::string e):src(std::move(e)){
-        size_t eq=src.find('='); if(eq!=std::string::npos) src=src.substr(eq+1);
-    }
-    double eval(double x,double y){ xv=x; yv=y; p=0; double v=expr(); ws(); if(p!=src.size()) throw std::runtime_error("Carattere inatteso nella formula"); return v; }
-    const std::string& text() const { return src; }
-};
-
-inline bool contains_ci(std::string a, std::string b){
-    std::transform(a.begin(),a.end(),a.begin(),[](unsigned char c){return (char)std::tolower(c);});
-    std::transform(b.begin(),b.end(),b.begin(),[](unsigned char c){return (char)std::tolower(c);});
-    return a.find(b)!=std::string::npos;
-}
-
-inline void grafico(const std::string& formula,
-                    double xmin = std::numeric_limits<double>::quiet_NaN(),
-                    double xmax = std::numeric_limits<double>::quiet_NaN(),
-                    double ymin = std::numeric_limits<double>::quiet_NaN(),
-                    double ymax = std::numeric_limits<double>::quiet_NaN(),
-                    int campioni = 52)
-{
-    Expression ex(formula);
-    bool autoX = !std::isfinite(xmin) || !std::isfinite(xmax) || !(xmin < xmax);
-    bool autoY = !std::isfinite(ymin) || !std::isfinite(ymax) || !(ymin < ymax);
-    if(autoX){ xmin=-3.5; xmax=3.5; if(contains_ci(formula,"log(x") || contains_ci(formula,"ln(x") || contains_ci(formula,"sqrt(x")){ xmin=0.12; xmax=4.5; } }
-    if(autoY){ ymin=-3.5; ymax=3.5; if(contains_ci(formula,"log(y") || contains_ci(formula,"ln(y") || contains_ci(formula,"sqrt(y")){ ymin=0.12; ymax=4.5; } }
-    campioni=std::max(24,std::min(campioni,90));
-
-    std::vector<double> valori; valori.reserve((size_t)campioni*(size_t)campioni);
-    std::vector<double> finiteVals;
-    for(int j=0;j<campioni;++j){
-        double y=ymin+(ymax-ymin)*j/(campioni-1.0);
-        for(int i=0;i<campioni;++i){
-            double x=xmin+(xmax-xmin)*i/(campioni-1.0), z;
-            try { z=ex.eval(x,y); } catch(...) { z=std::numeric_limits<double>::quiet_NaN(); }
-            if(!std::isfinite(z) || std::abs(z)>1e12) z=std::numeric_limits<double>::quiet_NaN();
-            valori.push_back(z); if(std::isfinite(z)) finiteVals.push_back(z);
-        }
-    }
-    if(finiteVals.empty()) throw std::runtime_error("La funzione non produce valori reali nell'intervallo scelto");
-    std::sort(finiteVals.begin(),finiteVals.end());
-    // Vista robusta: taglia solo gli estremi anomali, cosi' la superficie resta leggibile.
-    size_t lo=(size_t)(finiteVals.size()*0.02), hi=(size_t)(finiteVals.size()*0.98); if(hi>=finiteVals.size()) hi=finiteVals.size()-1;
-    double zmin=finiteVals[lo], zmax=finiteVals[hi];
-    if(std::abs(zmax-zmin)<1e-9){ zmin-=1; zmax+=1; }
-    double pad=(zmax-zmin)*0.08; zmin-=pad; zmax+=pad;
-
-    std::ofstream out("cvplus_grafico_3d.html",std::ios::binary);
-    if(!out) throw std::runtime_error("Impossibile creare cvplus_grafico_3d.html");
-    out << R"CVHTML(<!doctype html><html lang='it'><head><meta charset='utf-8'><title>CV+ Grafico 3D</title>
-<style>*{box-sizing:border-box}html,body{margin:0;height:100%;background:radial-gradient(circle at 50% 38%,#153153 0,#07111f 52%,#030812 100%);color:#edf7ff;font-family:Segoe UI,Arial,sans-serif;overflow:hidden}#bar{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:rgba(8,22,39,.95);border-bottom:1px solid #315b82;box-shadow:0 4px 18px #0008}#title{font-size:22px;font-weight:750}.hint{font-size:12px;color:#a7c9e8;margin-top:3px}.copy{font-size:12px;color:#72d6ff;text-align:right}canvas{display:block;width:100%;height:calc(100% - 76px);cursor:grab}canvas:active{cursor:grabbing}</style></head><body><div id='bar'><div><div id='title'></div><div class='hint'>Trascina: ruota · rotellina: zoom · doppio clic: vista iniziale</div></div><div class='copy'>CV+ Grafici 3D<br>© Alessandro Barazzuol</div></div><canvas id='c'></canvas><script>
-const N=)CVHTML" << campioni << R"CVHTML(,xmin=)CVHTML" << std::setprecision(17) << xmin << R"CVHTML(,xmax=)CVHTML" << xmax << R"CVHTML(,ymin=)CVHTML" << ymin << R"CVHTML(,ymax=)CVHTML" << ymax << R"CVHTML(,zmin=)CVHTML" << zmin << R"CVHTML(,zmax=)CVHTML" << zmax << R"CVHTML(;const Z=[)CVHTML";
-    for(size_t k=0;k<valori.size();++k){ if(k)out<<','; if(std::isfinite(valori[k])) out<<std::setprecision(17)<<valori[k]; else out<<"null"; }
-    out << R"CVHTML(];document.getElementById('title').textContent=')CVHTML" << escape_js("z = "+ex.text()) << R"CVHTML(';
-const c=document.getElementById('c'),ctx=c.getContext('2d');let ax=-.68,ay=.72,zoom=1,drag=false,lx=0,ly=0;
-function resize(){c.width=innerWidth*devicePixelRatio;c.height=(innerHeight-76)*devicePixelRatio;draw()} addEventListener('resize',resize);
-function P(x,y,z){let X=(x-(xmin+xmax)/2)/((xmax-xmin)/2),Y=(y-(ymin+ymax)/2)/((ymax-ymin)/2),Zz=(z-(zmin+zmax)/2)/((zmax-zmin)/2);Zz=Math.max(-1.35,Math.min(1.35,Zz));let ca=Math.cos(ax),sa=Math.sin(ax),cb=Math.cos(ay),sb=Math.sin(ay);let x1=X*cb-Zz*sb,z1=X*sb+Zz*cb,y1=Y;let y2=y1*ca-z1*sa,z2=y1*sa+z1*ca;let sc=Math.min(c.width,c.height)*.34*zoom;return[c.width/2+x1*sc,c.height/2-y2*sc,z2]}
-function seg(a,b,col,w=1){ctx.strokeStyle=col;ctx.lineWidth=w*devicePixelRatio;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
-function poly(ps,col){ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(ps[0][0],ps[0][1]);for(let i=1;i<ps.length;i++)ctx.lineTo(ps[i][0],ps[i][1]);ctx.closePath();ctx.fill();ctx.strokeStyle='rgba(185,230,255,.15)';ctx.lineWidth=.45*devicePixelRatio;ctx.stroke()}
-function label(t,p,col='#eaf7ff'){ctx.fillStyle=col;ctx.font=`bold ${14*devicePixelRatio}px Segoe UI`;ctx.shadowColor='#000';ctx.shadowBlur=4*devicePixelRatio;ctx.fillText(t,p[0]+7*devicePixelRatio,p[1]-7*devicePixelRatio);ctx.shadowBlur=0}
-function draw(){ctx.clearRect(0,0,c.width,c.height);let g=ctx.createRadialGradient(c.width*.5,c.height*.4,10,c.width*.5,c.height*.5,Math.max(c.width,c.height)*.7);g.addColorStop(0,'#17385d');g.addColorStop(.55,'#081625');g.addColorStop(1,'#030711');ctx.fillStyle=g;ctx.fillRect(0,0,c.width,c.height);
-// piano di riferimento e griglia
-for(let q=-4;q<=4;q++){let t=q/4;let xx=(xmin+xmax)/2+t*(xmax-xmin)/2,yy=(ymin+ymax)/2+t*(ymax-ymin)/2;seg(P(xx,ymin,0),P(xx,ymax,0),'rgba(120,170,210,.17)',.7);seg(P(xmin,yy,0),P(xmax,yy,0),'rgba(120,170,210,.17)',.7)}
-let faces=[];for(let j=0;j<N-1;j++)for(let i=0;i<N-1;i++){let a=Z[j*N+i],b=Z[j*N+i+1],d=Z[(j+1)*N+i],e=Z[(j+1)*N+i+1];if(a===null||b===null||d===null||e===null)continue;let x1=xmin+(xmax-xmin)*i/(N-1),x2=xmin+(xmax-xmin)*(i+1)/(N-1),y1=ymin+(ymax-ymin)*j/(N-1),y2=ymin+(ymax-ymin)*(j+1)/(N-1);let ps=[P(x1,y1,a),P(x2,y1,b),P(x2,y2,e),P(x1,y2,d)],avg=(a+b+d+e)/4,t=(avg-zmin)/(zmax-zmin);t=Math.max(0,Math.min(1,t));faces.push({ps,d:(ps[0][2]+ps[1][2]+ps[2][2]+ps[3][2])/4,t})}faces.sort((A,B)=>A.d-B.d);for(const f of faces){let h=210-170*f.t,light=42+16*f.t;poly(f.ps,`hsla(${h},88%,${light}%,.88)`)}
-let O=P(0,0,0),X=P(xmax,0,0),Y=P(0,ymax,0),ZZ=P(0,0,zmax);seg(P(xmin,0,0),X,'#ff6969',2.8);seg(P(0,ymin,0),Y,'#58e6a9',2.8);seg(P(0,0,zmin),ZZ,'#62b9ff',3.1);label('X',X,'#ff8d8d');label('Y',Y,'#79f1bd');label('Z',ZZ,'#83caff');label('0',O,'#d9eaff');}
-c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;onmousemove=e=>{if(!drag)return;ay+=(e.clientX-lx)*.008;ax+=(e.clientY-ly)*.008;lx=e.clientX;ly=e.clientY;draw()};c.onwheel=e=>{e.preventDefault();zoom*=e.deltaY<0?1.1:.9;zoom=Math.max(.35,Math.min(3.2,zoom));draw()};c.ondblclick=()=>{ax=-.68;ay=.72;zoom=1;draw()};resize();
-</script></body></html>)CVHTML";
-    out.close();
-#ifdef _WIN32
-    std::system("start \"\" \"cvplus_grafico_3d.html\"");
-#endif
-}
-
-} // namespace cvplus3d
-""";
-        File.WriteAllText(Path.Combine(CppExtensionsIncludePath, "cvplus_3d.hpp"), headerText, new UTF8Encoding(false));
+        // Mantiene compatibili i vecchi esercizi che includevano cvplus_3d.hpp.
+        string oldSource = Path.Combine(assetDir, "cvplus_3d.hpp");
+        if (File.Exists(oldSource))
+            File.Copy(oldSource, Path.Combine(CppExtensionsIncludePath, "cvplus_3d.hpp"), true);
     }
 
     private string CppGuidesDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "CppGuides");
@@ -2709,36 +2587,52 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
 
     private void OpenCppExtensions_Click(object sender, RoutedEventArgs e)
     {
-        if (_verificationMode || _quizVerificationMode)
+        if (_verificationMode)
         {
-            StatusText.Text = "Grafico 3D disabilitato in modalità verifica";
+            StatusText.Text = "Estensioni C++ disabilitate in modalità verifica";
             return;
         }
 
-        EnsureCvPlus3DHeader();
-        var panel = new StackPanel { Margin = new Thickness(24), MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Center };
-        panel.Children.Add(new TextBlock { Text = "CV+ GRAFICO 3D", Foreground = Brushes.White, FontSize = 27, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center });
-        panel.Children.Add(new TextBlock { Text = "© Alessandro Barazzuol", Foreground = new SolidColorBrush(Color.FromRgb(105,195,255)), FontSize = 13, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,4,0,18) });
-        panel.Children.Add(new TextBlock { Text = "Scrivi direttamente una formula z = f(x,y). Gli intervalli e la scala del grafico vengono scelti automaticamente per rendere la superficie ben visibile.", Foreground = new SolidColorBrush(Color.FromRgb(205,220,238)), FontSize = 15, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, Margin = new Thickness(0,0,0,16) });
+        EnsureMateHeader();
+        var panel = new StackPanel { Margin = new Thickness(12) };
+        panel.Children.Add(new TextBlock { Text = "ESTENSIONI C++", Foreground = Brushes.White, FontSize = 24, FontWeight = FontWeights.Bold, Margin = new Thickness(0,0,0,8) });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Estensione matematica integrata. Le estensioni esterne restano bloccate per sicurezza.",
+            Foreground = new SolidColorBrush(Color.FromRgb(190,190,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,16)
+        });
 
+        var row = new Grid { Margin = new Thickness(0,0,0,14), Background = new SolidColorBrush(Color.FromRgb(37,37,38)) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var text = new StackPanel { Margin = new Thickness(14,12,14,12) };
+        text.Children.Add(new TextBlock { Text = "Mate", Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 20 });
+        text.Children.Add(new TextBlock { Text = "Libreria matematica CV+ · Grafici 2D/3D · Derivate · Integrali · Tangenti · Aree · Equazioni · Disequazioni · Semplificazione", Foreground = new SolidColorBrush(Color.FromRgb(170,220,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,4,0,0) });
+        text.Children.Add(new TextBlock { Text = "© Alessandro Barazzuol", Foreground = new SolidColorBrush(Color.FromRgb(125,180,225)), Margin = new Thickness(0,5,0,0) });
+        row.Children.Add(text);
+        var guide = new Button { Content = "GUIDA", Margin = new Thickness(10), Padding = new Thickness(18,8,18,8), Background = new SolidColorBrush(Color.FromRgb(14,99,156)), Foreground = Brushes.White };
+        guide.Click += (_, _) => OpenPdfGuide(Path.Combine(CppGuidesDirectory, "Guida_Mate.html"));
+        Grid.SetColumn(guide,1); row.Children.Add(guide); panel.Children.Add(row);
+
+        panel.Children.Add(new TextBlock { Text = "ESEMPI RAPIDI", Foreground = Brushes.White, FontSize = 19, FontWeight = FontWeights.Bold, Margin = new Thickness(0,8,0,8) });
         var example = new TextBox
         {
-            Text = "#include <cvplus_3d.hpp>\n\nint main()\n{\n    cvplus3d::grafico(\"z = x*y + log(x)*x^2*y^4\");\n    return 0;\n}",
-            IsReadOnly = true, AcceptsReturn = true, FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 16,
-            Foreground = Brushes.White, Background = new SolidColorBrush(Color.FromRgb(18,31,49)), BorderBrush = new SolidColorBrush(Color.FromRgb(47,115,166)), Padding = new Thickness(14), Height = 155,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            Text = "#include <iostream>\n#include <mate.hpp>\nusing namespace std;\n\nint main()\n{\n    // Grafico 2D: intervallo e scala sono automatici\n    mate::grafico2d(\"y = x^2 - 4*x + 3\");\n\n    // Grafico 3D: formula semplice z = f(x,y)\n    mate::grafico3d(\"z = x*y + log(x)*x^2*y^4\", 0.2, 2.5, -2.0, 2.0);\n\n    cout << \"Derivata: \" << mate::derivata(\"x^3 + sin(x)\") << endl;\n    cout << \"Integrale: \" << mate::integrale(\"3*x^2 + 2*x\") << endl;\n    cout << \"Semplificata: \" << mate::semplifica(\"2*x + 0\") << endl;\n    cout << mate::risolvi_equazione(\"x^2 - 4 = 0\") << endl;\n    cout << mate::risolvi_disequazione(\"x^2 - 4 >= 0\", -10, 10) << endl;\n\n    // Retta tangente 2D e piano tangente 3D\n    mate::grafico_derivata(\"x^3 - 2*x\", 1.0);\n    mate::grafico_derivata3d(\"z = x^2 + y^2\", 1.0, 1.0);\n\n    // Area sotto la curva tra a e b\n    mate::grafico_integrale(\"x^2\", 0.0, 2.0);\n    return 0;\n}",
+            IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap,
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 14,
+            Foreground = Brushes.White, Background = new SolidColorBrush(Color.FromRgb(30,30,30)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(70,90,115)), Padding = new Thickness(10), Height = 440,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
         };
         panel.Children.Add(example);
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Mate accetta formule come y = x^2 + sin(x) oppure z = x*y + log(x)*x^2*y^4. Nei grafici 2D scala, griglia e tacche degli assi vengono adattate automaticamente; nei grafici 3D puoi trascinare per ruotare e usare la rotellina per lo zoom. Gli integrali simbolici coprono le forme didattiche più comuni; per forme non riconosciute Mate segnala chiaramente il limite.",
+            Foreground = new SolidColorBrush(Color.FromRgb(205,205,205)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,10,0,0)
+        });
 
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,18,0,8) };
-        var insert = new Button { Content = "INSERISCI ESEMPIO", Padding = new Thickness(18,10,18,10), Margin = new Thickness(6), Background = new SolidColorBrush(Color.FromRgb(14,120,199)), Foreground = Brushes.White, FontWeight = FontWeights.Bold };
-        insert.Click += (_, _) => { Editor.Text = example.Text; EditorTabs.SelectedIndex = 0; SaveCurrentExercise(); CloseActiveOverlay(); StatusText.Text = "Esempio Grafico 3D inserito in main.cpp"; };
-        var guide = new Button { Content = "GUIDA", Padding = new Thickness(24,10,24,10), Margin = new Thickness(6), Background = new SolidColorBrush(Color.FromRgb(26,137,90)), Foreground = Brushes.White, FontWeight = FontWeights.Bold };
-        guide.Click += (_, _) => OpenPdfGuide(Path.Combine(CppGuidesDirectory, "Guida_CVPlus_Grafici3D.html"));
-        buttons.Children.Add(insert); buttons.Children.Add(guide); panel.Children.Add(buttons);
-        panel.Children.Add(new TextBlock { Text = "Vista manuale facoltativa: cvplus3d::grafico(\"z = ...\", xmin, xmax, ymin, ymax);", Foreground = new SolidColorBrush(Color.FromRgb(160,185,210)), FontSize = 13, TextAlignment = TextAlignment.Center, Margin = new Thickness(0,6,0,0) });
-
-        ShowFullscreenOverlay("Grafico 3D", panel);
+        var scroll = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        ShowFullscreenOverlay("Estensioni C++ · Mate", scroll);
     }
 
     private static bool ReadHeaderManagementAllowed(JsonElement root)
@@ -2776,39 +2670,6 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
         ImportHeaderButton.ToolTip = _verificationMode
             ? "Importazione header disabilitata in modalità verifica."
             : tooltip;
-    }
-
-    private void UpdateQuizIdentityBlink()
-    {
-        if (!_quizVerificationMode)
-        {
-            _quizIdentityBlinkTimer.Stop();
-            return;
-        }
-        _quizIdentityBlinkOn = !_quizIdentityBlinkOn;
-        var bright = new SolidColorBrush(Color.FromRgb(255, 176, 32));
-        var normal = new SolidColorBrush(Color.FromRgb(42, 58, 82));
-        foreach (var box in new[] { StudentIdBox, StudentNameBox, ClassBox })
-        {
-            bool missing = string.IsNullOrWhiteSpace(box.Text);
-            box.BorderThickness = missing && _quizIdentityBlinkOn ? new Thickness(3) : new Thickness(1);
-            box.BorderBrush = missing && _quizIdentityBlinkOn ? bright : normal;
-            box.Background = missing && _quizIdentityBlinkOn
-                ? new SolidColorBrush(Color.FromRgb(50, 38, 18))
-                : new SolidColorBrush(Color.FromRgb(10, 21, 38));
-        }
-    }
-
-    private void ResetQuizIdentityBlink()
-    {
-        _quizIdentityBlinkTimer.Stop();
-        _quizIdentityBlinkOn = false;
-        foreach (var box in new[] { StudentIdBox, StudentNameBox, ClassBox })
-        {
-            box.BorderThickness = new Thickness(1);
-            box.BorderBrush = new SolidColorBrush(Color.FromRgb(42, 58, 82));
-            box.Background = new SolidColorBrush(Color.FromRgb(10, 21, 38));
-        }
     }
 
     private void EnterQuizWaitingMode()
@@ -2849,15 +2710,12 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
         CppExtensionsButton.IsEnabled = false;
         ShellButton.IsEnabled = false;
 
-        UpdateQuizIdentityBlink();
-        _quizIdentityBlinkTimer.Start();
         ShowQuizWaitingWindow();
     }
 
     private void ExitQuizWaitingMode()
     {
         _quizVerificationMode = false;
-        ResetQuizIdentityBlink();
         CloseQuizWaitingWindow();
 
         TaskTypeBox.IsEnabled = true;
@@ -2910,9 +2768,11 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
             Width = 430,
             Height = 175,
             ResizeMode = ResizeMode.NoResize,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            WindowStartupLocation = WindowStartupLocation.Manual,
             Owner = this,
-            Topmost = true,
+            Left = Math.Max(SystemParameters.WorkArea.Left + 20, SystemParameters.WorkArea.Right - 455),
+            Top = SystemParameters.WorkArea.Top + 80,
+            Topmost = false,
             Background = new SolidColorBrush(Color.FromRgb(10, 24, 42)),
             Content = panel,
             ShowInTaskbar = false
@@ -4587,7 +4447,7 @@ c.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY};onmouseup=()=>drag=false;
         AddGuideItem(content, "Rinomina .h", "#9333EA", "Rinomina il file header aperto mantenendo l'estensione .h.");
         AddGuideItem(content, "Elimina .h", "#B91C1C", "Elimina il file header corrente dopo la conferma.");
         AddGuideItem(content, "Shell", "#166534", "Apre una shell CMD reale integrata nella cartella Documenti. G++ è già disponibile nel PATH; puoi usare i normali comandi Windows/DOS, help, creare cartelle e file, aprire Notepad e compilare sorgenti C++ e header.");
-        AddGuideItem(content, "Estensioni C++", "#0F766E", "Apre CV+ Grafici 3D, l’estensione didattica preinstallata per disegnare superfici z=f(x,y). Le estensioni esterne non possono essere caricate, installate o rimosse.");
+        AddGuideItem(content, "Estensioni C++", "#0F766E", "Apre Mate, la libreria matematica didattica integrata per grafici 2D/3D, derivate, integrali, tangenti, aree, equazioni, disequazioni e semplificazione. Le estensioni esterne non possono essere caricate, installate o rimosse.");
 
         AddGuideSection(content, "SALVATAGGIO E INVIO");
         AddGuideItem(content, "Invia al docente", "#0E8FE8", "Invia codice, dati dell'alunno, esercizio e risultati al server del docente.");
