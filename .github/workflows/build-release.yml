@@ -345,34 +345,85 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $ErrorActionPreference = 'Stop'
+
+          function Invoke-GhWithRetry {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string[]]$Arguments,
+              [switch]$AllowNotFound
+            )
+
+            $maxAttempts = 7
+            for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+              $output = (& gh @Arguments 2>&1 | Out-String)
+              $exitCode = $LASTEXITCODE
+
+              if ($exitCode -eq 0) {
+                return $output
+              }
+
+              if ($AllowNotFound -and $output -match '(?i)HTTP 404|not found') {
+                return $null
+              }
+
+              $isTemporaryGitHubError =
+                $output -match '(?i)HTTP 5\d\d|503|502|504|Service Unavailable|server is currently available|temporarily unavailable|gateway timeout'
+
+              if ($isTemporaryGitHubError -and $attempt -lt $maxAttempts) {
+                $delay = 10 * $attempt
+                Write-Host "GitHub temporaneamente non disponibile (tentativo $attempt/$maxAttempts). Nuovo tentativo tra $delay secondi..."
+                Write-Host $output
+                Start-Sleep -Seconds $delay
+                continue
+              }
+
+              throw "Comando gh fallito dopo $attempt tentativi.`nComando: gh $($Arguments -join ' ')`n$output"
+            }
+          }
+
           $tag = "compilatore-alunni-v$env:APP_VERSION"
           $setup = '.\installer\CppStudentClient_Setup.exe'
           if (-not (Test-Path $setup)) { throw 'CppStudentClient_Setup.exe non trovato prima della Release.' }
 
-          # Se per qualche motivo esiste già una Release con lo stesso tag, aggiorna gli asset
-          # invece di lasciare il repository in uno stato senza installer utilizzabile.
-          gh release view $tag *> $null
-          if ($LASTEXITCODE -eq 0) {
+          # Se la Release esiste già, sostituisce gli asset.
+          # Se GitHub risponde con 502/503/504, riprova automaticamente senza rifare tutta la build.
+          $existing = Invoke-GhWithRetry -Arguments @('release', 'view', $tag) -AllowNotFound
+          if ($null -ne $existing) {
             Write-Host "Release $tag già esistente: sostituisco gli asset."
-            gh release upload $tag $setup .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt --clobber
+            Invoke-GhWithRetry -Arguments @(
+              'release', 'upload', $tag,
+              $setup,
+              '.\publish\compiler_manifest.txt',
+              '.\publish\compiler_file_list.txt',
+              '--clobber'
+            ) | Out-Null
           } else {
-            gh release create $tag $setup .\publish\compiler_manifest.txt .\publish\compiler_file_list.txt `
-              --title "CV+ Compilatore Alunno $env:APP_VERSION" `
-              --notes "Aggiornamento automatico CV+ $env:APP_VERSION. Installer verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+            $releaseNotes = "Aggiornamento automatico CV+ $env:APP_VERSION. Installer verificato: applicazione, GCC e risorse presenti dopo installazione.`nCommit: ${{ github.sha }}`nBranch: ${{ github.ref_name }}"
+            Invoke-GhWithRetry -Arguments @(
+              'release', 'create', $tag,
+              $setup,
+              '.\publish\compiler_manifest.txt',
+              '.\publish\compiler_file_list.txt',
+              '--title', "CV+ Compilatore Alunno $env:APP_VERSION",
+              '--notes', $releaseNotes
+            ) | Out-Null
           }
-          if ($LASTEXITCODE -ne 0) { throw "Creazione/aggiornamento Release $tag fallita." }
 
-          # Verifica la Release APPENA CREATA tramite il suo tag specifico.
-          # Non richiede che sia /releases/latest: una Release numericamente superiore già esistente
-          # non deve far fallire la build.
+          # Verifica la Release appena creata. Anche questa chiamata usa il retry.
           $encodedTag = [uri]::EscapeDataString($tag)
-          $created = gh api "repos/${{ github.repository }}/releases/tags/$encodedTag" | ConvertFrom-Json
+          $createdJson = Invoke-GhWithRetry -Arguments @(
+            'api', "repos/${{ github.repository }}/releases/tags/$encodedTag"
+          )
+          $created = $createdJson | ConvertFrom-Json
+
           if ([string]$created.tag_name -ne $tag) {
             throw "Impossibile verificare la Release appena creata. Attesa=$tag Trovata=$($created.tag_name)"
           }
+
           $assetNames = @($created.assets | ForEach-Object { [string]$_.name })
           if ($assetNames -notcontains 'CppStudentClient_Setup.exe') {
             throw 'Release creata ma CppStudentClient_Setup.exe non risulta tra gli asset.'
           }
+
           Write-Host "Release pubblica verificata: $tag con CppStudentClient_Setup.exe"
 
