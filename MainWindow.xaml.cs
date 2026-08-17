@@ -3333,7 +3333,7 @@ $window.Add_Closed({
             // l'API pubblica GitHub. In questo modo il pulsante "Ricerca aggiornamenti"
             // e il controllo all'avvio non possono divergere.
             Version runningVersion =
-                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 20);
+                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 21);
 
             string? tag = null;
             Exception? redirectError = null;
@@ -3412,7 +3412,7 @@ $window.Add_Closed({
                 throw new InvalidOperationException("GitHub non ha restituito il tag dell'ultima Release pubblica.");
 
             Version currentVersion =
-                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 20);
+                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 21);
 
             Version? latestVersion = ExtractVersionFromTag(tag);
             if (latestVersion == null)

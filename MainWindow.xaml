@@ -305,7 +305,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="C++  ›  main.cpp" Foreground="#CCCCCC" FontFamily="Segoe UI" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1" Text="CV+ EDITOR — C++17" Foreground="#858585" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="2" Text="SHIFT+CLICK: TUTTO SCHERMO" Foreground="#7890AD" FontSize="10" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                        <TextBlock Grid.Column="2" Text="SHIFT+CLICK: TUTTO SCHERMO" Foreground="#91A4BD" FontSize="10" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,16,0"/>
                         <StackPanel Grid.Column="3" Orientation="Horizontal">
                             <Button x:Name="ShellButton" Content=">_ SHELL" Click="Shell_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#166534" BorderBrush="#22C55E" ToolTip="Apri la shell CMD nella cartella Documenti con G++ già nel PATH"/>
                             <Button x:Name="CppExtensionsButton" Content="▣ ESTENSIONI C++" IsEnabled="True" Click="OpenCppExtensions_Click" Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,3,8,3" Background="#0E639C" BorderBrush="#1177BB" ToolTip="Apri Estensioni C++: libreria matematica Mate"/>
@@ -385,7 +385,7 @@
         <Border x:Name="OutputPanel" Grid.Row="4" Margin="16,0,424,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Background="#132139"><Grid Margin="13,0"><TextBlock Text="COMPILAZIONE ED ESECUZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/><TextBlock Text="SHIFT+CLICK: apri a tutto schermo" Foreground="#FFD166" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid></Border>
+                <Border Background="#132139"><Grid Margin="13,0"><TextBlock Text="COMPILAZIONE ED ESECUZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/><TextBlock Text="SHIFT+CLICK: apri a tutto schermo" Foreground="#91A4BD" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid></Border>
                 <TextBox x:Name="OutputBox" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
                          TextWrapping="Wrap" BorderThickness="0" Background="#07101C" Foreground="#E7F4FF" FontFamily="Cascadia Mono, Consolas" Padding="12" PreviewMouseLeftButtonDown="OutputBox_PreviewMouseLeftButtonDown"/>
             </Grid>

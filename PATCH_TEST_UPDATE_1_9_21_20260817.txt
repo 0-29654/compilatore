@@ -1,0 +1,6 @@
+PATCH TEST UPDATE 1.9.21
+
+- SHIFT+CLICK: TUTTO SCHERMO usa ora lo stesso colore di "Tempo esercizio" (#91A4BD).
+- Anche SHIFT+CLICK della sezione Compilazione ed esecuzione usa #91A4BD.
+- Versione portata a 1.9.21 per consentire un test reale del meccanismo di aggiornamento una volta pubblicata la Release su GitHub.
+- Tutte le modifiche precedenti sono mantenute.
