@@ -3174,7 +3174,7 @@ $window.Add_Closed({
 })
 
 [void]$window.ShowDialog()
-"""
+""";
 
         File.WriteAllText(updaterPowerShell, updaterScript, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
 
