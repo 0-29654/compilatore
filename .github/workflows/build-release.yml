@@ -37,7 +37,7 @@ jobs:
           [xml]$project = Get-Content '.\CppStudentClient.csproj' -Raw
           $fallback = [string]($project.Project.PropertyGroup | Select-Object -First 1).Version
           if ([string]::IsNullOrWhiteSpace($fallback) -or $fallback -notmatch '^\d+\.\d+\.\d+$') {
-            $fallback = '1.9.20'
+            $fallback = '1.9.21'
           }
           $base = [version]$fallback
 
