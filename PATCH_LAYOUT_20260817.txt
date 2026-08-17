@@ -1,0 +1,17 @@
+PATCH LAYOUT SCHERMATA INIZIALE - 17/08/2026
+
+Modifiche applicate:
+- Area connessione docente allineata alla colonna destra (stessa larghezza 400 px dell'area SHELL/ESTENSIONI).
+- IP docente e porta mostrati separatamente in campi compatti e non modificabili.
+- Codice sessione non modificabile dall'alunno.
+- Il valore tecnico ServerBox (IP:porta) resta invariato e nascosto, quindi la logica di rete esistente continua a usare lo stesso dato.
+- Numero esercizio centrato con pulsanti precedente/successivo compatti ai lati.
+- Tipologia resta A/B/C.
+- Altezza editor/output regolabile trascinando la nuova barra orizzontale tra editor e "Compilazione ed esecuzione".
+- Altezza minima editor 220 px e output 58 px per evitare chiusure accidentali delle aree.
+
+File modificati:
+- MainWindow.xaml
+- MainWindow.xaml.cs
+
+Nota: il file XAML è stato validato come XML. Nell'ambiente di patch non è installato dotnet, quindi non è stato possibile eseguire la build WPF completa.

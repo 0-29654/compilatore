@@ -433,7 +433,7 @@ public partial class MainWindow : Window
         ExerciseBox.Text = "1";
         ServerBox.Text = "";
         SessionBox.Text = "";
-        SetTeacherConnectionFieldsLocked(false);
+        SetTeacherConnectionFieldsLocked(true);
         Editor.Text = DefaultCode;
         HeaderEditor.Text = "";
         HeaderTab.Visibility = Visibility.Collapsed;
@@ -597,6 +597,38 @@ public partial class MainWindow : Window
                 try { await Task.Delay(500, token); } catch { break; }
             }
         }
+    }
+
+
+    private void ServerBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        // ServerBox resta il valore tecnico usato dal programma (IP:porta).
+        // In interfaccia lo mostriamo in due campi separati, entrambi di sola lettura.
+        if (ServerIpDisplay == null || ServerPortDisplay == null) return;
+
+        string raw = (ServerBox.Text ?? string.Empty).Trim();
+        string ip = raw;
+        string port = string.Empty;
+
+        if (raw.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) raw = raw.Substring(7);
+        else if (raw.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) raw = raw.Substring(8);
+
+        int slash = raw.IndexOf('/');
+        if (slash >= 0) raw = raw.Substring(0, slash);
+
+        int colon = raw.LastIndexOf(':');
+        if (colon > 0 && colon < raw.Length - 1)
+        {
+            ip = raw.Substring(0, colon);
+            port = raw.Substring(colon + 1);
+        }
+        else
+        {
+            ip = raw;
+        }
+
+        ServerIpDisplay.Text = ip;
+        ServerPortDisplay.Text = port;
     }
 
 

@@ -68,8 +68,9 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="108"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition x:Name="OutputRow" Height="88"/>
+            <RowDefinition x:Name="EditorRow" Height="*" MinHeight="220"/>
+            <RowDefinition Height="7"/>
+            <RowDefinition x:Name="OutputRow" Height="120" MinHeight="58"/>
             <RowDefinition Height="82"/>
         </Grid.RowDefinitions>
 
@@ -123,28 +124,93 @@
 
         <Border Grid.Row="1" Background="{StaticResource PanelBrush}" CornerRadius="14" Margin="16,14,16,10" Padding="14"
                 BorderBrush="#243650" BorderThickness="1">
+            <!-- Layout superiore diviso nelle stesse due zone dell'area editor:
+                 dati alunno a sinistra, connessione docente a destra (400 px)
+                 così IP/porta/sessione risultano allineati con SHELL / ESTENSIONI. -->
             <Grid>
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="0.72*"/><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="0.62*"/>
-                    <ColumnDefinition Width="0.78*"/><ColumnDefinition Width="0.72*"/><ColumnDefinition Width="1.10*"/>
-                    <ColumnDefinition Width="0.78*"/><ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="400"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Margin="4"><TextBlock Text="N° REGISTRO ALU." Style="{StaticResource LabelStyle}"/><TextBox x:Name="StudentIdBox"/></StackPanel>
-                <StackPanel Grid.Column="1" Margin="4"><TextBlock Text="NOME E COGNOME" Style="{StaticResource LabelStyle}"/><TextBox x:Name="StudentNameBox"/></StackPanel>
-                <StackPanel Grid.Column="2" Margin="4"><TextBlock Text="CLASSE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ClassBox"/></StackPanel>
-                <StackPanel Grid.Column="3" Margin="4"><TextBlock Text="TIPOLOGIA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="TaskTypeBox" Text="A" LostFocus="TaskIdentity_LostFocus"/></StackPanel>
-                <StackPanel Grid.Column="4" Margin="4"><TextBlock Text="N° ESERCIZIO" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ExerciseBox" Text="1" LostFocus="ExerciseNumber_LostFocus"/></StackPanel>
-                <StackPanel Grid.Column="5" Margin="4"><TextBlock Text="IP DOCENTE : PORTA" Style="{StaticResource LabelStyle}"/><TextBox x:Name="ServerBox" Text=""/></StackPanel>
-                <StackPanel Grid.Column="6" Margin="4"><TextBlock Text="CODICE SESSIONE" Style="{StaticResource LabelStyle}"/><TextBox x:Name="SessionBox"/></StackPanel>
-                <StackPanel Grid.Column="7" Margin="4">
-                    <TextBlock Text="CAMBIA ESERCIZIO" Style="{StaticResource LabelStyle}"/>
-                    <StackPanel Orientation="Horizontal">
-                        <Button x:Name="PreviousExerciseButton" Content="◀" Width="42" Click="PreviousExercise_Click" Style="{StaticResource ModernButton}" Padding="8,7"/>
-                        <Button x:Name="NextExerciseButton" Content="▶" Width="42" Click="NextExercise_Click" Style="{StaticResource ModernButton}" Padding="8,7" Margin="0" Background="#0E78C7" BorderBrush="#2AAEFF"/>
+                <Grid Grid.Column="0" Margin="0,0,12,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="0.82*"/>
+                        <ColumnDefinition Width="1.38*"/>
+                        <ColumnDefinition Width="0.72*"/>
+                        <ColumnDefinition Width="0.78*"/>
+                        <ColumnDefinition Width="1.10*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="4">
+                        <TextBlock Text="N° REGISTRO ALU." Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="StudentIdBox"/>
                     </StackPanel>
-                </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="4">
+                        <TextBlock Text="NOME E COGNOME" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="StudentNameBox"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="4">
+                        <TextBlock Text="CLASSE" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="ClassBox"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Margin="4">
+                        <TextBlock Text="TIPOLOGIA" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="TaskTypeBox" Text="A" LostFocus="TaskIdentity_LostFocus"
+                                 HorizontalContentAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="4" Margin="4">
+                        <TextBlock Text="N° ESERCIZIO" Style="{StaticResource LabelStyle}" HorizontalAlignment="Center"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="38"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="38"/>
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="PreviousExerciseButton" Grid.Column="0" Content="◀" Width="34" Height="34"
+                                    Click="PreviousExercise_Click" Style="{StaticResource ModernButton}" Padding="5" Margin="0,0,4,0"/>
+                            <TextBox x:Name="ExerciseBox" Grid.Column="1" Text="1" LostFocus="ExerciseNumber_LostFocus"
+                                     HorizontalContentAlignment="Center" FontWeight="SemiBold" Padding="5,7"/>
+                            <Button x:Name="NextExerciseButton" Grid.Column="2" Content="▶" Width="34" Height="34"
+                                    Click="NextExercise_Click" Style="{StaticResource ModernButton}" Padding="5" Margin="4,0,0,0"
+                                    Background="#0E78C7" BorderBrush="#2AAEFF"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Column="1" Margin="4,0,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.45*"/>
+                        <ColumnDefinition Width="0.72*"/>
+                        <ColumnDefinition Width="1.05*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ServerBox conserva internamente IP:porta perché il resto del programma usa questo valore.
+                         È nascosto: all'alunno mostriamo i due valori separati e non modificabili. -->
+                    <TextBox x:Name="ServerBox" Visibility="Collapsed" IsReadOnly="True" IsTabStop="False" Focusable="False"
+                             TextChanged="ServerBox_TextChanged"/>
+
+                    <StackPanel Grid.Column="0" Margin="2,4,4,4">
+                        <TextBlock Text="IP DOCENTE" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="ServerIpDisplay" IsReadOnly="True" IsTabStop="False" Focusable="False"
+                                 Background="#162235" Foreground="#B9C7D8" BorderBrush="#40516A"
+                                 FontSize="12" Padding="7,7" ToolTip="Valore ricevuto automaticamente dal programma docente."/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="4">
+                        <TextBlock Text="PORTA" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="ServerPortDisplay" IsReadOnly="True" IsTabStop="False" Focusable="False"
+                                 Background="#162235" Foreground="#B9C7D8" BorderBrush="#40516A"
+                                 FontSize="12" Padding="7,7" HorizontalContentAlignment="Center"
+                                 ToolTip="Valore ricevuto automaticamente dal programma docente."/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="4">
+                        <TextBlock Text="CODICE SESSIONE" Style="{StaticResource LabelStyle}"/>
+                        <TextBox x:Name="SessionBox" IsReadOnly="True" IsTabStop="False" Focusable="False"
+                                 Background="#162235" Foreground="#B9C7D8" BorderBrush="#40516A"
+                                 FontSize="12" Padding="7,7" ToolTip="Valore ricevuto automaticamente dal programma docente e non modificabile."/>
+                    </StackPanel>
+                </Grid>
             </Grid>
         </Border>
 
@@ -199,7 +265,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" Grid.RowSpan="2" HorizontalAlignment="Right" Width="400" Margin="0,46,16,8" CornerRadius="10" Background="#0B1729" BorderBrush="#2B4567" BorderThickness="1">
+        <Border Grid.Row="2" Grid.RowSpan="3" HorizontalAlignment="Right" Width="400" Margin="0,46,16,8" CornerRadius="10" Background="#0B1729" BorderBrush="#2B4567" BorderThickness="1">
                     <Grid Margin="10">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -225,7 +291,12 @@
                     </Grid>
                 </Border>
 
-        <Border x:Name="OutputPanel" Grid.Row="3" Margin="16,8,424,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
+        <!-- Trascina questa barra per regolare l'altezza dell'editor e dell'output. -->
+        <GridSplitter Grid.Row="3" Margin="16,0,424,0" Height="7" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      Background="#263A55" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="True"
+                      Cursor="SizeNS" ToolTip="Trascina per regolare l'altezza dell'editor"/>
+
+        <Border x:Name="OutputPanel" Grid.Row="4" Margin="16,0,424,0" CornerRadius="14" Background="{StaticResource PanelBrush}" BorderBrush="#243650" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Border Background="#132139"><Grid Margin="13,0"><TextBlock Text="COMPILAZIONE ED ESECUZIONE" Foreground="#BBD0E8" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/><TextBlock Text="SHIFT+CLICK: apri a tutto schermo" Foreground="#FFD166" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid></Border>
@@ -234,7 +305,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="4" Background="#0B1729" BorderBrush="#20324C"
+        <Border Grid.Row="5" Background="#0B1729" BorderBrush="#20324C"
                 BorderThickness="0,1,0,0" Margin="0,8,0,0">
             <Grid Margin="14,7">
                 <Grid.ColumnDefinitions>
