@@ -46,13 +46,73 @@ Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescr
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Assets\A.png"; DestDir: "{app}\Assets"; Flags: ignoreversion
 Source: "Assets\installing_a.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_00.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_01.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_02.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_03.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_04.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_05.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_06.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_07.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_08.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_09.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_10.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_11.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_12.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_13.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_14.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_15.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_16.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_17.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_18.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_19.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_20.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_21.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_22.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_23.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_24.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_25.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_26.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_27.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_28.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_29.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_30.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_31.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_32.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_33.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_34.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_35.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_36.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_37.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_38.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_39.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_40.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_41.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_42.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_43.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_44.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_45.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_46.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_47.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_48.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_49.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_50.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_51.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_52.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_53.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_54.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_55.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_56.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_57.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_58.bmp"; Flags: dontcopy
+Source: "Assets\update_gears\gears_59.bmp"; Flags: dontcopy
 Source: "INFORMATIVA_PRIVACY_CVPLUS.txt"; DestDir: "{app}\Documenti"; Flags: ignoreversion
 Source: "INFORMATIVA_PRIVACY_CVPLUS.txt"; Flags: dontcopy
 Source: "CONDIZIONI_UTILIZZO_CVPLUS.txt"; DestDir: "{app}\Documenti"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
-Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; Check: not IsUpdateMode
 Name: "{autoprograms}\{#MyAppName} - Informativa privacy"; Filename: "{app}\Documenti\INFORMATIVA_PRIVACY_CVPLUS.txt"
 Name: "{autoprograms}\{#MyAppName} - Condizioni di utilizzo"; Filename: "{app}\Documenti\CONDIZIONI_UTILIZZO_CVPLUS.txt"
 
@@ -68,6 +128,14 @@ var
   PrivacyPage: TWizardPage;
   PrivacyMemo: TNewMemo;
   PrivacyCheck: TNewCheckBox;
+  UpdateForm: TSetupForm;
+  UpdateGearImage: TBitmapImage;
+  UpdateProgress: TNewProgressBar;
+  UpdateTitle: TNewStaticText;
+  UpdateStatus: TNewStaticText;
+  UpdateCopyright: TNewStaticText;
+  UpdateTimerId: UINT_PTR;
+  UpdateFrameIndex: Integer;
 
 const
   PBM_SETMARQUEE = $040A;
@@ -83,6 +151,10 @@ function SetWindowLong(hWnd: HWND; nIndex: Integer; dwNewLong: Longint): Longint
   external 'SetWindowLongW@user32.dll stdcall';
 function SetLayeredWindowAttributes(hWnd: HWND; crKey: Cardinal; bAlpha: Byte; dwFlags: Cardinal): Boolean;
   external 'SetLayeredWindowAttributes@user32.dll stdcall';
+function SetTimer(hWnd: HWND; nIDEvent: UINT_PTR; uElapse: UINT; lpTimerFunc: NativeInt): UINT_PTR;
+  external 'SetTimer@user32.dll stdcall';
+function KillTimer(hWnd: HWND; uIDEvent: UINT_PTR): Boolean;
+  external 'KillTimer@user32.dll stdcall';
 
 function IsUpdateMode: Boolean;
 var
@@ -96,6 +168,145 @@ begin
       Result := True;
       exit;
     end;
+  end;
+end;
+
+procedure LoadUpdateFrame(FrameNo: Integer);
+var
+  FrameName: String;
+begin
+  if UpdateGearImage = nil then
+    exit;
+  FrameName := Format('gears_%.2d.bmp', [FrameNo]);
+  UpdateGearImage.Bitmap.LoadFromFile(ExpandConstant('{tmp}\') + FrameName);
+end;
+
+procedure UpdateAnimationTick(hWnd: HWND; uMsg: UINT; idEvent: UINT_PTR; dwTime: DWORD);
+begin
+  if (UpdateForm = nil) or (not UpdateForm.Visible) then
+    exit;
+  UpdateFrameIndex := (UpdateFrameIndex + 1) mod 60;
+  LoadUpdateFrame(UpdateFrameIndex);
+end;
+
+procedure CreateUpdateWindow;
+var
+  I: Integer;
+  FrameName: String;
+begin
+  if not IsUpdateMode then
+    exit;
+
+  { Estrae una sola volta i frame: durante l'installazione il timer li alterna
+    senza rieseguire ExtractTemporaryFile e il movimento risulta più fluido. }
+  for I := 0 to 59 do
+  begin
+    FrameName := Format('gears_%.2d.bmp', [I]);
+    ExtractTemporaryFile(FrameName);
+  end;
+
+  UpdateForm := CreateCustomForm(ScaleX(690), ScaleY(520), False, False);
+  UpdateForm.Caption := 'Update';
+  UpdateForm.Position := poScreenCenter;
+  UpdateForm.BorderStyle := bsSingle;
+  UpdateForm.Color := clWhite;
+  UpdateForm.ClientWidth := ScaleX(690);
+  UpdateForm.ClientHeight := ScaleY(520);
+
+  UpdateGearImage := TBitmapImage.Create(UpdateForm);
+  UpdateGearImage.Parent := UpdateForm;
+  UpdateGearImage.Left := ScaleX(95);
+  UpdateGearImage.Top := ScaleY(25);
+  UpdateGearImage.Width := ScaleX(500);
+  UpdateGearImage.Height := ScaleY(220);
+  UpdateGearImage.Stretch := True;
+  LoadUpdateFrame(0);
+
+  UpdateProgress := TNewProgressBar.Create(UpdateForm);
+  UpdateProgress.Parent := UpdateForm;
+  UpdateProgress.Left := ScaleX(70);
+  UpdateProgress.Top := ScaleY(278);
+  UpdateProgress.Width := ScaleX(550);
+  UpdateProgress.Height := ScaleY(28);
+  UpdateProgress.Min := 0;
+  UpdateProgress.Max := 1000;
+  UpdateProgress.Position := 0;
+
+  UpdateTitle := TNewStaticText.Create(UpdateForm);
+  UpdateTitle.Parent := UpdateForm;
+  UpdateTitle.AutoSize := False;
+  UpdateTitle.Left := ScaleX(70);
+  UpdateTitle.Top := ScaleY(330);
+  UpdateTitle.Width := ScaleX(550);
+  UpdateTitle.Height := ScaleY(50);
+  UpdateTitle.Alignment := taCenter;
+  UpdateTitle.Caption := 'UPDATE';
+  UpdateTitle.Font.Name := 'Segoe UI';
+  UpdateTitle.Font.Size := 28;
+  UpdateTitle.Font.Style := [fsBold];
+  UpdateTitle.Font.Color := $002D2D2D;
+
+  UpdateStatus := TNewStaticText.Create(UpdateForm);
+  UpdateStatus.Parent := UpdateForm;
+  UpdateStatus.AutoSize := False;
+  UpdateStatus.Left := ScaleX(70);
+  UpdateStatus.Top := ScaleY(392);
+  UpdateStatus.Width := ScaleX(550);
+  UpdateStatus.Height := ScaleY(25);
+  UpdateStatus.Alignment := taCenter;
+  UpdateStatus.Caption := 'Preparazione aggiornamento...';
+  UpdateStatus.Font.Name := 'Segoe UI';
+  UpdateStatus.Font.Size := 10;
+  UpdateStatus.Font.Color := $00585858;
+
+  UpdateCopyright := TNewStaticText.Create(UpdateForm);
+  UpdateCopyright.Parent := UpdateForm;
+  UpdateCopyright.AutoSize := False;
+  UpdateCopyright.Left := ScaleX(70);
+  UpdateCopyright.Top := ScaleY(452);
+  UpdateCopyright.Width := ScaleX(550);
+  UpdateCopyright.Height := ScaleY(32);
+  UpdateCopyright.Alignment := taCenter;
+  UpdateCopyright.Caption := '© Alessandro Barazzuol';
+  UpdateCopyright.Font.Name := 'Segoe UI';
+  UpdateCopyright.Font.Size := 13;
+  UpdateCopyright.Font.Style := [fsBold];
+  UpdateCopyright.Font.Color := $002D2D2D;
+
+  UpdateFrameIndex := 0;
+  UpdateTimerId := 0;
+  UpdateTimerId := SetTimer(0, 0, 30, CreateCallback(@UpdateAnimationTick));
+end;
+
+procedure ShowUpdateWindow;
+begin
+  if UpdateForm = nil then
+    CreateUpdateWindow;
+  if UpdateForm <> nil then
+  begin
+    UpdateForm.Show;
+    UpdateForm.BringToFront;
+    UpdateForm.Update;
+  end;
+end;
+
+procedure HideUpdateWindow;
+begin
+  if UpdateTimerId <> 0 then
+  begin
+    KillTimer(0, UpdateTimerId);
+    UpdateTimerId := 0;
+  end;
+  if UpdateForm <> nil then
+  begin
+    UpdateForm.Hide;
+    UpdateForm.Free;
+    UpdateForm := nil;
+    UpdateGearImage := nil;
+    UpdateProgress := nil;
+    UpdateTitle := nil;
+    UpdateStatus := nil;
+    UpdateCopyright := nil;
   end;
 end;
 
@@ -203,12 +414,11 @@ function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
 
-  { Durante un aggiornamento non richiedere di nuovo privacy o condizioni d'uso. }
+  { In modalità UPDATE l'installazione è automatica: nessuna pagina standard
+    (lingua viene già fissata da /LANG=italian nel programma chiamante). }
   if IsUpdateMode then
   begin
-    if PageID = wpLicense then
-      Result := True
-    else if (PrivacyPage <> nil) and (PageID = PrivacyPage.ID) then
+    if PageID <> wpInstalling then
       Result := True;
   end;
 end;
@@ -242,12 +452,17 @@ end;
 
 procedure InitializeWizard;
 begin
-  { Questa è la prima operazione eseguita dopo la conferma della lingua. }
-  ShowPreparationWindow;
-  CreatePrivacyPage;
+  if IsUpdateMode then
+    CreateUpdateWindow
+  else
+  begin
+    { Installazione normale invariata. }
+    ShowPreparationWindow;
+    CreatePrivacyPage;
+  end;
 
   { Nelle installazioni automatiche di GitHub Actions non esiste interazione utente. }
-  if WizardSilent then
+  if WizardSilent and (not IsUpdateMode) then
   begin
     PrivacyCheck.Checked := True;
     WizardForm.LicenseAcceptedRadio.Checked := True;
@@ -298,6 +513,13 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
+  if IsUpdateMode then
+  begin
+    if CurPageID = wpInstalling then
+      ShowUpdateWindow;
+    exit;
+  end;
+
   if ((PrivacyPage <> nil) and (CurPageID = PrivacyPage.ID)) or
      (CurPageID = wpLicense) then
     HidePreparationWindow;
@@ -315,7 +537,55 @@ begin
     PositionInstallImage;
 end;
 
+procedure CurInstallProgressChanged(CurProgress, MaxProgress: Integer);
+var
+  P: Integer;
+begin
+  if IsUpdateMode and (UpdateProgress <> nil) and (MaxProgress > 0) then
+  begin
+    P := (CurProgress * 1000) div MaxProgress;
+    if P < 0 then P := 0;
+    if P > 1000 then P := 1000;
+    UpdateProgress.Position := P;
+
+    if P < 120 then
+      UpdateStatus.Caption := 'Preparazione aggiornamento...'
+    else if P < 900 then
+      UpdateStatus.Caption := 'Installazione aggiornamento...'
+    else
+      UpdateStatus.Caption := 'Completamento aggiornamento...';
+
+    UpdateForm.Update;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+begin
+  if IsUpdateMode then
+  begin
+    if CurStep = ssInstall then
+      ShowUpdateWindow
+    else if CurStep = ssPostInstall then
+    begin
+      if UpdateProgress <> nil then
+        UpdateProgress.Position := 1000;
+      if UpdateStatus <> nil then
+        UpdateStatus.Caption := 'Aggiornamento completato';
+      if UpdateForm <> nil then
+        UpdateForm.Update;
+      Sleep(500);
+      HideUpdateWindow;
+
+      { Riapre automaticamente il programma aggiornato. }
+      ShellExec('', ExpandConstant('{app}\{#MyAppExeName}'), '', ExpandConstant('{app}'), SW_SHOWNORMAL, ewNoWait, ResultCode);
+    end;
+  end;
+end;
+
 procedure DeinitializeSetup;
 begin
   HidePreparationWindow;
+  HideUpdateWindow;
 end;

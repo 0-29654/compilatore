@@ -3010,16 +3010,16 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
     private void LaunchVisualUpdater(string installerPath, int currentProcessId, string installedTagMarker, string tag)
     {
-        // Per gli aggiornamenti usiamo direttamente l'installer standard di CV+.
-        // /UPDATE fa saltare le pagine informative/condizioni previste per la prima installazione.
-        // Non usiamo VERYSILENT: l'utente vede la normale finestra di installazione e
-        // la barra "Attendi - prepara aggiornamento..." definita in setup_student.iss.
+        // Modalità UPDATE: Inno Setup installa automaticamente l'aggiornamento, senza
+        // scelta lingua, icona desktop, directory, privacy o altre pagine standard.
+        // setup_student.iss mostra soltanto la finestra UPDATE con ingranaggi animati
+        // e la barra collegata all'avanzamento reale dell'installazione.
         var startInfo = new ProcessStartInfo
         {
             FileName = installerPath,
             UseShellExecute = true,
             WorkingDirectory = Path.GetDirectoryName(installerPath) ?? Path.GetTempPath(),
-            Arguments = "/UPDATE /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS"
+            Arguments = "/UPDATE /LANG=italian /SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS"
         };
 
         Process? updater = Process.Start(startInfo);
@@ -3205,7 +3205,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             MessageBoxResult answer =
                 ShowVerificationSafeMessage(
                     $"È disponibile una Release più recente ({tag}).\n\n" +
-                    "Vuoi installarla adesso? Dopo il download CV+ verrà chiuso e comparirà soltanto la barra di avanzamento dell'aggiornamento.",
+                    "Vuoi installarla adesso? Dopo il download il Compilatore alunno verrà chiuso e comparirà la finestra UPDATE con gli ingranaggi e la barra di avanzamento.",
                     "Aggiornamento disponibile",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question,

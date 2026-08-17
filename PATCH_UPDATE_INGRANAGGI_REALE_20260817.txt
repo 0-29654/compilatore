@@ -1,0 +1,15 @@
+PATCH AGGIORNAMENTO VISUALE REALE - 17/08/2026
+
+Modifiche limitate al meccanismo di aggiornamento:
+- dopo Sì su "Aggiornamento disponibile", il programma scarica l'installer come prima;
+- avvia Inno Setup in modalità /UPDATE /SILENT con lingua italiana già fissata;
+- il Compilatore alunno viene chiuso;
+- durante l'installazione reale compare solo la finestra UPDATE personalizzata;
+- 3 ingranaggi animati (60 frame, timer Windows a 30 ms);
+- barra collegata al progresso reale di Inno Setup;
+- nessuna scelta lingua, cartella, icona desktop, privacy, licenza o pagine standard in UPDATE;
+- nessun pulsante Annulla nella finestra UPDATE;
+- copyright © Alessandro Barazzuol ben visibile;
+- a installazione completata la finestra si chiude e il Compilatore alunno viene riaperto automaticamente.
+
+L'installazione normale resta invariata.
