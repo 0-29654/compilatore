@@ -1135,6 +1135,7 @@ public partial class MainWindow : Window
             BorderBrush = new SolidColorBrush(Color.FromRgb(139, 124, 246)),
             BorderThickness = new Thickness(1),
             Foreground = Brushes.White,
+            Style = (Style)FindResource("ZoomButton"),
             ToolTip = "Zoom out — riduci la dimensione del codice"
         };
 
@@ -1149,6 +1150,7 @@ public partial class MainWindow : Window
             BorderBrush = new SolidColorBrush(Color.FromRgb(56, 189, 248)),
             BorderThickness = new Thickness(1),
             Foreground = Brushes.White,
+            Style = (Style)FindResource("ZoomButton"),
             ToolTip = "Zoom in — aumenta la dimensione del codice"
         };
 
@@ -2656,7 +2658,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         var text = new StackPanel { Margin = new Thickness(14,12,14,12) };
         text.Children.Add(new TextBlock { Text = "Mate", Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 20 });
         text.Children.Add(new TextBlock { Text = "Libreria matematica CV+ · Grafici 2D/3D · Derivate · Integrali · Tangenti · Aree · Equazioni · Disequazioni · Semplificazione", Foreground = new SolidColorBrush(Color.FromRgb(170,220,190)), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,4,0,0) });
-        text.Children.Add(new TextBlock { Text = "© Alessandro Barazzuol", Foreground = new SolidColorBrush(Color.FromRgb(125,180,225)), Margin = new Thickness(0,5,0,0) });
+        text.Children.Add(new TextBlock { Text = "© Prof. Alessandro Barazzuol", Foreground = new SolidColorBrush(Color.FromRgb(125,180,225)), Margin = new Thickness(0,5,0,0) });
         row.Children.Add(text);
         var guide = new Button { Content = "GUIDA", Margin = new Thickness(10), Padding = new Thickness(18,8,18,8), Background = new SolidColorBrush(Color.FromRgb(14,99,156)), Foreground = Brushes.White };
         guide.Click += (_, _) => OpenPdfGuide(Path.Combine(CppGuidesDirectory, "Guida_Mate.html"));
@@ -3056,7 +3058,7 @@ Add-Type -AssemblyName WindowsBase
                            Foreground="#68798A" HorizontalAlignment="Center" Margin="0,5,0,0"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="4" Text="© Alessandro Barazzuol" FontFamily="Segoe UI" FontSize="15"
+            <TextBlock Grid.Row="4" Text="© Prof. Alessandro Barazzuol" FontFamily="Segoe UI" FontSize="15"
                        Foreground="#707070" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
         </Grid>
     </Border>

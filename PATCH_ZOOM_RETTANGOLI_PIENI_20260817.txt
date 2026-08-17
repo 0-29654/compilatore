@@ -1,0 +1,5 @@
+
+PATCH ZOOM BUTTON SHAPE 20260817
+- Pulsanti zoom rettangolari pieni con CornerRadius 8.
+- Mantenute icone lente +/- e tutte le patch precedenti.
+- Stesso stile applicato anche allo zoom fullscreen.
