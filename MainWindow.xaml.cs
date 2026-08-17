@@ -991,6 +991,28 @@ public partial class MainWindow : Window
         );
     }
 
+    private const double EditorMinFontSize = 10;
+    private const double EditorMaxFontSize = 32;
+    private const double EditorZoomStep = 1;
+
+    private void EditorZoomOut_Click(object sender, RoutedEventArgs e)
+    {
+        SetMainEditorsFontSize(Editor.FontSize - EditorZoomStep);
+    }
+
+    private void EditorZoomIn_Click(object sender, RoutedEventArgs e)
+    {
+        SetMainEditorsFontSize(Editor.FontSize + EditorZoomStep);
+    }
+
+    private void SetMainEditorsFontSize(double requestedSize)
+    {
+        double size = Math.Max(EditorMinFontSize, Math.Min(EditorMaxFontSize, requestedSize));
+        Editor.FontSize = size;
+        HeaderEditor.FontSize = size;
+        StatusText.Text = $"Zoom codice: {size:0} pt";
+    }
+
     private void Editor_PreviewMouseLeftButtonDown(
         object sender,
         MouseButtonEventArgs e)
@@ -1027,7 +1049,7 @@ public partial class MainWindow : Window
             Text = sourceEditor.Text,
             ShowLineNumbers = true,
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
-            FontSize = 21,
+            FontSize = Math.Max(16, Math.Min(34, sourceEditor.FontSize + 5)),
             Background = new SolidColorBrush(Color.FromRgb(5, 11, 20)),
             Foreground = Brushes.White,
             LineNumbersForeground = new SolidColorBrush(Color.FromRgb(170, 190, 215)),
@@ -1059,10 +1081,41 @@ public partial class MainWindow : Window
 
         applyButton.Click += (_, _) => ApplyChanges();
 
+        var zoomOutButton = new System.Windows.Controls.Button
+        {
+            Content = "−",
+            Width = 44,
+            Height = 38,
+            Margin = new Thickness(6),
+            Background = new SolidColorBrush(Color.FromRgb(36, 52, 77)),
+            Foreground = Brushes.White,
+            FontSize = 20,
+            FontWeight = FontWeights.Bold,
+            ToolTip = "Riduci la dimensione del codice"
+        };
+
+        var zoomInButton = new System.Windows.Controls.Button
+        {
+            Content = "+",
+            Width = 44,
+            Height = 38,
+            Margin = new Thickness(6),
+            Background = new SolidColorBrush(Color.FromRgb(36, 52, 77)),
+            Foreground = Brushes.White,
+            FontSize = 20,
+            FontWeight = FontWeights.Bold,
+            ToolTip = "Aumenta la dimensione del codice"
+        };
+
+        zoomOutButton.Click += (_, _) =>
+            popupEditor.FontSize = Math.Max(EditorMinFontSize, popupEditor.FontSize - EditorZoomStep);
+        zoomInButton.Click += (_, _) =>
+            popupEditor.FontSize = Math.Min(EditorMaxFontSize + 6, popupEditor.FontSize + EditorZoomStep);
+
         ShowFullscreenOverlay(
             $"{displayName} — Tipologia {GetTaskType()} — Esercizio {GetExerciseNumber()} — C++17",
             popupEditor,
-            new[] { applyButton },
+            new[] { zoomOutButton, zoomInButton, applyButton },
             ApplyChanges
         );
     }

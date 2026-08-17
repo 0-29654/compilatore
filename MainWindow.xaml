@@ -135,11 +135,12 @@
 
                 <Grid Grid.Column="0" Margin="0,0,12,0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="0.82*"/>
-                        <ColumnDefinition Width="1.38*"/>
-                        <ColumnDefinition Width="0.72*"/>
-                        <ColumnDefinition Width="0.78*"/>
-                        <ColumnDefinition Width="1.10*"/>
+                        <!-- Campi più compatti: liberano spazio a destra per i controlli zoom. -->
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="250"/>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="4">
@@ -164,17 +165,25 @@
                         <TextBlock Text="N° ESERCIZIO" Style="{StaticResource LabelStyle}" HorizontalAlignment="Center"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="38"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="38"/>
+                                <ColumnDefinition Width="34"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="34"/>
+                                <ColumnDefinition Width="30"/>
+                                <ColumnDefinition Width="30"/>
                             </Grid.ColumnDefinitions>
-                            <Button x:Name="PreviousExerciseButton" Grid.Column="0" Content="◀" Width="34" Height="34"
-                                    Click="PreviousExercise_Click" Style="{StaticResource ModernButton}" Padding="5" Margin="0,0,4,0"/>
+                            <Button x:Name="PreviousExerciseButton" Grid.Column="0" Content="◀" Width="30" Height="32"
+                                    Click="PreviousExercise_Click" Style="{StaticResource ModernButton}" Padding="3" Margin="0,0,3,0"/>
                             <TextBox x:Name="ExerciseBox" Grid.Column="1" Text="1" LostFocus="ExerciseNumber_LostFocus"
-                                     HorizontalContentAlignment="Center" FontWeight="SemiBold" Padding="5,7"/>
-                            <Button x:Name="NextExerciseButton" Grid.Column="2" Content="▶" Width="34" Height="34"
-                                    Click="NextExercise_Click" Style="{StaticResource ModernButton}" Padding="5" Margin="4,0,0,0"
+                                     HorizontalContentAlignment="Center" FontWeight="SemiBold" Padding="4,6"/>
+                            <Button x:Name="NextExerciseButton" Grid.Column="2" Content="▶" Width="30" Height="32"
+                                    Click="NextExercise_Click" Style="{StaticResource ModernButton}" Padding="3" Margin="3,0,2,0"
                                     Background="#0E78C7" BorderBrush="#2AAEFF"/>
+                            <Button x:Name="EditorZoomOutButton" Grid.Column="3" Content="−" Width="27" Height="32"
+                                    Click="EditorZoomOut_Click" Style="{StaticResource ModernButton}" Padding="2" Margin="2,0,1,0"
+                                    ToolTip="Riduci la dimensione del codice nell'editor"/>
+                            <Button x:Name="EditorZoomInButton" Grid.Column="4" Content="+" Width="27" Height="32"
+                                    Click="EditorZoomIn_Click" Style="{StaticResource ModernButton}" Padding="2" Margin="1,0,0,0"
+                                    ToolTip="Aumenta la dimensione del codice nell'editor"/>
                         </Grid>
                     </StackPanel>
                 </Grid>

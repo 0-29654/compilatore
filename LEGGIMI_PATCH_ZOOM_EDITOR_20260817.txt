@@ -1,0 +1,9 @@
+PATCH 17/08/2026 - Layout compatto + zoom editor
+
+- Mantiene le modifiche precedenti: campi IP/porta/sessione non modificabili e altezza editor regolabile con splitter.
+- Rimpiccioliti e compattati N° registro, Nome e cognome, Classe e Tipologia per liberare spazio nella barra superiore.
+- N° esercizio resta centrato e con frecce precedente/successivo più compatte.
+- Aggiunti pulsanti - e + accanto al N° esercizio per diminuire/aumentare la dimensione del codice nell'editor.
+- Lo zoom viene applicato sia a main.cpp sia all'eventuale esercizio.h.
+- Nella modalità tutto schermo aperta con SHIFT+click sull'editor compaiono gli stessi pulsanti - e + per zoomare il codice.
+- Limiti zoom editor normale: 10-32 pt; tutto schermo fino a 38 pt.
