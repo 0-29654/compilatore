@@ -1,0 +1,7 @@
+PATCH 2026-08-17
+- Pulsanti zoom: colonne allargate e pulsanti 36px, rettangoli completi con bordi arrotondati, senza clipping a destra.
+- Verifica Quiz: quizAssigned/quizReady entra immediatamente in modalità Attendi verifica.
+- Popup Attendi verifica centrato sullo schermo, Topmost, attivato e focalizzato.
+- Durante l’attesa restano attivi solo N° registro, Nome e cognome e Classe; gli altri controlli sono disabilitati.
+- I tre campi identificativi lampeggiano/evidenziano solo se vuoti.
+- All’uscita dalla modalità Quiz viene ripristinato lo stato normale.

@@ -1,0 +1,5 @@
+Ripristinate senza rimuovere le patch precedenti:
+- finestra "Attendi verifica" centrata rispetto al client e Topmost;
+- lampeggio/evidenziazione dei soli campi mancanti N° registro, Nome e cognome, Classe;
+- lampeggio attivo finché la modalità Verifica Quiz è in attesa;
+- reset dello stile dei campi quando il server Quiz viene fermato o la modalità termina.

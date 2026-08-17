@@ -40,6 +40,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _modeTimer = new() { Interval = TimeSpan.FromSeconds(7) };
     private readonly DispatcherTimer _quizAssignmentTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _liveMonitorTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly DispatcherTimer _quizIdentityBlinkTimer = new() { Interval = TimeSpan.FromMilliseconds(520) };
+    private bool _quizIdentityBlinkOn;
     private readonly Dictionary<string, ExerciseState> _exerciseStates = new(StringComparer.OrdinalIgnoreCase);
 
     private string _compileOutput = "";
@@ -104,7 +106,7 @@ public partial class MainWindow : Window
         LoadCppExtensions();
         ResetClientStateOnStartup();
         StartTeacherDiscoveryListener();
-        Closed += (_, _) => { _liveMonitorTimer.Stop(); _quizAssignmentTimer.Stop(); StopTeacherDiscoveryListener(); StopShell(); };
+        Closed += (_, _) => { _liveMonitorTimer.Stop(); _quizAssignmentTimer.Stop(); _quizIdentityBlinkTimer.Stop(); StopTeacherDiscoveryListener(); StopShell(); };
         if (!File.Exists(BundledCompilerPath))
             OutputBox.Text = "Installazione incompleta: compilatore C++17 incorporato assente. Reinstallare il programma.";
         ActivateExercise(GetTaskType(), GetExerciseNumber());
@@ -118,6 +120,7 @@ public partial class MainWindow : Window
         _quizAssignmentTimer.Start();
         _liveMonitorTimer.Tick += async (_, _) => await SyncLiveMonitorAsync();
         _liveMonitorTimer.Start();
+        _quizIdentityBlinkTimer.Tick += (_, _) => UpdateQuizIdentityBlink();
 
         StudentNameBox.TextChanged += (_, _) => UpdateWindowTitle();
 
@@ -515,7 +518,9 @@ public partial class MainWindow : Window
                         _quizServerBase = NormalizeServerAddress($"{ip}:{port}");
                         _quizSessionCode = session;
                         _lastQuizServerSeenUtc = DateTime.UtcNow;
-                        _quizVerificationMode = true;
+                        // Entra subito nella modalità di attesa Quiz: rimangono utilizzabili
+                        // esclusivamente N° registro, nome/cognome e classe.
+                        EnterQuizWaitingMode();
                         StatusText.Text = $"Nuova verifica Quiz assegnata - ricezione da {ip}:{port}...";
                         _ = CheckQuizAssignmentAsync();
                         return;
@@ -2436,7 +2441,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             Owner = this,
             Width = 430,
             Height = 245,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
             ResizeMode = ResizeMode.NoResize,
             Background = new SolidColorBrush(Color.FromRgb(30, 30, 30)),
             ShowInTaskbar = false
@@ -2529,7 +2534,7 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
                 Owner = this,
                 Width = 650,
                 Height = 430,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
                 Background = new SolidColorBrush(Color.FromRgb(30, 30, 30)),
                 ShowInTaskbar = false
             };
@@ -2722,6 +2727,39 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             : tooltip;
     }
 
+    private void UpdateQuizIdentityBlink()
+    {
+        if (!_quizVerificationMode)
+        {
+            _quizIdentityBlinkTimer.Stop();
+            return;
+        }
+        _quizIdentityBlinkOn = !_quizIdentityBlinkOn;
+        var bright = new SolidColorBrush(Color.FromRgb(255, 176, 32));
+        var normal = new SolidColorBrush(Color.FromRgb(42, 58, 82));
+        foreach (var box in new[] { StudentIdBox, StudentNameBox, ClassBox })
+        {
+            bool missing = string.IsNullOrWhiteSpace(box.Text);
+            box.BorderThickness = missing && _quizIdentityBlinkOn ? new Thickness(3) : new Thickness(1);
+            box.BorderBrush = missing && _quizIdentityBlinkOn ? bright : normal;
+            box.Background = missing && _quizIdentityBlinkOn
+                ? new SolidColorBrush(Color.FromRgb(50, 38, 18))
+                : new SolidColorBrush(Color.FromRgb(10, 21, 38));
+        }
+    }
+
+    private void ResetQuizIdentityBlink()
+    {
+        _quizIdentityBlinkTimer.Stop();
+        _quizIdentityBlinkOn = false;
+        foreach (var box in new[] { StudentIdBox, StudentNameBox, ClassBox })
+        {
+            box.BorderThickness = new Thickness(1);
+            box.BorderBrush = new SolidColorBrush(Color.FromRgb(42, 58, 82));
+            box.Background = new SolidColorBrush(Color.FromRgb(10, 21, 38));
+        }
+    }
+
     private void EnterQuizWaitingMode()
     {
         _quizVerificationMode = true;
@@ -2735,8 +2773,12 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         StudentNameBox.IsEnabled = true;
         ClassBox.IsEnabled = true;
 
+        // Tutti i controlli non necessari alla verifica vengono disattivati.
         TaskTypeBox.IsEnabled = false;
         ExerciseBox.IsEnabled = false;
+        ServerIpDisplay.IsEnabled = false;
+        ServerPortDisplay.IsEnabled = false;
+        SessionBox.IsEnabled = false;
         PreviousExerciseButton.IsEnabled = false;
         NextExerciseButton.IsEnabled = false;
         EditorZoomOutButton.IsEnabled = false;
@@ -2760,16 +2802,22 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         CppExtensionsButton.IsEnabled = false;
         ShellButton.IsEnabled = false;
 
+        UpdateQuizIdentityBlink();
+        _quizIdentityBlinkTimer.Start();
         ShowQuizWaitingWindow();
     }
 
     private void ExitQuizWaitingMode()
     {
         _quizVerificationMode = false;
+        ResetQuizIdentityBlink();
         CloseQuizWaitingWindow();
 
         TaskTypeBox.IsEnabled = true;
         ExerciseBox.IsEnabled = true;
+        ServerIpDisplay.IsEnabled = true;
+        ServerPortDisplay.IsEnabled = true;
+        SessionBox.IsEnabled = true;
         EditorZoomOutButton.IsEnabled = true;
         EditorZoomInButton.IsEnabled = true;
         ExerciseListBox.IsEnabled = true;
@@ -2818,11 +2866,9 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             Width = 430,
             Height = 175,
             ResizeMode = ResizeMode.NoResize,
-            WindowStartupLocation = WindowStartupLocation.Manual,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
             Owner = this,
-            Left = Math.Max(SystemParameters.WorkArea.Left + 20, SystemParameters.WorkArea.Right - 455),
-            Top = SystemParameters.WorkArea.Top + 80,
-            Topmost = false,
+            Topmost = true,
             Background = new SolidColorBrush(Color.FromRgb(10, 24, 42)),
             Content = panel,
             ShowInTaskbar = false
@@ -2834,6 +2880,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         };
         _quizWaitingWindow = waiting;
         waiting.Show();
+        waiting.Activate();
+        waiting.Focus();
     }
 
     private void CloseQuizWaitingWindow()
@@ -2965,25 +3013,46 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
             "CVPlus_Update_UI_" + Guid.NewGuid().ToString("N") + ".ps1"
         );
 
-        // Updater visuale separato: rimane attivo mentre CV+ viene chiuso e
-        // nasconde completamente l'interfaccia standard dell'installer.
-        // La barra avanza durante l'installazione e arriva al 100% soltanto
-        // quando il processo di setup termina correttamente.
+        string installedExePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Programs",
+            "CVPlusCompilatoreAlunno",
+            "CppStudentClient.exe"
+        );
+
+        string updaterLogPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CVPlus",
+            "update.log"
+        );
+
+        // L'updater è un processo separato. La finestra UPDATE viene mostrata SUBITO,
+        // poi aspetta la chiusura di CV+, installa in silenzioso e riavvia l'app.
+        // In questo modo l'utente non resta mai davanti a uno schermo vuoto dopo aver
+        // premuto "Sì" all'aggiornamento.
         string updaterScript = """
 param(
     [Parameter(Mandatory=$true)][string]$Installer,
     [Parameter(Mandatory=$true)][int]$AppPid,
     [Parameter(Mandatory=$true)][string]$Marker,
     [Parameter(Mandatory=$true)][string]$ReleaseTag,
+    [Parameter(Mandatory=$true)][string]$InstalledExe,
+    [Parameter(Mandatory=$true)][string]$LogPath,
     [Parameter(Mandatory=$true)][string]$SelfScript
 )
 
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 
-# Aspetta che il compilatore abbia terminato davvero prima di installare.
-while (Get-Process -Id $AppPid -ErrorAction SilentlyContinue) {
-    Start-Sleep -Milliseconds 150
+function Write-UpdateLog([string]$message) {
+    try {
+        $dir = Split-Path -Parent $LogPath
+        if ($dir) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        ('{0:yyyy-MM-dd HH:mm:ss.fff}  {1}' -f (Get-Date), $message) | Add-Content -LiteralPath $LogPath -Encoding UTF8
+    } catch {}
 }
+
+Write-UpdateLog "Updater avviato. Release=$ReleaseTag Installer=$Installer PID=$AppPid"
 
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
@@ -3067,7 +3136,6 @@ Add-Type -AssemblyName WindowsBase
 
 $reader = New-Object System.Xml.XmlNodeReader $xaml
 $window = [Windows.Markup.XamlReader]::Load($reader)
-
 $statusText = $window.FindName('StatusText')
 $percentText = $window.FindName('PercentText')
 $progressColumn = $window.FindName('ProgressColumn')
@@ -3076,11 +3144,13 @@ $gearSmall = $window.FindName('GearSmall')
 $gearMedium = $window.FindName('GearMedium')
 $gearLarge = $window.FindName('GearLarge')
 
-$script:percent = 4.0
+$script:percent = 2.0
 $script:installerProcess = $null
+$script:phase = 'wait-app'
 $script:finished = $false
 $script:closeTicks = 0
 $script:gearAngle = 0.0
+$script:installerStarted = $false
 
 function Set-VisualProgress([double]$value) {
     if ($value -lt 0) { $value = 0 }
@@ -3091,8 +3161,30 @@ function Set-VisualProgress([double]$value) {
     $percentText.Text = ('{0:0}%' -f $value)
 }
 
+function Start-Installer {
+    if ($script:installerStarted) { return }
+    $script:installerStarted = $true
+    try {
+        if (-not (Test-Path -LiteralPath $Installer)) { throw "Installer non trovato: $Installer" }
+        Set-VisualProgress 12
+        $statusText.Text = 'Installazione aggiornamento...'
+        Write-UpdateLog 'Avvio installer silenzioso.'
+        $args = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/UPDATE','/CLOSEAPPLICATIONS','/FORCECLOSEAPPLICATIONS')
+        $script:installerProcess = Start-Process -FilePath $Installer -ArgumentList $args -PassThru -WindowStyle Hidden
+        $script:phase = 'install'
+        Write-UpdateLog "Installer PID=$($script:installerProcess.Id)"
+    } catch {
+        Write-UpdateLog ("Errore avvio installer: " + $_.Exception.ToString())
+        $statusText.Text = 'Impossibile avviare l’aggiornamento'
+        $statusText.Foreground = '#B3261E'
+        $percentText.Text = 'Errore'
+        $script:finished = $true
+        $script:closeTicks = -80
+    }
+}
+
 $timer = New-Object Windows.Threading.DispatcherTimer
-$timer.Interval = [TimeSpan]::FromMilliseconds(70)
+$timer.Interval = [TimeSpan]::FromMilliseconds(80)
 $timer.Add_Tick({
     $script:gearAngle = ($script:gearAngle + 2.3) % 360
     $gearSmall.RenderTransform.Angle = $script:gearAngle
@@ -3101,73 +3193,62 @@ $timer.Add_Tick({
 
     if ($script:finished) {
         $script:closeTicks++
-        if ($script:closeTicks -ge 25) {
-            $timer.Stop()
-            $window.Close()
-        }
+        if ($script:closeTicks -ge 35) { $timer.Stop(); $window.Close() }
         return
     }
 
-    if ($null -ne $script:installerProcess) {
-        try { $script:installerProcess.Refresh() } catch {}
+    if ($script:phase -eq 'wait-app') {
+        $statusText.Text = 'Chiusura CV+ e preparazione...'
+        if ($script:percent -lt 10) { Set-VisualProgress ($script:percent + 0.45) }
+        $app = Get-Process -Id $AppPid -ErrorAction SilentlyContinue
+        if ($null -eq $app) { Start-Installer }
+        return
+    }
 
+    if ($script:phase -eq 'install' -and $null -ne $script:installerProcess) {
+        try { $script:installerProcess.Refresh() } catch {}
         if (-not $script:installerProcess.HasExited) {
-            # Avanzamento morbido: il setup Inno in modalità silenziosa non espone
-            # la percentuale, quindi la barra procede fino al 94% e il 100% è
-            # assegnato solo quando l'installer è realmente terminato.
             if ($script:percent -lt 94) {
-                $step = if ($script:percent -lt 55) { 0.85 } elseif ($script:percent -lt 82) { 0.45 } else { 0.18 }
+                $step = if ($script:percent -lt 55) { 0.80 } elseif ($script:percent -lt 82) { 0.42 } else { 0.16 }
                 Set-VisualProgress ($script:percent + $step)
             }
+            return
         }
-        else {
-            $exitCode = $script:installerProcess.ExitCode
-            if ($exitCode -eq 0) {
-                Set-VisualProgress 100
-                $statusText.Text = 'Aggiornamento completato'
-                $statusText.Foreground = '#147A45'
-                try {
-                    $markerDir = Split-Path -Parent $Marker
-                    if ($markerDir) { New-Item -ItemType Directory -Path $markerDir -Force | Out-Null }
-                    Set-Content -LiteralPath $Marker -Value $ReleaseTag -Encoding UTF8
-                } catch {}
-                $script:finished = $true
-            }
-            else {
-                $statusText.Text = "Aggiornamento non riuscito (codice $exitCode)"
-                $statusText.Foreground = '#B3261E'
-                $percentText.Text = 'Errore'
-                $script:finished = $true
-                $script:closeTicks = -65
-            }
+
+        $exitCode = $script:installerProcess.ExitCode
+        Write-UpdateLog "Installer terminato con codice $exitCode"
+        if ($exitCode -eq 0) {
+            Set-VisualProgress 100
+            $statusText.Text = 'Aggiornamento completato'
+            $statusText.Foreground = '#147A45'
+            try {
+                $markerDir = Split-Path -Parent $Marker
+                if ($markerDir) { New-Item -ItemType Directory -Path $markerDir -Force | Out-Null }
+                Set-Content -LiteralPath $Marker -Value $ReleaseTag -Encoding UTF8
+            } catch {}
+            try {
+                if (Test-Path -LiteralPath $InstalledExe) {
+                    Start-Process -FilePath $InstalledExe | Out-Null
+                    Write-UpdateLog "CV+ riavviato: $InstalledExe"
+                } else {
+                    Write-UpdateLog "Eseguibile installato non trovato per il riavvio: $InstalledExe"
+                }
+            } catch { Write-UpdateLog ("Riavvio non riuscito: " + $_.Exception.Message) }
+            $script:finished = $true
+        } else {
+            $statusText.Text = "Aggiornamento non riuscito (codice $exitCode)"
+            $statusText.Foreground = '#B3261E'
+            $percentText.Text = 'Errore'
+            $script:finished = $true
+            $script:closeTicks = -80
         }
     }
 })
 
 $window.Add_ContentRendered({
-    try {
-        Set-VisualProgress 5
-        $statusText.Text = 'Installazione aggiornamento...'
-        $args = @(
-            '/VERYSILENT',
-            '/SUPPRESSMSGBOXES',
-            '/NORESTART',
-            '/UPDATE',
-            '/CLOSEAPPLICATIONS',
-            '/FORCECLOSEAPPLICATIONS',
-            '/RESTARTAPPLICATIONS'
-        )
-        $script:installerProcess = Start-Process -FilePath $Installer -ArgumentList $args -PassThru -WindowStyle Hidden
-        $timer.Start()
-    }
-    catch {
-        $statusText.Text = 'Impossibile avviare l’aggiornamento'
-        $statusText.Foreground = '#B3261E'
-        $percentText.Text = $_.Exception.Message
-        $script:finished = $true
-        $script:closeTicks = -65
-        $timer.Start()
-    }
+    Set-VisualProgress 2
+    $statusText.Text = 'Preparazione aggiornamento...'
+    $timer.Start()
 })
 
 $window.Add_Closed({
@@ -3190,6 +3271,7 @@ $window.Add_Closed({
         };
 
         startInfo.ArgumentList.Add("-NoProfile");
+        startInfo.ArgumentList.Add("-STA");
         startInfo.ArgumentList.Add("-ExecutionPolicy");
         startInfo.ArgumentList.Add("Bypass");
         startInfo.ArgumentList.Add("-WindowStyle");
@@ -3204,10 +3286,16 @@ $window.Add_Closed({
         startInfo.ArgumentList.Add(installedTagMarker);
         startInfo.ArgumentList.Add("-ReleaseTag");
         startInfo.ArgumentList.Add(tag);
+        startInfo.ArgumentList.Add("-InstalledExe");
+        startInfo.ArgumentList.Add(installedExePath);
+        startInfo.ArgumentList.Add("-LogPath");
+        startInfo.ArgumentList.Add(updaterLogPath);
         startInfo.ArgumentList.Add("-SelfScript");
         startInfo.ArgumentList.Add(updaterPowerShell);
 
-        Process.Start(startInfo);
+        Process? updater = Process.Start(startInfo);
+        if (updater == null)
+            throw new InvalidOperationException("Impossibile avviare la schermata grafica di aggiornamento.");
     }
 
     private async void CheckUpdates_Click(
@@ -3239,50 +3327,92 @@ $window.Add_Closed({
 
         try
         {
-            // NON usiamo l'API REST di GitHub per il controllo aggiornamenti.
-            // L'endpoint api.github.com ha un limite anonimo piuttosto basso e,
-            // soprattutto nelle reti scolastiche dove molti PC condividono lo stesso IP,
-            // può rispondere 403 "rate limit exceeded" anche se il programma funziona.
-            // La pagina pubblica /releases/latest non consuma quel limite: GitHub la
-            // reindirizza direttamente alla Release più recente e dal relativo URL
-            // ricaviamo il tag/versione.
+            // Il controllo manuale e quello automatico passano ESATTAMENTE da qui.
+            // Prima proviamo l'URL pubblico /releases/latest (nessun token necessario).
+            // Se una rete/proxy non mantiene il redirect finale, usiamo come fallback
+            // l'API pubblica GitHub. In questo modo il pulsante "Ricerca aggiornamenti"
+            // e il controllo all'avvio non possono divergere.
             Version runningVersion =
-                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 0);
+                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 20);
 
-            using var latestRequest = new HttpRequestMessage(
-                HttpMethod.Get,
-                "https://github.com/0-29654/compilatore/releases/latest"
-            );
+            string? tag = null;
+            Exception? redirectError = null;
 
-            latestRequest.Headers.UserAgent.ParseAdd(
-                $"CVPlusCompilatoreAlunno/{runningVersion.Major}.{runningVersion.Minor}.{runningVersion.Build}"
-            );
-
-            using HttpResponseMessage latestResponse =
-                await _http.SendAsync(latestRequest, HttpCompletionOption.ResponseHeadersRead);
-
-            latestResponse.EnsureSuccessStatusCode();
-
-            Uri? finalReleaseUri = latestResponse.RequestMessage?.RequestUri;
-            string finalReleaseUrl = finalReleaseUri?.AbsoluteUri ?? "";
-
-            Match tagMatch = Regex.Match(
-                finalReleaseUrl,
-                @"/releases/tag/([^/?#]+)",
-                RegexOptions.IgnoreCase
-            );
-
-            if (!tagMatch.Success)
+            try
             {
-                throw new InvalidOperationException(
-                    "GitHub non ha restituito il collegamento alla Release più recente. Riprova tra qualche istante."
+                using var latestRequest = new HttpRequestMessage(
+                    HttpMethod.Get,
+                    "https://github.com/0-29654/compilatore/releases/latest"
                 );
+                latestRequest.Headers.UserAgent.ParseAdd(
+                    $"CVPlusCompilatoreAlunno/{runningVersion.Major}.{runningVersion.Minor}.{runningVersion.Build}"
+                );
+                latestRequest.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue
+                {
+                    NoCache = true,
+                    NoStore = true
+                };
+
+                using HttpResponseMessage latestResponse =
+                    await _http.SendAsync(latestRequest, HttpCompletionOption.ResponseHeadersRead);
+                latestResponse.EnsureSuccessStatusCode();
+
+                string finalReleaseUrl = latestResponse.RequestMessage?.RequestUri?.AbsoluteUri ?? "";
+                Match tagMatch = Regex.Match(
+                    finalReleaseUrl,
+                    @"/releases/tag/([^/?#]+)",
+                    RegexOptions.IgnoreCase
+                );
+                if (tagMatch.Success)
+                    tag = Uri.UnescapeDataString(tagMatch.Groups[1].Value);
+            }
+            catch (Exception ex)
+            {
+                redirectError = ex;
             }
 
-            string tag = Uri.UnescapeDataString(tagMatch.Groups[1].Value);
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                try
+                {
+                    using var apiRequest = new HttpRequestMessage(
+                        HttpMethod.Get,
+                        "https://api.github.com/repos/0-29654/compilatore/releases/latest"
+                    );
+                    apiRequest.Headers.UserAgent.ParseAdd(
+                        $"CVPlusCompilatoreAlunno/{runningVersion.Major}.{runningVersion.Minor}.{runningVersion.Build}"
+                    );
+                    apiRequest.Headers.Accept.ParseAdd("application/vnd.github+json");
+                    apiRequest.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue
+                    {
+                        NoCache = true,
+                        NoStore = true
+                    };
+
+                    using HttpResponseMessage apiResponse = await _http.SendAsync(apiRequest);
+                    apiResponse.EnsureSuccessStatusCode();
+                    string json = await apiResponse.Content.ReadAsStringAsync();
+                    using JsonDocument releaseDoc = JsonDocument.Parse(json);
+                    if (releaseDoc.RootElement.TryGetProperty("tag_name", out JsonElement tagNode))
+                        tag = tagNode.GetString();
+                }
+                catch (Exception apiEx)
+                {
+                    throw new InvalidOperationException(
+                        "Non risulta disponibile una Release pubblica utilizzabile nella repository GitHub. " +
+                        "La build su GitHub Actions deve terminare creando la Release e allegando CppStudentClient_Setup.exe.\n\n" +
+                        "Dettaglio redirect: " + (redirectError?.Message ?? "nessuno") + "\n" +
+                        "Dettaglio API: " + apiEx.Message,
+                        apiEx
+                    );
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(tag))
+                throw new InvalidOperationException("GitHub non ha restituito il tag dell'ultima Release pubblica.");
 
             Version currentVersion =
-                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 0);
+                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 9, 20);
 
             Version? latestVersion = ExtractVersionFromTag(tag);
             if (latestVersion == null)
@@ -3518,7 +3648,7 @@ $window.Add_Closed({
             var dialog = new Window
             {
                 Title = "Esercizi da inviare", Owner = this, Content = panel,
-                SizeToContent = SizeToContent.WidthAndHeight, WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                SizeToContent = SizeToContent.WidthAndHeight, WindowStartupLocation = WindowStartupLocation.CenterScreen,
                 ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false, Topmost = true
             };
             List<int>? selected = null;
@@ -4453,7 +4583,7 @@ $window.Add_Closed({
             Width = 390,
             Height = 205,
             ResizeMode = ResizeMode.NoResize,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
             Background = new SolidColorBrush(Color.FromRgb(11, 23, 41)),
             ShowInTaskbar = false
         };
@@ -4679,7 +4809,7 @@ $window.Add_Closed({
             Height = 720,
             MinWidth = 760,
             MinHeight = 560,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
             Background = new SolidColorBrush(Color.FromRgb(7, 18, 34)),
             Foreground = Brushes.White,
             ResizeMode = ResizeMode.CanResize,

@@ -1,0 +1,13 @@
+PATCH AGGIORNAMENTI / RELEASE / UI - 17/08/2026
+
+- Conservate tutte le modifiche precedenti, inclusa modalità Verifica Quiz con popup centrale e lampeggio dei campi identificativi.
+- Rimossa dichiarazione duplicata di CheckUpdatesAsync che impediva la compilazione.
+- Il controllo manuale e automatico aggiornamenti usa la stessa routine.
+- Ricerca Release: releases/latest pubblico con fallback API GitHub e cache disabilitata.
+- Updater grafico UPDATE mostrato subito, prima della chiusura completa del client.
+- PowerShell avviato in STA per garantire la finestra WPF.
+- Installer Inno eseguito in modalità silenziosa; al termine CV+ viene riavviato esplicitamente.
+- Log updater: %LOCALAPPDATA%\CVPlus\update.log.
+- Copyright updater: © Prof. Alessandro Barazzuol.
+- Versione base portata a 1.9.20.
+- Workflow GitHub: fetch tag completo, calcolo versione da release+tag, creazione/verifica Release e asset CppStudentClient_Setup.exe.
