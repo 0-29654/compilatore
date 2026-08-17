@@ -37,17 +37,27 @@ jobs:
           [xml]$project = Get-Content '.\CppStudentClient.csproj' -Raw
           $fallback = [string]($project.Project.PropertyGroup | Select-Object -First 1).Version
           if ([string]::IsNullOrWhiteSpace($fallback) -or $fallback -notmatch '^\d+\.\d+\.\d+$') {
-            $fallback = '1.9.21'
+            $fallback = '1.9.30'
           }
           $base = [version]$fallback
 
-          # Raccoglie sia Releases sia tag Git. Se una build precedente ha creato il tag
-          # ma non la Release, non riutilizziamo mai lo stesso numero.
+          # Legge le versioni PUBBLICHE da GitHub e i tag locali/remoti.
+          # Non si affida all'ordine delle Release: calcola sempre la versione numericamente più alta.
           $versions = New-Object System.Collections.Generic.List[version]
           $versions.Add($base)
 
           try {
-            $releaseJson = gh api "repos/${{ github.repository }}/releases?per_page=100" 2>$null
+            $latestJson = gh api "repos/${{ github.repository }}/releases/latest"
+            if ($LASTEXITCODE -eq 0 -and $latestJson) {
+              $latest = $latestJson | ConvertFrom-Json
+              if ([string]$latest.tag_name -match '(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)') {
+                $versions.Add([version]"$($Matches[1]).$($Matches[2]).$($Matches[3])")
+              }
+            }
+          } catch { Write-Host "Lettura Release latest non disponibile: $($_.Exception.Message)" }
+
+          try {
+            $releaseJson = gh api "repos/${{ github.repository }}/releases?per_page=100"
             if ($LASTEXITCODE -eq 0 -and $releaseJson) {
               foreach ($r in ($releaseJson | ConvertFrom-Json)) {
                 if ([string]$r.tag_name -match '(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)') {
@@ -58,6 +68,7 @@ jobs:
           } catch { Write-Host "Lettura Releases non disponibile: $($_.Exception.Message)" }
 
           try {
+            git fetch --tags --force | Out-Null
             foreach ($t in (git tag --list)) {
               if ([string]$t -match '(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)') {
                 $versions.Add([version]"$($Matches[1]).$($Matches[2]).$($Matches[3])")
@@ -67,27 +78,10 @@ jobs:
 
           $highest = $versions | Sort-Object -Descending | Select-Object -First 1
 
-          # La versione del progetto rappresenta la versione minima richiesta da questo commit.
-          # Se GitHub ha già una versione uguale o superiore, genera SEMPRE la successiva.
-          # Così ogni nuova build pubblicata può essere rilevata dai client già installati.
+          # Se su GitHub esiste già una versione uguale o superiore a quella del progetto,
+          # pubblica la patch successiva. Esempio: latest 1.9.29 -> nuova 1.9.30.
           if ($highest -ge $base) {
-            $publicVersions = New-Object System.Collections.Generic.List[version]
-            try {
-              $releaseJson2 = gh api "repos/${{ github.repository }}/releases?per_page=100" 2>$null
-              if ($LASTEXITCODE -eq 0 -and $releaseJson2) {
-                foreach ($r in ($releaseJson2 | ConvertFrom-Json)) {
-                  if ([string]$r.tag_name -match '(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)') {
-                    $publicVersions.Add([version]"$($Matches[1]).$($Matches[2]).$($Matches[3])")
-                  }
-                }
-              }
-            } catch {}
-            $publicHighest = $publicVersions | Sort-Object -Descending | Select-Object -First 1
-            if ($null -ne $publicHighest -and $publicHighest -ge $base) {
-              $version = "$($publicHighest.Major).$($publicHighest.Minor).$($publicHighest.Build + 1)"
-            } else {
-              $version = "$($base.Major).$($base.Minor).$($base.Build)"
-            }
+            $version = "$($highest.Major).$($highest.Minor).$($highest.Build + 1)"
           } else {
             $version = "$($base.Major).$($base.Minor).$($base.Build)"
           }
@@ -368,11 +362,15 @@ jobs:
           }
           if ($LASTEXITCODE -ne 0) { throw "Creazione/aggiornamento Release $tag fallita." }
 
-          $latest = gh api "repos/${{ github.repository }}/releases/latest" | ConvertFrom-Json
-          if ([string]$latest.tag_name -ne $tag) {
-            throw "La Release latest non corrisponde a quella appena creata. Attesa=$tag Trovata=$($latest.tag_name)"
+          # Verifica la Release APPENA CREATA tramite il suo tag specifico.
+          # Non richiede che sia /releases/latest: una Release numericamente superiore già esistente
+          # non deve far fallire la build.
+          $encodedTag = [uri]::EscapeDataString($tag)
+          $created = gh api "repos/${{ github.repository }}/releases/tags/$encodedTag" | ConvertFrom-Json
+          if ([string]$created.tag_name -ne $tag) {
+            throw "Impossibile verificare la Release appena creata. Attesa=$tag Trovata=$($created.tag_name)"
           }
-          $assetNames = @($latest.assets | ForEach-Object { [string]$_.name })
+          $assetNames = @($created.assets | ForEach-Object { [string]$_.name })
           if ($assetNames -notcontains 'CppStudentClient_Setup.exe') {
             throw 'Release creata ma CppStudentClient_Setup.exe non risulta tra gli asset.'
           }

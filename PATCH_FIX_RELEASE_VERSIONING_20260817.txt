@@ -1,0 +1,13 @@
+PATCH FIX RELEASE VERSIONING - 17/08/2026
+
+Modifica limitata al workflow GitHub Actions .github/workflows/build-release.yml.
+
+Correzioni:
+- legge la versione pubblica più alta da GitHub Releases e dai tag;
+- se la più alta è 1.9.29, genera automaticamente 1.9.30;
+- non riutilizza 1.9.21 se esistono versioni superiori;
+- verifica la Release appena creata tramite il suo tag specifico;
+- non fallisce più perché /releases/latest punta a una Release diversa;
+- verifica comunque che CppStudentClient_Setup.exe sia presente nella Release creata.
+
+Nessun file del programma client è stato modificato rispetto alla patch precedente.
