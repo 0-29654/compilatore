@@ -151,7 +151,7 @@ function SetWindowLong(hWnd: HWND; nIndex: Integer; dwNewLong: Longint): Longint
   external 'SetWindowLongW@user32.dll stdcall';
 function SetLayeredWindowAttributes(hWnd: HWND; crKey: Cardinal; bAlpha: Byte; dwFlags: Cardinal): Boolean;
   external 'SetLayeredWindowAttributes@user32.dll stdcall';
-function SetTimer(hWnd: HWND; nIDEvent: UINT_PTR; uElapse: UINT; lpTimerFunc: NativeInt): UINT_PTR;
+function SetTimer(hWnd: HWND; nIDEvent: UINT_PTR; uElapse: UINT; lpTimerFunc: Longint): UINT_PTR;
   external 'SetTimer@user32.dll stdcall';
 function KillTimer(hWnd: HWND; uIDEvent: UINT_PTR): Boolean;
   external 'KillTimer@user32.dll stdcall';
