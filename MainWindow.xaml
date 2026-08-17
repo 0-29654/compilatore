@@ -217,12 +217,13 @@
                                    HorizontalAlignment="Center" TextAlignment="Center"/>
 
                         <Button x:Name="PreviousExerciseButton" Grid.Row="1" Grid.Column="0" Content="◀" Width="30" Height="32"
-                                Click="PreviousExercise_Click" Style="{StaticResource ModernButton}" Padding="3" Margin="0,0,3,0"/>
+                                Click="PreviousExercise_Click" Style="{StaticResource ModernButton}" Padding="3" Margin="0,0,3,0"
+                                Background="#15803D" BorderBrush="#22C55E"/>
                         <TextBox x:Name="ExerciseBox" Grid.Row="1" Grid.Column="1" Text="1" LostFocus="ExerciseNumber_LostFocus"
                                  HorizontalContentAlignment="Center" FontWeight="SemiBold" Padding="4,6"/>
                         <Button x:Name="NextExerciseButton" Grid.Row="1" Grid.Column="2" Content="▶" Width="30" Height="32"
                                 Click="NextExercise_Click" Style="{StaticResource ModernButton}" Padding="3" Margin="3,0,0,0"
-                                Background="#0E78C7" BorderBrush="#2AAEFF"/>
+                                Background="#15803D" BorderBrush="#22C55E"/>
 
                         <!-- Zoom: icone lente più/meno, più grandi e ben separate dalla navigazione esercizio. -->
                         <Button x:Name="EditorZoomOutButton" Grid.Row="1" Grid.Column="4" Width="36" Height="34"
