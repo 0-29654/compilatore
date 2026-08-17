@@ -16,6 +16,8 @@ using System.Windows.Threading;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
+using MessageBox = ABMessageBox.ABMessageBox;
+
 namespace CppStudentClient;
 
 public partial class QuizVerificationWindow : Window

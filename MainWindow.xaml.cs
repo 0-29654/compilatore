@@ -27,6 +27,8 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Xml;
 
+using MessageBox = ABMessageBox.ABMessageBox;
+
 namespace CppStudentClient;
 
 public partial class MainWindow : Window
