@@ -126,7 +126,7 @@ begin
   PreparationText.Width := ScaleX(330);
   PreparationText.Height := ScaleY(18);
   if IsUpdateMode then
-    PreparationText.Caption := 'Attendere - preparazione aggiornamento...'
+    PreparationText.Caption := 'Attendi - prepara aggiornamento...'
   else
     PreparationText.Caption := 'Attendere - preparazione dell''installazione...';
   PreparationText.Font.Name := 'Segoe UI';
@@ -197,6 +197,20 @@ begin
   PrivacyCheck.Font.Size := 9;
   PrivacyCheck.Font.Style := [fsBold];
   PrivacyCheck.Checked := WizardSilent;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+
+  { Durante un aggiornamento non richiedere di nuovo privacy o condizioni d'uso. }
+  if IsUpdateMode then
+  begin
+    if PageID = wpLicense then
+      Result := True
+    else if (PrivacyPage <> nil) and (PageID = PrivacyPage.ID) then
+      Result := True;
+  end;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
