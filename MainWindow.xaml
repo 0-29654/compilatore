@@ -187,13 +187,35 @@
                                 Click="NextExercise_Click" Style="{StaticResource ModernButton}" Padding="3" Margin="3,0,0,0"
                                 Background="#0E78C7" BorderBrush="#2AAEFF"/>
 
-                        <!-- Zoom volutamente staccato dalle frecce di navigazione esercizio. -->
-                        <Button x:Name="EditorZoomOutButton" Grid.Row="1" Grid.Column="4" Content="−" Width="27" Height="32"
-                                Click="EditorZoomOut_Click" Style="{StaticResource ModernButton}" Padding="2" Margin="0,0,2,0"
-                                ToolTip="Riduci la dimensione del codice nell'editor"/>
-                        <Button x:Name="EditorZoomInButton" Grid.Row="1" Grid.Column="5" Content="+" Width="27" Height="32"
-                                Click="EditorZoomIn_Click" Style="{StaticResource ModernButton}" Padding="2" Margin="1,0,0,0"
-                                ToolTip="Aumenta la dimensione del codice nell'editor"/>
+                        <!-- Zoom: icone lente più/meno, più grandi e ben separate dalla navigazione esercizio. -->
+                        <Button x:Name="EditorZoomOutButton" Grid.Row="1" Grid.Column="4" Width="34" Height="34"
+                                Click="EditorZoomOut_Click" Style="{StaticResource ModernButton}" Padding="3" Margin="0,0,4,0"
+                                Background="#4C3F91" BorderBrush="#8B7CF6"
+                                ToolTip="Zoom out — riduci la dimensione del codice">
+                            <Grid Width="22" Height="22">
+                                <Ellipse Width="12" Height="12" Stroke="White" StrokeThickness="2"
+                                         HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1,1,0,0"/>
+                                <Line X1="10" Y1="10" X2="19" Y2="19" Stroke="White" StrokeThickness="2.2"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                <Line X1="4" Y1="7" X2="10" Y2="7" Stroke="White" StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            </Grid>
+                        </Button>
+                        <Button x:Name="EditorZoomInButton" Grid.Row="1" Grid.Column="5" Width="34" Height="34"
+                                Click="EditorZoomIn_Click" Style="{StaticResource ModernButton}" Padding="3" Margin="3,0,0,0"
+                                Background="#087EBD" BorderBrush="#38BDF8"
+                                ToolTip="Zoom in — aumenta la dimensione del codice">
+                            <Grid Width="22" Height="22">
+                                <Ellipse Width="12" Height="12" Stroke="White" StrokeThickness="2"
+                                         HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1,1,0,0"/>
+                                <Line X1="10" Y1="10" X2="19" Y2="19" Stroke="White" StrokeThickness="2.2"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                <Line X1="4" Y1="7" X2="10" Y2="7" Stroke="White" StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                <Line X1="7" Y1="4" X2="7" Y2="10" Stroke="White" StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            </Grid>
+                        </Button>
                     </Grid>
                 </Grid>
 
@@ -248,18 +270,22 @@
                         </StackPanel>
                     </Grid>
                 </Border>
-                <TabControl x:Name="EditorTabs" Grid.Row="1" Grid.Column="0" Background="#050B14" BorderThickness="0">
+                <Border Grid.Row="1" Grid.Column="0" Margin="8,7,7,8" CornerRadius="12" Background="#1E1E1E" BorderBrush="#2B4567" BorderThickness="1" ClipToBounds="True">
+                <TabControl x:Name="EditorTabs" Background="#050B14" BorderThickness="0">
                     <TabItem Header="main.cpp">
                         <avalonEdit:TextEditor x:Name="Editor" ShowLineNumbers="True" FontFamily="Cascadia Mono, Consolas" FontSize="16"
                                                Background="#1E1E1E" Foreground="#D4D4D4" LineNumbersForeground="#858585" Padding="10"
+                                               HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                                                TextChanged="Editor_TextChanged" PreviewMouseLeftButtonDown="Editor_PreviewMouseLeftButtonDown"/>
                     </TabItem>
                     <TabItem x:Name="HeaderTab" Header="esercizio.h" Visibility="Collapsed">
                         <avalonEdit:TextEditor x:Name="HeaderEditor" ShowLineNumbers="True" FontFamily="Cascadia Mono, Consolas" FontSize="16"
                                                Background="#1E1E1E" Foreground="#D4D4D4" LineNumbersForeground="#858585" Padding="10"
+                                               HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                                                TextChanged="HeaderEditor_TextChanged" PreviewMouseLeftButtonDown="HeaderEditor_PreviewMouseLeftButtonDown"/>
                     </TabItem>
                 </TabControl>
+                </Border>
 
 
 

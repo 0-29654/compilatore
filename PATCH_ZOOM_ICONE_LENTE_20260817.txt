@@ -1,0 +1,6 @@
+PATCH ZOOM ICONE LENTE - 17/08/2026
+
+- Mantiene tutte le modifiche della patch Mate + editor card/scroll auto.
+- Sostituisce i pulsanti zoom testuali +/- con icone vettoriali a lente con meno/più.
+- Pulsanti più grandi, colorati e più leggibili.
+- Stesso stile anche nell editor a tutto schermo aperto con SHIFT+click.

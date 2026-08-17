@@ -1078,30 +1078,78 @@ public partial class MainWindow : Window
 
         applyButton.Click += (_, _) => ApplyChanges();
 
+        System.Windows.Controls.Grid BuildZoomLensIcon(bool plus)
+        {
+            var icon = new System.Windows.Controls.Grid { Width = 24, Height = 24 };
+
+            var lens = new System.Windows.Shapes.Ellipse
+            {
+                Width = 13,
+                Height = 13,
+                Stroke = Brushes.White,
+                StrokeThickness = 2.1,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(1, 1, 0, 0)
+            };
+            icon.Children.Add(lens);
+
+            icon.Children.Add(new System.Windows.Shapes.Line
+            {
+                X1 = 11, Y1 = 11, X2 = 21, Y2 = 21,
+                Stroke = Brushes.White,
+                StrokeThickness = 2.3,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            });
+            icon.Children.Add(new System.Windows.Shapes.Line
+            {
+                X1 = 4.5, Y1 = 7.5, X2 = 10.5, Y2 = 7.5,
+                Stroke = Brushes.White,
+                StrokeThickness = 1.9,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            });
+            if (plus)
+            {
+                icon.Children.Add(new System.Windows.Shapes.Line
+                {
+                    X1 = 7.5, Y1 = 4.5, X2 = 7.5, Y2 = 10.5,
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1.9,
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round
+                });
+            }
+            return icon;
+        }
+
         var zoomOutButton = new System.Windows.Controls.Button
         {
-            Content = "−",
-            Width = 44,
-            Height = 38,
-            Margin = new Thickness(6),
-            Background = new SolidColorBrush(Color.FromRgb(36, 52, 77)),
+            Content = BuildZoomLensIcon(false),
+            Width = 48,
+            Height = 42,
+            Margin = new Thickness(7),
+            Padding = new Thickness(5),
+            Background = new SolidColorBrush(Color.FromRgb(76, 63, 145)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(139, 124, 246)),
+            BorderThickness = new Thickness(1),
             Foreground = Brushes.White,
-            FontSize = 20,
-            FontWeight = FontWeights.Bold,
-            ToolTip = "Riduci la dimensione del codice"
+            ToolTip = "Zoom out — riduci la dimensione del codice"
         };
 
         var zoomInButton = new System.Windows.Controls.Button
         {
-            Content = "+",
-            Width = 44,
-            Height = 38,
-            Margin = new Thickness(6),
-            Background = new SolidColorBrush(Color.FromRgb(36, 52, 77)),
+            Content = BuildZoomLensIcon(true),
+            Width = 48,
+            Height = 42,
+            Margin = new Thickness(7),
+            Padding = new Thickness(5),
+            Background = new SolidColorBrush(Color.FromRgb(8, 126, 189)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(56, 189, 248)),
+            BorderThickness = new Thickness(1),
             Foreground = Brushes.White,
-            FontSize = 20,
-            FontWeight = FontWeights.Bold,
-            ToolTip = "Aumenta la dimensione del codice"
+            ToolTip = "Zoom in — aumenta la dimensione del codice"
         };
 
         zoomOutButton.Click += (_, _) =>
@@ -2908,6 +2956,258 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
         Activate();
     }
 
+    private void LaunchVisualUpdater(string installerPath, int currentProcessId, string installedTagMarker, string tag)
+    {
+        string updaterPowerShell = Path.Combine(
+            Path.GetTempPath(),
+            "CVPlus_Update_UI_" + Guid.NewGuid().ToString("N") + ".ps1"
+        );
+
+        // Updater visuale separato: rimane attivo mentre CV+ viene chiuso e
+        // nasconde completamente l'interfaccia standard dell'installer.
+        // La barra avanza durante l'installazione e arriva al 100% soltanto
+        // quando il processo di setup termina correttamente.
+        string updaterScript = """
+param(
+    [Parameter(Mandatory=$true)][string]$Installer,
+    [Parameter(Mandatory=$true)][int]$AppPid,
+    [Parameter(Mandatory=$true)][string]$Marker,
+    [Parameter(Mandatory=$true)][string]$ReleaseTag,
+    [Parameter(Mandatory=$true)][string]$SelfScript
+)
+
+$ErrorActionPreference = 'Stop'
+
+# Aspetta che il compilatore abbia terminato davvero prima di installare.
+while (Get-Process -Id $AppPid -ErrorAction SilentlyContinue) {
+    Start-Sleep -Milliseconds 150
+}
+
+Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName PresentationCore
+Add-Type -AssemblyName WindowsBase
+
+[xml]$xaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CV+ Update"
+        Width="690" Height="500"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="True">
+    <Border Background="#FFFDFDFD" CornerRadius="28" BorderBrush="#D7D7D7" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect Color="#55000000" BlurRadius="28" ShadowDepth="8" Opacity="0.42"/>
+        </Border.Effect>
+        <Grid Margin="38">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="150"/>
+                <RowDefinition Height="88"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" HorizontalAlignment="Center" Width="310">
+                <TextBlock x:Name="GearSmall" Text="⚙" Foreground="#2E2E2E" FontFamily="Segoe UI Symbol" FontSize="58"
+                           HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="25,0,0,13" RenderTransformOrigin="0.5,0.5">
+                    <TextBlock.RenderTransform><RotateTransform Angle="0"/></TextBlock.RenderTransform>
+                </TextBlock>
+                <TextBlock x:Name="GearMedium" Text="⚙" Foreground="#2E2E2E" FontFamily="Segoe UI Symbol" FontSize="82"
+                           HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,40,0" RenderTransformOrigin="0.5,0.5">
+                    <TextBlock.RenderTransform><RotateTransform Angle="0"/></TextBlock.RenderTransform>
+                </TextBlock>
+                <TextBlock x:Name="GearLarge" Text="⚙" Foreground="#2E2E2E" FontFamily="Segoe UI Symbol" FontSize="116"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" RenderTransformOrigin="0.5,0.5">
+                    <TextBlock.RenderTransform><RotateTransform Angle="0"/></TextBlock.RenderTransform>
+                </TextBlock>
+            </Grid>
+
+            <Grid Grid.Row="1" x:Name="ProgressTrack" Height="62" VerticalAlignment="Center" Margin="20,4">
+                <Border Background="#FAFAFA" BorderBrush="#303030" BorderThickness="5" CornerRadius="31"/>
+                <Grid Margin="7">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="ProgressColumn" Width="0*"/>
+                        <ColumnDefinition x:Name="RemainingColumn" Width="100*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" CornerRadius="24">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#79C8FF" Offset="0"/>
+                                <GradientStop Color="#1288D4" Offset="0.58"/>
+                                <GradientStop Color="#0A5D9B" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <TextBlock Grid.Row="2" Text="UPDATE" FontFamily="Segoe UI" FontSize="58" FontWeight="Light"
+                       Foreground="#2E2E2E" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+
+            <StackPanel Grid.Row="3" HorizontalAlignment="Center" Margin="0,10,0,0">
+                <TextBlock x:Name="StatusText" Text="Preparazione aggiornamento..." FontFamily="Segoe UI"
+                           FontSize="17" FontWeight="SemiBold" Foreground="#24364A" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="PercentText" Text="0%" FontFamily="Segoe UI" FontSize="14"
+                           Foreground="#68798A" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="4" Text="© Alessandro Barazzuol" FontFamily="Segoe UI" FontSize="15"
+                       Foreground="#707070" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+        </Grid>
+    </Border>
+</Window>
+'@
+
+$reader = New-Object System.Xml.XmlNodeReader $xaml
+$window = [Windows.Markup.XamlReader]::Load($reader)
+
+$statusText = $window.FindName('StatusText')
+$percentText = $window.FindName('PercentText')
+$progressColumn = $window.FindName('ProgressColumn')
+$remainingColumn = $window.FindName('RemainingColumn')
+$gearSmall = $window.FindName('GearSmall')
+$gearMedium = $window.FindName('GearMedium')
+$gearLarge = $window.FindName('GearLarge')
+
+$script:percent = 4.0
+$script:installerProcess = $null
+$script:finished = $false
+$script:closeTicks = 0
+$script:gearAngle = 0.0
+
+function Set-VisualProgress([double]$value) {
+    if ($value -lt 0) { $value = 0 }
+    if ($value -gt 100) { $value = 100 }
+    $script:percent = $value
+    $progressColumn.Width = New-Object System.Windows.GridLength($value, [System.Windows.GridUnitType]::Star)
+    $remainingColumn.Width = New-Object System.Windows.GridLength((100-$value), [System.Windows.GridUnitType]::Star)
+    $percentText.Text = ('{0:0}%' -f $value)
+}
+
+$timer = New-Object Windows.Threading.DispatcherTimer
+$timer.Interval = [TimeSpan]::FromMilliseconds(70)
+$timer.Add_Tick({
+    $script:gearAngle = ($script:gearAngle + 2.3) % 360
+    $gearSmall.RenderTransform.Angle = $script:gearAngle
+    $gearMedium.RenderTransform.Angle = -($script:gearAngle * 0.72)
+    $gearLarge.RenderTransform.Angle = $script:gearAngle * 0.48
+
+    if ($script:finished) {
+        $script:closeTicks++
+        if ($script:closeTicks -ge 25) {
+            $timer.Stop()
+            $window.Close()
+        }
+        return
+    }
+
+    if ($null -ne $script:installerProcess) {
+        try { $script:installerProcess.Refresh() } catch {}
+
+        if (-not $script:installerProcess.HasExited) {
+            # Avanzamento morbido: il setup Inno in modalità silenziosa non espone
+            # la percentuale, quindi la barra procede fino al 94% e il 100% è
+            # assegnato solo quando l'installer è realmente terminato.
+            if ($script:percent -lt 94) {
+                $step = if ($script:percent -lt 55) { 0.85 } elseif ($script:percent -lt 82) { 0.45 } else { 0.18 }
+                Set-VisualProgress ($script:percent + $step)
+            }
+        }
+        else {
+            $exitCode = $script:installerProcess.ExitCode
+            if ($exitCode -eq 0) {
+                Set-VisualProgress 100
+                $statusText.Text = 'Aggiornamento completato'
+                $statusText.Foreground = '#147A45'
+                try {
+                    $markerDir = Split-Path -Parent $Marker
+                    if ($markerDir) { New-Item -ItemType Directory -Path $markerDir -Force | Out-Null }
+                    Set-Content -LiteralPath $Marker -Value $ReleaseTag -Encoding UTF8
+                } catch {}
+                $script:finished = $true
+            }
+            else {
+                $statusText.Text = "Aggiornamento non riuscito (codice $exitCode)"
+                $statusText.Foreground = '#B3261E'
+                $percentText.Text = 'Errore'
+                $script:finished = $true
+                $script:closeTicks = -65
+            }
+        }
+    }
+})
+
+$window.Add_ContentRendered({
+    try {
+        Set-VisualProgress 5
+        $statusText.Text = 'Installazione aggiornamento...'
+        $args = @(
+            '/VERYSILENT',
+            '/SUPPRESSMSGBOXES',
+            '/NORESTART',
+            '/UPDATE',
+            '/CLOSEAPPLICATIONS',
+            '/FORCECLOSEAPPLICATIONS',
+            '/RESTARTAPPLICATIONS'
+        )
+        $script:installerProcess = Start-Process -FilePath $Installer -ArgumentList $args -PassThru -WindowStyle Hidden
+        $timer.Start()
+    }
+    catch {
+        $statusText.Text = 'Impossibile avviare l’aggiornamento'
+        $statusText.Foreground = '#B3261E'
+        $percentText.Text = $_.Exception.Message
+        $script:finished = $true
+        $script:closeTicks = -65
+        $timer.Start()
+    }
+})
+
+$window.Add_Closed({
+    try { if (Test-Path -LiteralPath $Installer) { Remove-Item -LiteralPath $Installer -Force -ErrorAction SilentlyContinue } } catch {}
+    try { if (Test-Path -LiteralPath $SelfScript) { Remove-Item -LiteralPath $SelfScript -Force -ErrorAction SilentlyContinue } } catch {}
+})
+
+[void]$window.ShowDialog()
+"""
+
+        File.WriteAllText(updaterPowerShell, updaterScript, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
+            WorkingDirectory = Path.GetTempPath()
+        };
+
+        startInfo.ArgumentList.Add("-NoProfile");
+        startInfo.ArgumentList.Add("-ExecutionPolicy");
+        startInfo.ArgumentList.Add("Bypass");
+        startInfo.ArgumentList.Add("-WindowStyle");
+        startInfo.ArgumentList.Add("Hidden");
+        startInfo.ArgumentList.Add("-File");
+        startInfo.ArgumentList.Add(updaterPowerShell);
+        startInfo.ArgumentList.Add("-Installer");
+        startInfo.ArgumentList.Add(installerPath);
+        startInfo.ArgumentList.Add("-AppPid");
+        startInfo.ArgumentList.Add(currentProcessId.ToString());
+        startInfo.ArgumentList.Add("-Marker");
+        startInfo.ArgumentList.Add(installedTagMarker);
+        startInfo.ArgumentList.Add("-ReleaseTag");
+        startInfo.ArgumentList.Add(tag);
+        startInfo.ArgumentList.Add("-SelfScript");
+        startInfo.ArgumentList.Add(updaterPowerShell);
+
+        Process.Start(startInfo);
+    }
+
     private async void CheckUpdates_Click(
         object sender,
         RoutedEventArgs e)
@@ -3097,47 +3397,8 @@ string line = editor.Document.GetText(currentLine.Offset, currentLine.Length).Tr
 
             Directory.CreateDirectory(updateStateDirectory);
 
-            string updaterScript = Path.Combine(
-                Path.GetTempPath(),
-                "CVPlus_Aggiorna_" + Guid.NewGuid().ToString("N") + ".cmd"
-            );
-
             int currentProcessId = Environment.ProcessId;
-            string escapedTag = tag.Replace("%", "%%").Replace("\"", "");
-
-            string script =
-                "@echo off\r\n" +
-                "setlocal\r\n" +
-                $"set \"INSTALLER={installerPath}\"\r\n" +
-                $"set \"APP_PID={currentProcessId}\"\r\n" +
-                ":WAIT_APP\r\n" +
-                "tasklist /FI \"PID eq %APP_PID%\" 2>NUL | find \"%APP_PID%\" >NUL\r\n" +
-                "if not errorlevel 1 (\r\n" +
-                "  timeout /t 1 /nobreak >NUL\r\n" +
-                "  goto WAIT_APP\r\n" +
-                ")\r\n" +
-                "timeout /t 1 /nobreak >NUL\r\n" +
-                "start \"\" /wait \"%INSTALLER%\" " +
-                "/SILENT /SUPPRESSMSGBOXES /NORESTART /UPDATE " +
-                "/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RESTARTAPPLICATIONS\r\n" +
-                "set \"SETUP_EXIT=%ERRORLEVEL%\"\r\n" +
-                "if %SETUP_EXIT% EQU 0 (\r\n" +
-                $"  >\"{installedTagMarker}\" echo {escapedTag}\r\n" +
-                ")\r\n" +
-                "del /f /q \"%INSTALLER%\" >NUL 2>&1\r\n" +
-                "del /f /q \"%~f0\" >NUL 2>&1\r\n" +
-                "exit /b %SETUP_EXIT%\r\n";
-
-            File.WriteAllText(updaterScript, script, Encoding.Default);
-
-            Process.Start(
-                new ProcessStartInfo(updaterScript)
-                {
-                    UseShellExecute = true,
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    WorkingDirectory = Path.GetTempPath()
-                }
-            );
+            LaunchVisualUpdater(installerPath, currentProcessId, installedTagMarker, tag);
 
             _allowClose = true;
             Application.Current.Shutdown();

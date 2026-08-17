@@ -1,0 +1,20 @@
+PATCH UPDATE VISUALE - 17/08/2026
+
+Questa patch mantiene tutte le modifiche presenti nel pacchetto di partenza
+(compresa estensione Mate, editor con scrollbar automatiche e zoom con icone lente)
+e sostituisce la fase visibile dell'installazione aggiornamento con un updater
+grafico dedicato.
+
+Comportamento:
+- Cerca aggiornamenti come prima.
+- Se l'utente accetta, l'installer viene scaricato e validato.
+- CV+ avvia un updater WPF separato e si chiude.
+- Dopo la chiusura di CV+ compare al centro dello schermo una finestra UPDATE
+  con tre ingranaggi animati e una grande barra arrotondata.
+- La finestra mostra © Alessandro Barazzuol.
+- L'installer Inno Setup viene eseguito con /VERYSILENT e /SUPPRESSMSGBOXES,
+  quindi la finestra standard dell'installer non viene mostrata.
+- La barra avanza durante l'installazione fino al 94%; il 100% compare soltanto
+  quando l'installer termina realmente con codice di uscita 0.
+- In caso di errore viene mostrato lo stato nello stesso updater grafico.
+- A fine procedura vengono rimossi il file installer temporaneo e lo script updater.
