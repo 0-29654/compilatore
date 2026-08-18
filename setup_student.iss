@@ -1,4 +1,4 @@
-﻿#define MyAppName "CV+ Compilatore Alunno"
+#define MyAppName "CV+ Compilatore Alunno"
 #ifndef MyAppVersion
   #define MyAppVersion "1.9.20"
 #endif
@@ -6,7 +6,7 @@
 #define MyAppExeName "CppStudentClient.exe"
 
 [Setup]
-LicenseFile=CONDIZIONI_UTILIZZO_CVPLUS.rtf
+LicenseFile=LICENZA_LIBERA.txt
 AppId={{A6C18F0D-6CA6-4D34-9A45-4D3DA754D8C1}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -46,15 +46,12 @@ Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescr
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Assets\A.png"; DestDir: "{app}\Assets"; Flags: ignoreversion
 Source: "Assets\installing_a.bmp"; Flags: dontcopy
-Source: "INFORMATIVA_PRIVACY_CVPLUS.txt"; DestDir: "{app}\Documenti"; Flags: ignoreversion
-Source: "INFORMATIVA_PRIVACY_CVPLUS.txt"; Flags: dontcopy
-Source: "CONDIZIONI_UTILIZZO_CVPLUS.txt"; DestDir: "{app}\Documenti"; Flags: ignoreversion
+Source: "LICENZA_LIBERA.txt"; DestDir: "{app}\Documenti"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
 Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
-Name: "{autoprograms}\{#MyAppName} - Informativa privacy"; Filename: "{app}\Documenti\INFORMATIVA_PRIVACY_CVPLUS.txt"
-Name: "{autoprograms}\{#MyAppName} - Condizioni di utilizzo"; Filename: "{app}\Documenti\CONDIZIONI_UTILIZZO_CVPLUS.txt"
+Name: "{autoprograms}\{#MyAppName} - Licenza libera"; Filename: "{app}\Documenti\LICENZA_LIBERA.txt"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: nowait postinstall skipifsilent
@@ -65,9 +62,6 @@ var
   PreparationProgress: TNewProgressBar;
   PreparationText: TNewStaticText;
   InstallImage: TBitmapImage;
-  PrivacyPage: TWizardPage;
-  PrivacyMemo: TNewMemo;
-  PrivacyCheck: TNewCheckBox;
 
 const
   PBM_SETMARQUEE = $040A;
@@ -162,71 +156,9 @@ begin
   end;
 end;
 
-procedure CreatePrivacyPage;
-begin
-  PrivacyPage := CreateCustomPage(
-    wpWelcome,
-    'Informativa sulla privacy',
-    'Leggi l''informativa e conferma di averne preso visione.'
-  );
-
-  PrivacyMemo := TNewMemo.Create(PrivacyPage);
-  PrivacyMemo.Parent := PrivacyPage.Surface;
-  PrivacyMemo.Left := 0;
-  PrivacyMemo.Top := 0;
-  PrivacyMemo.Width := PrivacyPage.SurfaceWidth;
-  PrivacyMemo.Height := PrivacyPage.SurfaceHeight - ScaleY(42);
-  PrivacyMemo.ReadOnly := True;
-  PrivacyMemo.ScrollBars := ssVertical;
-  PrivacyMemo.WordWrap := True;
-  PrivacyMemo.Font.Name := 'Segoe UI';
-  PrivacyMemo.Font.Size := 9;
-  ExtractTemporaryFile('INFORMATIVA_PRIVACY_CVPLUS.txt');
-  PrivacyMemo.Lines.LoadFromFile(
-    ExpandConstant('{tmp}\INFORMATIVA_PRIVACY_CVPLUS.txt')
-  );
-
-  PrivacyCheck := TNewCheckBox.Create(PrivacyPage);
-  PrivacyCheck.Parent := PrivacyPage.Surface;
-  PrivacyCheck.Left := 0;
-  PrivacyCheck.Top := PrivacyPage.SurfaceHeight - ScaleY(30);
-  PrivacyCheck.Width := PrivacyPage.SurfaceWidth;
-  PrivacyCheck.Height := ScaleY(24);
-  PrivacyCheck.Caption := 'Ho letto l''Informativa sulla Privacy';
-  PrivacyCheck.Font.Name := 'Segoe UI';
-  PrivacyCheck.Font.Size := 9;
-  PrivacyCheck.Font.Style := [fsBold];
-  PrivacyCheck.Checked := WizardSilent;
-end;
-
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
-  Result := False;
-
-  { Durante un aggiornamento non richiedere di nuovo privacy o condizioni d'uso. }
-  if IsUpdateMode then
-  begin
-    if PageID = wpLicense then
-      Result := True
-    else if (PrivacyPage <> nil) and (PageID = PrivacyPage.ID) then
-      Result := True;
-  end;
-end;
-
-function NextButtonClick(CurPageID: Integer): Boolean;
-begin
-  Result := True;
-
-  if (PrivacyPage <> nil) and (CurPageID = PrivacyPage.ID) and
-     (not WizardSilent) and (not PrivacyCheck.Checked) then
-  begin
-    MsgBox(
-      'Per proseguire devi confermare di aver letto l''Informativa sulla Privacy.',
-      mbInformation,
-      MB_OK
-    );
-    Result := False;
-  end;
+  Result := IsUpdateMode and (PageID = wpLicense);
 end;
 
 procedure PositionInstallImage;
@@ -244,12 +176,10 @@ procedure InitializeWizard;
 begin
   { Questa è la prima operazione eseguita dopo la conferma della lingua. }
   ShowPreparationWindow;
-  CreatePrivacyPage;
 
   { Nelle installazioni automatiche di GitHub Actions non esiste interazione utente. }
   if WizardSilent then
   begin
-    PrivacyCheck.Checked := True;
     WizardForm.LicenseAcceptedRadio.Checked := True;
   end;
 
@@ -267,17 +197,17 @@ begin
   WizardForm.WelcomeLabel1.Font.Style := [fsBold];
 
   WizardForm.LicenseLabel1.Caption :=
-    'Leggi attentamente le Condizioni di utilizzo.';
+    'Licenza libera d''uso e distribuzione - Prof. Alessandro Barazzuol';
   WizardForm.LicenseLabel1.Font.Color := clNavy;
   WizardForm.LicenseLabel1.Font.Style := [fsBold];
 
   WizardForm.LicenseAcceptedRadio.Caption :=
-    'Accetto le Condizioni di utilizzo';
+    'Accetto la licenza libera d''uso e distribuzione';
   WizardForm.LicenseAcceptedRadio.Font.Style := [fsBold];
   WizardForm.LicenseAcceptedRadio.Font.Color := clGreen;
 
   WizardForm.LicenseNotAcceptedRadio.Caption :=
-    'Non accetto le Condizioni di utilizzo';
+    'Non accetto la licenza';
 
   ExtractTemporaryFile('installing_a.bmp');
 
@@ -298,8 +228,7 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  if ((PrivacyPage <> nil) and (CurPageID = PrivacyPage.ID)) or
-     (CurPageID = wpLicense) then
+  if CurPageID = wpLicense then
     HidePreparationWindow;
 
   if (CurPageID = wpLicense) and WizardSilent then

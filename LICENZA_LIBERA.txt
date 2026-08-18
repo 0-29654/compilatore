@@ -1,0 +1,15 @@
+LICENZA LIBERA D'USO E DISTRIBUZIONE
+
+Copyright (c) 2026 Prof. Alessandro Barazzuol
+
+Questo programma è stato scritto dal Prof. Alessandro Barazzuol.
+
+Il software è rilasciato con licenza libera e permissiva. Chiunque è libero di usare, copiare, modificare, studiare, adattare, pubblicare, distribuire, ridistribuire, concedere in sublicenza e utilizzare il software, gratuitamente o a pagamento, per finalità didattiche, personali, professionali o commerciali, senza limitazioni di utilizzo.
+
+È inoltre consentito distribuire copie originali o modificate del programma e del relativo codice sorgente.
+
+L'unica condizione è che nelle copie o nelle parti sostanziali del software sia mantenuta questa nota di copyright e di licenza.
+
+IL SOFTWARE È FORNITO “COSÌ COM'È”, SENZA GARANZIE DI ALCUN TIPO, ESPRESSE O IMPLICITE. NEI LIMITI CONSENTITI DALLA LEGGE, L'AUTORE NON È RESPONSABILE PER DANNI, PERDITE DI DATI O ALTRI PROBLEMI DERIVANTI DALL'USO DEL SOFTWARE.
+
+In sintesi: il programma può essere liberamente usato, modificato e distribuito da chiunque.
